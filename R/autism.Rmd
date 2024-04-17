@@ -1,0 +1,100 @@
+---
+title: "autism"
+output: html_document
+date: "2024-04-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+df <- fread("C:/home/autism/r_edits/temp.txt") %>% as.data.frame()
+
+# for each row in the FORMAT column, get a list of which index corresponds to each field
+my_FORMAT <- df$FORMAT %>% str_split(":")
+index_GT <- lapply(my_FORMAT, function(x){which(x=="GT")}) %>% unlist
+index_AD <- lapply(my_FORMAT, function(x){which(x=="AD")}) %>% unlist
+index_DP <- lapply(my_FORMAT, function(x){which(x=="DP")}) %>% unlist
+
+
+# get a vector of indexes for columns corresponding to fa, mo, p1, p2, etc
+which_columns_to_split <- which(colnames(df) %in% c("FA", "MO") | grepl("\\.p[0-9]$", colnames(df)))
+family_columns_to_cbind <- lapply(which_columns_to_split, function(COL_INDEX){
+  split_member <- df[, COL_INDEX] %>% str_split(":")
+  # identify which columns have more FORMAT fields than the FA column has fields, we won't be able to get good AD or DP infor for these
+  bool_useable <- (my_FORMAT %>% lapply(length) %>% unlist)==(split_member %>% lapply(length) %>% unlist)
+  columns_member <- lapply(seq_down(df), function(x){
+    if(bool_useable[x]==FALSE){
+      if(split_member[[x]][1] %>% grepl("\\/|\\|")){ # check to see if the first field contains GT information
+        return(c(split_member[[x]][1], 0,0))
+      } else {
+        return(c("./.", 0, 0))
+      }
+    }
+    
+    # return the corresponding row from current family member, and the corresponding column for each corresponding field
+    return(c(split_member[[x]][index_GT[x]],
+             split_member[[x]][index_AD[x]],
+             split_member[[x]][index_DP[x]]))
+  }) %>% do.call(rbind, .) %>% as.data.frame()
+  colnames(columns_member) <- paste0(colnames(df)[COL_INDEX], "_", c("GT", "AD", "DP"))
+  return(columns_member)
+}) %>% do.call(cbind, .) %>% as.data.frame()
+
+
+
+```
+
+# asm qc manifest
+```{r}
+df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet = "Individual_Stats")
+df0 <- fread("C:/home/autism/asm_qc/manifest_job_done1.tab") %>% as.data.frame()
+df0[is.na(df0)] <- "NA"
+
+
+bool_child <- grepl("_(p.|s.)$", df0$sample)
+df1 <- data.frame(SAMPLE = df0$sample, 
+                  H1 = paste0(
+                    "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/asm_ys/", 
+                    df0$sample, 
+                    "/assemblies/hifiasm/",
+                    ifelse(bool_child, "trio/", ""),
+                    "0.16.1/",
+                    df0$sample, 
+                    ".hifiasm.",
+                    ifelse(bool_child, "dip", "bp"),
+                    ".hap1.p_ctg.gfa.fasta"),
+                  H2 = paste0(
+                    "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/asm_ys/", 
+                    df0$sample, 
+                    "/assemblies/hifiasm/",
+                    ifelse(bool_child, "trio/", ""),
+                    "0.16.1/",
+                    df0$sample, 
+                    ".hifiasm.",
+                    ifelse(bool_child, "dip", "bp"),
+                    ".hap2.p_ctg.gfa.fasta"),
+                  ILLUMINA = df0$sample,
+                  FOFN = paste0(
+                    "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/fofn/Illumina/",
+                    df0$sample, 
+                    "-Illumina.fastq.fofn"),
+                  TRIO = lapply(df0$sample, function(x){
+                    if(df00$Family_Type[grep(x, df00$SP_ID)] == "Quad, Simplex"){
+                      return("NO")
+                    } else {
+                      return("YES")
+                    }}) %>% unlist,
+                  MO_ID = ifelse(bool_child, 
+                                  df0$sample %>% str_replace("_(p.|s.)$", "_mo"),
+                                  "NA"),
+                  FA_ID = ifelse(bool_child, 
+                                  df0$sample %>% str_replace("_(p.|s.)$", "_fa"),
+                                  "NA")
+                  
+                  )
+write.table(df1, "C:/home/autism/asm_qc/manifest.tab.asm_qc.docker.new", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+```
+

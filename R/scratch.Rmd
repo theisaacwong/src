@@ -1,0 +1,43 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-03-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+files_hk <- list.files("/Users/isaac/Documents/hagakure/", pattern="chapter", full.names = TRUE)
+df_hk_quotes <- lapply(files_hk, function(x){
+  temp_lines <- readLines(x) %>% str_remove_all("\f") %>% str_remove_all("\n")
+  breaks <- which(temp_lines == "")
+  
+  verses <- lapply(seq_along(breaks)[-c(length(breaks))], function(i){
+    start <- breaks[i]
+    end <- breaks[i+1]-1
+    paste0(temp_lines[start:end], collapse = " ") %>% return
+  }) %>% unlist
+  
+  df_curr <- data.frame(
+    quote = verses,
+    author = "Hagakure",
+    context = x %>% basename %>% str_remove(".txt") %>% str_replace("-", " "),
+    source = paste("verse ", seq_along(verses))
+  )
+  return(df_curr)
+}) %>% do.call(rbind, .)
+
+df_hk_quotes$date <- 0
+df_hk_quotes$date[df_hk_quotes$date==0] <- NA
+
+fortune(fortunes.data = df_hk_quotes) %>% paste(collapse = "\n\t-") %>% say(by="egret")
+
+```
+
+```{r}
+sd(rep(0.001, 15))
+```
+
+

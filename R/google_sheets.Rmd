@@ -1,0 +1,16 @@
+---
+title: "google_sheets"
+output: html_document
+date: "2024-03-22"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(googlesheets4)
+df1 <- read_sheet("https://docs.google.com/spreadsheets/d/1hK770z1egV_wvnzGAVmBE2jyLzHjYd_YJFTWs9bb1Jo/edit#gid=0")
+df2 <- as.data.frame(df1)
+```
+
