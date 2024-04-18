@@ -17,6 +17,7 @@ RUN apt-get update && \
     jq \
     git \
     build-essential \
+    libc6-dev \
     vim \
     cmake \
     clang \
