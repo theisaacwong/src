@@ -11,7 +11,7 @@ ANNOTATIONS_TR = config.get("ANNOTATION", "") # tandem repeats
 NTHREADS = config.get("NTHREADS", 2)
 REF = config.get("REF", "/net/eichler/vol28/eee_shared/assemblies/hg38/no_alt/hg38.no_alt.fa")
 TRF_REGIONS = config.get("TRF_REGION", "/net/eichler/vol28/software/pipelines/pbsv/anno/hg38_trf_regions.bed")
-PBSV_VERSION = config.get("PBSV_VERSION", 2.3.2)
+PBSV_VERSION = config.get("PBSV_VERSION", "2.3.2")
 
 manifest_df = pd.read_csv(MANIFEST, sep="\t", index_col="SAMPLE")
 
@@ -133,7 +133,6 @@ rule pbsv_call:
         """
         pbsv call -j {threads} --ccs --types {params.vcf_out} {REF} {input.svsig} {output.vcf}
         """
-
 
         
 rule compress:
