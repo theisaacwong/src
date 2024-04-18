@@ -31,7 +31,7 @@ rule all:
             sniffles_ver=SNIFFLES_VERSION
         ),
         expand(
-            "results/{sample}/sniffles/{sniffles_ver}/{sample}.sniffles.vcf.tbi",
+            "results/{sample}/sniffles/{sniffles_ver}/{sample}.sniffles.vcf.gz.tbi",
             sample=manifest_df.index,
             sniffles_ver=SNIFFLES_VERSION
         ),
@@ -41,7 +41,7 @@ rule all:
             cutesv_ver=CUTESV_VERSION
         ),
         expand(
-            "results/{sample}/cutesv/{cutesv_ver}/{sample}.cutesv.vcf.tbi",
+            "results/{sample}/cutesv/{cutesv_ver}/{sample}.cutesv.vcf.gz.tbi",
             sample=manifest_df.index,
             cutesv_ver=CUTESV_VERSION
         ),
@@ -62,6 +62,7 @@ rule sniffles:
         "docker://eichlerlab/sniffles:2.3.2",
     shell:
         """
+        mkdir -p results/{wildcards.sample}/sniffles/{wildcards.sniffles_ver}/
         sniffles -i {input.bam} --tandem-repeats {ANNOTATIONS_TR} --threads {threads} --reference {REF} -v {output.vcf}
         """
 
@@ -78,7 +79,8 @@ rule cutesv:
         "docker://eichlerlab/cutesv:2.1.1",
     shell:
         """
-        cuteSV --threads {threads} {bam} {REF} {output.vcf} results/{sample}/cutesv/{cutesv_ver}/
+        mkdir -p results/{wildcards.sample}/cutesv/{wildcards.cutesv_ver}/
+        cuteSV --threads {threads} {input.bam} {REF} {output.vcf} results/{wildcards.sample}/cutesv/{wildcards.cutesv_ver}/
         """
         
         
@@ -87,7 +89,7 @@ rule compress:
         vcf="results/{sample}/{software}/{version}/{sample}.{software}.vcf",
     output: 
         vcf="results/{sample}/{software}/{version}/{sample}.{software}.vcf.gz",
-        index="results/{sample}/{software}/{version}/{sample}.{software}.vcf.tbi",
+        index="results/{sample}/{software}/{version}/{sample}.{software}.vcf.gz.tbi",
     threads: 2,
     resources:
         mem=4,
