@@ -1,0 +1,68 @@
+import pandas as pd
+import os, sys
+
+configfile: "config.yaml"
+
+
+MANIFEST = config.get("MANIFEST", "manifest.tab")
+SNIFFLES_VERSION = config.get("SNIFFLES_VERSION", "2.3.4")
+ANNOTATIONS = config.get("ANNOTATION", "") # tandem repeats
+NTHREADS = config.get("NTHREADS", 10)
+REF = config.get("REF", "/net/eichler/vol28/eee_shared/assemblies/hg38/no_alt/hg38.no_alt.fa")
+
+manifest_df = pd.read_csv(MANIFEST, sep="\t", index_col="SAMPLE")
+
+# TODO: add lambda funcitons, esp for restarts with more memory, 
+# TODO: add pbsv and 1 compression rule for everything, 
+
+def get_bam(wildcards):
+    return manifest_df.at[wildcards.sample, "BAM"]
+
+localrules:
+    all,
+
+
+rule all:
+    input:
+        expand(
+            "results/{sample}/sniffles/{sniffles_ver}/{sample}.sniffles.vcf",
+            sample=manifest_df.index,
+            sniffles_ver=SNIFFLES_VERSION
+        ),
+
+
+
+
+rule sniffles:
+    input: 
+        bam=get_bam,
+        annotations=ANNOTATIONS,
+    output: 
+        vcf="results/{sample}/sniffles/{sniffles_ver}/{sample}.sniffles.vcf",
+    threads: NTHREADS,
+    resources:
+        mem=10,
+        hrs=24,
+    singularity:
+        "docker://eichlerlab/sniffles:2.3.2",
+    shell:
+        """
+        sniffles -i {input.bam} --tandem-repeats {input.annotations} --threads {threads} --reference {REF} -v {output.vcf}
+        """
+        
+        
+rule compress:
+    input: 
+        vcf=,
+    output: 
+        vcf="results/{sample}/sniffles/{sniffles_ver}/{sample}.sniffles.vcf",
+    threads: NTHREADS,
+    resources:
+        mem=10,
+        hrs=24,
+    singularity:
+        "docker://eichlerlab/sniffles:2.3.2",
+    shell:
+        """
+        sniffles -i {input.bam} --tandem-repeats {input.annotations} --threads {threads} --reference {REF} -v {output.vcf}
+        """
