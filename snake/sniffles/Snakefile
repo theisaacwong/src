@@ -31,9 +31,19 @@ rule all:
             sniffles_ver=SNIFFLES_VERSION
         ),
         expand(
-            "results/{sample}/cutesv/{sniffles_ver}/{sample}.sniffles.vcf.gz",
+            "results/{sample}/sniffles/{sniffles_ver}/{sample}.sniffles.vcf.tbi",
             sample=manifest_df.index,
             sniffles_ver=SNIFFLES_VERSION
+        ),
+        expand(
+            "results/{sample}/cutesv/{cutesv_ver}/{sample}.sniffles.vcf.gz",
+            sample=manifest_df.index,
+            cutesv_ver=CUTESV_VERSION
+        ),
+        expand(
+            "results/{sample}/cutesv/{cutesv_ver}/{sample}.sniffles.vcf.tbi",
+            sample=manifest_df.index,
+            cutesv_ver=CUTESV_VERSION
         ),
 
 
