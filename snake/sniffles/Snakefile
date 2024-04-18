@@ -53,7 +53,7 @@ rule sniffles:
         
 rule compress:
     input: 
-        vcf=sniffles.output.vcf,
+        vcf=rules.sniffles.output.vcf,
     output: 
         vcf="results/{sample}/sniffles/{sniffles_ver}/{sample}.sniffles.vcf.gz",
         index="results/{sample}/sniffles/{sniffles_ver}/{sample}.sniffles.vcf.gz.tbi",
