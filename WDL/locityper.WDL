@@ -3,9 +3,11 @@ version 1.0
 workflow runLocityper {
     input {
         Array[File] bam_files
+        Array[File] bam_index_files
         Array[String] sample_ids
         String docker
         File reference
+        File reference_index
         File counts_jf
         File db_path
         String locus_name
@@ -13,10 +15,17 @@ workflow runLocityper {
         File alleles_fa
     }
    
+    call generate_counts {
+    input:
+        reference = reference,
+        docker = docker
+    }
+
     call generate_db {
     input:
         reference = reference,
-        counts_jf = counts_jf,
+        reference_index = reference_index,
+        counts_jf = generate_counts.counts_file,
         locus_name = locus_name,
         locus_coordinates = locus_coordinates,
         alleles_fa = alleles_fa,
@@ -27,14 +36,16 @@ workflow runLocityper {
         call samtools_collate {
             input: 
                 bam_file = bam_files[scatter_index],
+                bam_index = bam_index_files[scatter_index],
                 docker = docker
         }
         call locityper_preprocess {
             input:
                 input_fq1 = samtools_collate.reads_1,
                 input_fq2 = samtools_collate.reads_2,
-                counts_file = counts_jf,
+                counts_file = generate_counts.counts_file,
                 reference = reference,
+                reference_index = reference_index,
                 docker = docker
         }
         call locityper_genotype {
@@ -56,6 +67,7 @@ workflow runLocityper {
 task samtools_collate {
     input {
         File bam_file
+        File bam_index
         String docker
     }
 
@@ -72,8 +84,8 @@ task samtools_collate {
     >>>
 
     runtime {
-        memory: "4 GB"
-        cpu: "2"
+        memory: "8 GB"
+        cpu: "4"
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 3
         docker: docker
@@ -91,6 +103,7 @@ task locityper_preprocess {
         File input_fq2
         File counts_file
         File reference
+        File reference_index
         String docker
     }
 
@@ -142,13 +155,16 @@ task locityper_genotype {
         nthreads=$(nproc)
         echo "using ${nthreads} threads"
         
-        tar -xvzf ~{preprocess_tar} -C /locityper_prepoc 
-        tar -xvzf ~{db_targz} -C /db 
+        mkdir -p locityper_prepoc
+        mkdir -p db
+
+        tar -xvzf ~{preprocess_tar} -C locityper_prepoc 
+        tar -xvzf ~{db_targz} -C db 
         mkdir -p ~{sample_id}
 
         locityper genotype -i ~{input_fq1} ~{input_fq2} \
-            -d /db \
-            -p /locityper_prepoc
+            -d db \
+            -p locityper_prepoc
             -@ ${nthreads} \
             --debug 2 \
             -o ~{sample_id}
@@ -171,6 +187,7 @@ task locityper_genotype {
 task generate_db {
     input {
         File reference
+        File reference_index
         File counts_jf
         String locus_name
         String locus_coordinates
@@ -183,7 +200,7 @@ task generate_db {
 
     command <<<
         set -euo pipefail
-        
+
         locityper add -d ~{locus_name}.db \
             -r ~{reference} \
             -j ~{counts_jf} \
@@ -202,6 +219,44 @@ task generate_db {
 
     output {
         File db_tar = output_tar
+    }
+}
+
+
+task generate_counts {
+    input {
+        File reference
+        String docker
+    }
+
+    Int disk_size = 10
+    String output_file = "counts.jf"
+
+    command <<<
+        set -euo pipefail
+        nthreads=$(nproc)
+        echo "using ${nthreads} threads"
+
+        jellyfish count --canonical \
+            --lower-count 2 \
+            --out-counter-len 2 \
+            --mer-len 25 \
+            --threads ${nthreads} \
+            --size 3G \
+            --output ~{output_file} \
+            ${reference}
+    >>>
+
+    runtime {
+        memory: "8 GB"
+        cpu: "1"
+        disks: "local-disk " + disk_size + " HDD"
+        preemptible: 3
+        docker: docker
+    }
+
+    output {
+        File counts_file = output_file
     }
 }
 
