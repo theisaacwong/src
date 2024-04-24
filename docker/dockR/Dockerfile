@@ -15,7 +15,6 @@ RUN apt-get update && \
     bzip2 \
     less \
     bedtools \
-    samtools \
     bcftools \
     gcc \
     tabix \
@@ -24,6 +23,17 @@ RUN apt-get update && \
     gpg-agent \
     build-essential \
     openjdk-17-jdk \
+    cmake \
+    clang \
+    libclang-dev \
+    libncurses-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    libssl-dev \
+    liblzma-dev \
+    libcurl4-openssl-dev \
+    make \
+    cmake \
     vim \
     software-properties-common && \
     apt-get -y clean  && \
@@ -71,5 +81,27 @@ RUN wget  https://github.com/lh3/bwa/releases/download/v0.7.17/bwa-0.7.17.tar.bz
     rm -rf bwa-0.7.17.tar.bz2 && \
     ln -s /home/bwa-0.7.17/bwakit/run-bwamem /home/bwa-0.7.17/bwakit/bwa
 ENV PATH ./bwa-0.7.17/bwakit/:$PATH
+
+# Install htslib
+WORKDIR /opt/htslib
+RUN wget https://github.com/samtools/htslib/releases/download/1.19.1/htslib-1.19.1.tar.bz2 && \
+    tar -xvf htslib-1.19.1.tar.bz2 && \   
+    rm -rf htslib-1.19.1.tar.bz2
+WORKDIR /opt/htslib/htslib-1.19.1 
+RUN ./configure && \
+    make 
+
+# Install samtools
+WORKDIR /opt/samtools
+RUN wget https://github.com/samtools/samtools/releases/download/1.19.2/samtools-1.19.2.tar.bz2 && \
+    tar -xvf samtools-1.19.2.tar.bz2 && \
+    rm -rf samtools-1.19.2.tar.bz2
+WORKDIR /opt/samtools/samtools-1.19.2
+RUN ./configure --with-htslib=/opt/htslib/htslib-1.19.1 && \
+    make && \
+    make install && \
+    mkdir -p /home/cache
+ENV REF_PATH="/opt/samtools/samtools-1.19.2/ref/cache/%2s/%2s/%s:http://www.ebi.ac.uk/ena/cram/md5/%s"
+ENV REF_CACHE="/opt/samtools/samtools-1.19.2/ref/cache/%2s/%2s/%s"
 
 COPY Dockerfile .
