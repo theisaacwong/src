@@ -98,3 +98,77 @@ write.table(df1, "C:/home/autism/asm_qc/manifest.tab.asm_qc.docker.new", sep="\t
 
 ```
 
+```{r}
+df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=448025372", sheet = "FOFN_summary") %>% as.data.frame()
+```
+# update tracking sheet
+```{r}
+df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet="Individual_Stats") %>% as.data.frame()
+
+man_aqc <- fread("C:/docs/autism/asm_qc/manifest.tab.2024-04-22.finished") %>% as.data.frame()
+df00$`asm_QC -- Isaac`[df00$SP_ID %in% man_aqc$SAMPLE] <- "Done"
+
+man_pbsv <- fread("C:/docs/autism/manifest.tab.pbsv.2024-04-23.finished") %>% as.data.frame()
+df00$`PBSV -- Isaac`[df00$SP_ID %in% man_pbsv$SAMPLE] <- "Done"
+
+man_aln <- fread("C:/docs/autism/aln.samples") %>% as.data.frame()
+df00$`aln -- Isaac`[df00$SP_ID %in% man_aln$sample] <- "Done"
+df00$`aln_QC -- Isaac (VBI)`[df00$SP_ID %in% man_aln$sample] <- "Done"
+
+write_sheet(df00, "https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", "temp_isaac")
+```
+
+```{r}
+df1 <- fread("C:/docs/autism/asm_qc/merqury.stats.tsv") %>% as.data.frame()
+df1 <- df1[!grepl("Both", df1$V1), ]
+sample_ids <- df1$V1 %>% str_remove("_hap(1|2)") %>% u
+df10 <- lapply(sample_ids, function(x){
+  temp_rows <- df1[grepl(x, df1$V1), ]
+  data.frame(sample = x, 
+             QV_Merqury_hap1 = ifelse(any(grepl("hap1", temp_rows[,1])), temp_rows[grepl("hap1", temp_rows[,1]), 4] %>% round, "NA"), 
+             QV_Merqury_hap2 = ifelse(any(grepl("hap2", temp_rows[,1])), temp_rows[grepl("hap2", temp_rows[,1]), 4] %>% round, "NA") 
+             ) %>% return()
+}) %>% do.call(rbind, . )
+rm(df1)
+
+df2 <- fread("C:/docs/autism/asm_qc/merqury.stats.cs.tsv") %>% as.data.frame()
+df2 <- df2[!grepl("both", df2$V1), ]
+sample_ids <- df2$V1 %>% str_remove("_hap(1|2)") %>% u
+df20 <- lapply(sample_ids, function(x){
+  temp_rows <- df2[grepl(x, df2$V1), ]
+  data.frame(sample = x, 
+             Completeness_hap1=ifelse(any(grepl("hap1", temp_rows[,1])), temp_rows[grepl("hap1", temp_rows[,1]), 5] %>% round, "NA"), 
+             Completeness_hap2=ifelse(any(grepl("hap2", temp_rows[,1])), temp_rows[grepl("hap2", temp_rows[,1]), 5] %>% round, "NA") 
+             ) %>% return()
+}) %>% do.call(rbind, . )
+rm(df2)
+
+df3 <- fread("C:/docs/autism/asm_qc/contig_stats.tsv") %>% as.data.frame()
+sample_ids <- df3$source %>% str_remove("_hap..n50.stats") %>% u
+df30 <- lapply(sample_ids, function(x){
+  temp_rows <- df3[grep(x, df3$source), ]
+  data.frame(sample = x,
+             Contig_N50_Mbp_hap1=
+               ifelse(any(grepl("hap1", temp_rows[,1])), 
+                      temp_rows[grepl("hap1", temp_rows[,1]) & grepl("N50 ", temp_rows[,2]), 2] %>% str_remove("N50 \\(Mbp\\):") %>% str_trim(), 
+                      "NA"),
+             Contig_N50_Mbp_hap2=
+               ifelse(any(grepl("hap2", temp_rows[,1])), 
+                      temp_rows[grepl("hap2", temp_rows[,1]) & grepl("N50 ", temp_rows[,2]), 2] %>% str_remove("N50 \\(Mbp\\):") %>% str_trim(), 
+                      "NA")
+             )
+}) %>% do.call(rbind, .)
+rm(df3)
+
+df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet="Individual_Stats") %>% as.data.frame()
+
+df123 <- merge(df10, df20, all = TRUE) %>% merge(df30, all=TRUE)
+df123[is.na(df123)] <- "NA"
+
+df01 <- merge(df00, df123, by.x = "SP_ID", by.y="sample", all=TRUE)
+df01 <- df01[match(df00$SP_ID, df01$SP_ID), ]
+write_sheet(df01, "https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", "temp_isaac")
+
+
+```
+

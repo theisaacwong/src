@@ -2,13 +2,12 @@
 args = commandArgs(trailingOnly=TRUE)
 library(googlesheets4)
 
-
 tea_type <- "costco_green"
 if(length(args)==1){
   tea_type <- args[1]
 }
 
-temp1 <- data.frame(year = format(Sys.Date(), "%Y") %>% as.numeric(), 
+temp1 <- data.frame(year = format(Sys.Date(), "%Y") %>% as.numeric(),
                     month = format(Sys.Date(), "%m") %>% as.numeric(),
                     day = format(Sys.Date(), "%d") %>% as.numeric(),
                     time = format(Sys.time(), "%H:%M"),

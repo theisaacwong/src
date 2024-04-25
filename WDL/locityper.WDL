@@ -77,7 +77,7 @@ task generate_counts {
     String output_file = "counts.jf"
 
     command <<<
-        set -euo pipefail
+        set -euxo pipefail
         nthreads=$(nproc)
         echo "using ${nthreads} threads"
 
@@ -116,17 +116,20 @@ task generate_db {
     }
 
     Int disk_size = 10
-    String output_tar = locus_name + ".db.tar.gz"
+    String output_tar = locus_name + "db.tar.gz"
 
     command <<<
-        set -euo pipefail
+        set -euxo pipefail
 
         locityper add -d ~{locus_name}.db \
             -r ~{reference} \
             -j ~{counts_jf} \
             -l ~{locus_name} ~{locus_coordinates} ~{alleles_fa}
-
+        
+        echo "compressing DB"
         tar -czf output_tar ~{locus_name}.db
+        echo "done compressing DB"
+
     >>>
 
     runtime {
@@ -155,7 +158,7 @@ task samtools_collate {
     String output_fq2 = base_filename + "_2.fastq.gz"
 
     command <<<
-        set -euo pipefail
+        set -euxo pipefail
         nthreads=$(nproc)
         echo "using ${nthreads} threads"
         free -h
@@ -191,7 +194,7 @@ task locityper_preprocess {
     String output_tar = "locityper_prepoc.tar.gz"
 
     command <<<
-        set -euo pipefail
+        set -euxo pipefail
         nthreads=$(nproc)
         echo "using ${nthreads} threads"
         mkdir -p locityper_prepoc
@@ -232,7 +235,7 @@ task locityper_genotype {
     String output_tar = sample_id + ".tar.gz"
 
     command <<<
-        set -euo pipefail
+        set -euxo pipefail
         nthreads=$(nproc)
         echo "using ${nthreads} threads"
         

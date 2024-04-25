@@ -1,0 +1,67 @@
+---
+title: "autism"
+output: html_document
+date: "2024-03-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+3/25/2024
+updating manifest files to run unaligned samples
+```{r}
+library(googlesheets4)
+df_man_finished <- fread("/Users/isaac/Documents/autism/manifest.tab") %>% as.data.frame()
+df_fofn <- fread("/Users/isaac/Documents/autism/Autism_Long_Read_Project_Yang_Mei - FOFN_summary.tsv") %>% as.data.frame()
+
+bool_torun <- !(df_fofn$SAMPLE %in% df_man_finished$SAMPLE)
+df_man_torun <- data.frame(SAMPLE = df_fofn$SAMPLE[bool_torun], 
+                           FOFN = df_fofn$HiFi[bool_torun], 
+                           TYPE = "PacBio_HiFi")
+
+fwrite(df_man_torun, file="/Users/isaac/Documents/autism/to_run.man", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+df0 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=448025372", sheet = "alignment_status") %>% as.data.frame()
+df0$`Progress|Done`[df0$SP_ID %in% df_man_torun$SAMPLE[1:55]] <- "RUNNING"
+write_sheet(df0, "https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=448025372", sheet = "alignment_status2")
+
+
+df0 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=448025372", sheet = "alignment_status") %>% as.data.frame()
+df0$Progress_HiFi_alignment[df0$SP_ID %in% df_man_finished$SAMPLE] <- "FINISHED_YS"
+write_sheet(df0, "https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=448025372", sheet = "alignment_status2")
+```
+
+3/26/24
+update the 54 samples that finished running, add another batch of samples to run
+```{r}
+rm(df0)
+df0 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=448025372", sheet = "alignment_status") %>% as.data.frame()
+finished_20240325 <- fread("/Users/isaac/Documents/autism/manifest.tab.20240325") %>% as.data.frame()
+
+df0$Progress_HiFi_alignment[df0$SP_ID %in% finished_20240325$SAMPLE] <- "FINISHED_IW"
+df0$Progress_HiFi_alignment[df0$Progress_HiFi_alignment=="RUNNING"] <- ""
+
+df_fofn <- fread("/Users/isaac/Documents/autism/Autism_Long_Read_Project_Yang_Mei - FOFN_summary.tsv") %>% as.data.frame()
+bool_torun <- df_fofn$SAMPLE %in% df0$SP_ID[!grepl("FINISHED", df0$Progress_HiFi_alignment)]
+df_man_torun <- data.frame(SAMPLE = df_fofn$SAMPLE[bool_torun], 
+                           FOFN = df_fofn$HiFi[bool_torun], 
+                           TYPE = "PacBio_HiFi")
+
+fwrite(df_man_torun, file="/Users/isaac/Documents/autism/to_run.man", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write_sheet(df0, "https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=448025372", sheet = "alignment_status2")
+```
+
+3/28/24
+alignemnt is finished, update the manifest file
+```{r}
+rm(df0)
+df0 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=448025372", sheet = "alignment_status") %>% as.data.frame()
+df_fin <- fread("C:/home/autism/manifest.tab") %>% as.data.frame()
+
+df0$Progress_HiFi_alignment[df0$SP_ID %in% df_fin$SAMPLE & df0$Progress_HiFi_alignment=="RUNNING"] <- "FINISHED_IW"
+write_sheet(df0, "https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=448025372", sheet = "alignment_status2")
+```
+
