@@ -15,17 +15,18 @@ workflow runLocityper {
         File alleles_fa
     }
    
-    call generate_counts {
-    input:
-        reference = reference,
-        docker = docker
-    }
+    # generate counts is very memory intensive, for now it's best to run on the local cluster
+    # call generate_counts {
+    # input:
+    #     reference = reference,
+    #     docker = docker
+    # }
 
     call generate_db {
     input:
         reference = reference,
         reference_index = reference_index,
-        counts_jf = generate_counts.counts_file,
+        counts_jf = counts_jf,
         locus_name = locus_name,
         locus_coordinates = locus_coordinates,
         alleles_fa = alleles_fa,
@@ -43,7 +44,7 @@ workflow runLocityper {
             input:
                 input_fq1 = samtools_collate.reads_1,
                 input_fq2 = samtools_collate.reads_2,
-                counts_file = generate_counts.counts_file,
+                counts_file = counts_jf,
                 reference = reference,
                 reference_index = reference_index,
                 docker = docker
@@ -54,6 +55,7 @@ workflow runLocityper {
                 input_fq1 = samtools_collate.reads_1,
                 input_fq2 = samtools_collate.reads_2,
                 db_targz = generate_db.db_tar,
+                locus_name = locus_name,
                 preprocess_tar = locityper_preprocess.preprocess_tar,
                 docker = docker
         }
@@ -64,123 +66,41 @@ workflow runLocityper {
     }
 }
 
-task samtools_collate {
+
+task generate_counts {
     input {
-        File bam_file
-        File bam_index
-        String docker
-    }
-
-    Int disk_size = ceil(size(bam_file, "GiB") + 100)
-    String base_filename = basename(basename(bam_file, ".bam"), ".cram")
-    String output_fq1 = base_filename + "_1.fastq.gz"
-    String output_fq2 = base_filename + "_2.fastq.gz"
-
-    command <<<
-        set -euo pipefail
-        nthreads=$(nproc)
-        echo "using ${nthreads} threads"
-        samtools collate -@ ${nthreads} -u -O ~{bam_file} | samtools fastq -@ ${nthreads} -1 ~{output_fq1} -2 ~{output_fq2} -0 /dev/null -s /dev/null -n
-    >>>
-
-    runtime {
-        memory: "8 GB"
-        cpu: "4"
-        disks: "local-disk " + disk_size + " HDD"
-        preemptible: 3
-        docker: docker
-    }
-
-    output {
-        File reads_1 = output_fq1
-        File reads_2 = output_fq2
-    }
-}
-
-task locityper_preprocess {
-    input {
-        File input_fq1
-        File input_fq2
-        File counts_file
         File reference
-        File reference_index
         String docker
     }
 
-    Int disk_size = ceil(size(input_fq1, "GiB") + size(input_fq2, "GiB")) * 10 + 50
-    String output_tar = "locityper_prepoc.tar.gz"
+    Int disk_size = 10
+    String output_file = "counts.jf"
 
     command <<<
         set -euo pipefail
         nthreads=$(nproc)
         echo "using ${nthreads} threads"
-        mkdir -p locityper_prepoc
-        locityper preproc -i ~{input_fq1} ~{input_fq2} \
-            -j ~{counts_file} \
-            -@ ${nthreads} \
-            --technology illumina \
-            -r ~{reference} \
-            -o locityper_prepoc
-        tar -czf ~{output_tar} locityper_prepoc
+
+        jellyfish count --canonical \
+            --lower-count 2 \
+            --out-counter-len 2 \
+            --mer-len 25 \
+            --threads ${nthreads} \
+            --size 3G \
+            --output ~{output_file} \
+            ${reference}
     >>>
 
     runtime {
         memory: "8 GB"
-        cpu: "1"
+        cpu: "2"
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 3
         docker: docker
     }
 
     output {
-        File preprocess_tar = output_tar
-    }
-}
-
-task locityper_genotype {
-    input {
-        String sample_id
-        File input_fq1
-        File input_fq2
-        File preprocess_tar
-        File db_targz
-        String docker
-    }
-
-    Int disk_size = ceil(size(input_fq1, "GiB") + size(input_fq2, "GiB")) * 10 + 50
-    String output_tar = sample_id + ".tar.gz"
-
-    command <<<
-        set -euo pipefail
-        nthreads=$(nproc)
-        echo "using ${nthreads} threads"
-        
-        mkdir -p locityper_prepoc
-        mkdir -p db
-
-        tar -xvzf ~{preprocess_tar} -C locityper_prepoc 
-        tar -xvzf ~{db_targz} -C db 
-        mkdir -p ~{sample_id}
-
-        locityper genotype -i ~{input_fq1} ~{input_fq2} \
-            -d db \
-            -p locityper_prepoc
-            -@ ${nthreads} \
-            --debug 2 \
-            -o ~{sample_id}
-        tar -czf ~{output_tar} ~{sample_id}
-    >>>
-
-    runtime {
-        memory: "8 GB"
-        cpu: "1"
-        disks: "local-disk " + disk_size + " HDD"
-        preemptible: 3
-        docker: docker
-    }
-
-    output {
-        File genotype_tar = output_tar
+        File counts_jf = output_file
     }
 }
 
@@ -222,41 +142,124 @@ task generate_db {
     }
 }
 
-
-task generate_counts {
+task samtools_collate {
     input {
-        File reference
+        File bam_file
+        File bam_index
         String docker
     }
 
-    Int disk_size = 10
-    String output_file = "counts.jf"
+    Int disk_size = ceil(size(bam_file, "GiB") + 120)
+    String base_filename = basename(basename(bam_file, ".bam"), ".cram")
+    String output_fq1 = base_filename + "_1.fastq.gz"
+    String output_fq2 = base_filename + "_2.fastq.gz"
 
     command <<<
         set -euo pipefail
         nthreads=$(nproc)
         echo "using ${nthreads} threads"
-
-        jellyfish count --canonical \
-            --lower-count 2 \
-            --out-counter-len 2 \
-            --mer-len 25 \
-            --threads ${nthreads} \
-            --size 3G \
-            --output ~{output_file} \
-            ${reference}
+        free -h
+        # samtools collate -@ ${nthreads} -u -O ~{bam_file} | samtools fastq -@ ${nthreads} -1 ~{output_fq1} -2 ~{output_fq2} -0 /dev/null -s /dev/null -n
+        samtools collate -@ ${nthreads} -o TEMP_BAM.bam ~{bam_file}
+        samtools fastq -@ ${nthreads} -1 ~{output_fq1} -2 ~{output_fq2} -0 /dev/null -s /dev/null -n TEMP_BAM.bam
     >>>
 
     runtime {
         memory: "8 GB"
-        cpu: "1"
+        cpu: "12"
+        disks: "local-disk " + disk_size + " HDD"
+        docker: docker
+    }
+
+    output {
+        File reads_1 = output_fq1
+        File reads_2 = output_fq2
+    }
+}
+
+task locityper_preprocess {
+    input {
+        File input_fq1
+        File input_fq2
+        File counts_file
+        File reference
+        File reference_index
+        String docker
+    }
+
+    Int disk_size = ceil(size(input_fq1, "GiB") + size(input_fq2, "GiB")) * 10 + 50
+    String output_tar = "locityper_prepoc.tar.gz"
+
+    command <<<
+        set -euo pipefail
+        nthreads=$(nproc)
+        echo "using ${nthreads} threads"
+        mkdir -p locityper_prepoc
+        locityper preproc -i ~{input_fq1} ~{input_fq2} \
+            -j ~{counts_file} \
+            -@ ${nthreads} \
+            --technology illumina \
+            -r ~{reference} \
+            -o locityper_prepoc
+        tar -czf ~{output_tar} locityper_prepoc
+    >>>
+
+    runtime {
+        memory: "8 GB"
+        cpu: "2"
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 3
         docker: docker
     }
 
     output {
-        File counts_file = output_file
+        File preprocess_tar = output_tar
     }
 }
+
+task locityper_genotype {
+    input {
+        String sample_id
+        File input_fq1
+        File input_fq2
+        File preprocess_tar
+        File db_targz
+        String locus_name
+        String docker
+    }
+
+    Int disk_size = ceil(size(input_fq1, "GiB") + size(input_fq2, "GiB")) * 10 + 50
+    String output_tar = sample_id + ".tar.gz"
+
+    command <<<
+        set -euo pipefail
+        nthreads=$(nproc)
+        echo "using ${nthreads} threads"
+        
+        tar -xvzf ~{preprocess_tar}
+        tar -xvzf ~{db_targz}
+        mkdir -p ~{sample_id}
+
+        locityper genotype -i ~{input_fq1} ~{input_fq2} \
+            -d ~{locus_name}.db \
+            -p locityper_prepoc
+            -@ ${nthreads} \
+            --debug 2 \
+            -o ~{sample_id}
+        tar -czf ~{output_tar} ~{sample_id}
+    >>>
+
+    runtime {
+        memory: "8 GB"
+        cpu: "2"
+        disks: "local-disk " + disk_size + " HDD"
+        preemptible: 3
+        docker: docker
+    }
+
+    output {
+        File genotype_tar = output_tar
+    }
+}
+
 
