@@ -50,14 +50,14 @@ task generate_db {
         set -euxo pipefail
 
         mkdir -p db
-        
-        locityper add -d ~{locus_name}.db \
+
+        locityper add -d db \
             -r ~{reference} \
             -j ~{counts_jf} \
             -l ~{locus_name} ~{locus_coordinates} ~{alleles_fa}
         
         echo "compressing DB"
-        tar -czf output_tar ~{locus_name}.db
+        tar -czf output_tar db
         echo "done compressing DB"
 
     >>>
