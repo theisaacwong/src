@@ -127,7 +127,7 @@ task generate_db {
             -l ~{locus_name} ~{locus_coordinates} ~{alleles_fa}
         
         echo "compressing DB"
-        tar -czf output_tar ~{locus_name}.db
+        tar -czf ~{output_tar} ~{locus_name}.db
         echo "done compressing DB"
 
     >>>
