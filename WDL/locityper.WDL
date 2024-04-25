@@ -152,7 +152,7 @@ task samtools_collate {
         String docker
     }
 
-    Int disk_size = ceil(size(bam_file, "GiB") + 120)
+    Int disk_size = ceil(size(bam_file, "GiB") + 100)
     String base_filename = basename(basename(bam_file, ".bam"), ".cram")
     String output_fq1 = base_filename + "_1.fastq.gz"
     String output_fq2 = base_filename + "_2.fastq.gz"
@@ -169,7 +169,7 @@ task samtools_collate {
 
     runtime {
         memory: "8 GB"
-        cpu: "12"
+        cpu: "16"
         disks: "local-disk " + disk_size + " HDD"
         docker: docker
     }
