@@ -162,9 +162,9 @@ task samtools_collate {
         nthreads=$(nproc)
         echo "using ${nthreads} threads"
         free -h
-        # samtools collate -@ ${nthreads} -u -O ~{bam_file} | samtools fastq -@ ${nthreads} -1 ~{output_fq1} -2 ~{output_fq2} -0 /dev/null -s /dev/null -n
-        samtools collate -@ ${nthreads} -o TEMP_BAM.bam ~{bam_file}
-        samtools fastq -@ ${nthreads} -1 ~{output_fq1} -2 ~{output_fq2} -0 /dev/null -s /dev/null -n TEMP_BAM.bam
+        samtools collate -@ ${nthreads} -u -O ~{bam_file} | samtools fastq -@ ${nthreads} -1 ~{output_fq1} -2 ~{output_fq2} -0 /dev/null -s /dev/null -n
+        # samtools collate -@ ${nthreads} -o TEMP_BAM.bam ~{bam_file}
+        # samtools fastq -@ ${nthreads} -1 ~{output_fq1} -2 ~{output_fq2} -0 /dev/null -s /dev/null -n TEMP_BAM.bam
     >>>
 
     runtime {

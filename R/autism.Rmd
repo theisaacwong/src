@@ -172,3 +172,17 @@ write_sheet(df01, "https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1o
 
 ```
 
+
+
+```{r}
+BOOLS <- c(TRUE, FALSE)
+temp_n <- 15
+temp_df <- data.frame(temp1 = sample(BOOLS, temp_n, replace = TRUE),
+                      temp2 = sample(BOOLS, temp_n, replace = TRUE),
+                      temp3 = sample(BOOLS, temp_n, replace = TRUE),
+                      temp4 = sample(BOOLS, temp_n, replace = TRUE))
+temp_df$ALL <- lapply(seq_down(temp_df), function(x){
+  all(temp_df[x, ])
+}) %>% unlist
+```
+

@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 args = commandArgs(trailingOnly=TRUE)
 library(googlesheets4)
-
+options(gargle_oauth_email = TRUE)
 tea_type <- "costco_green"
 if(length(args)==1){
   tea_type <- args[1]
