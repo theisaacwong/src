@@ -13,6 +13,15 @@ workflow runLocityper {
         String locus_name
         String locus_coordinates
         File alleles_fa
+
+        String samtools_n_cpu = 4
+        String samtools_mem_gb = 8
+
+        String preproc_n_cpu = 4
+        String preproc_mem_gb = 8
+
+        String genotype_n_cpu = 4
+        String genotype_mem_gb = 8
     }
    
     # generate counts is very memory intensive, for now it's best to run on the local cluster
@@ -38,7 +47,9 @@ workflow runLocityper {
             input: 
                 bam_file = bam_files[scatter_index],
                 bam_index = bam_index_files[scatter_index],
-                docker = docker
+                docker = docker,
+                samtools_n_cpu = samtools_n_cpu,
+                samtools_mem_gb = samtools_mem_gb
         }
         call locityper_preprocess {
             input:
@@ -47,7 +58,10 @@ workflow runLocityper {
                 counts_file = counts_jf,
                 reference = reference,
                 reference_index = reference_index,
-                docker = docker
+                docker = docker,
+                preproc_n_cpu = preproc_n_cpu,
+                preproc_mem_gb = preproc_mem_gb
+
         }
         call locityper_genotype {
             input: 
@@ -57,7 +71,9 @@ workflow runLocityper {
                 db_targz = generate_db.db_tar,
                 locus_name = locus_name,
                 preprocess_tar = locityper_preprocess.preprocess_tar,
-                docker = docker
+                docker = docker,
+                genotype_n_cpu = genotype_n_cpu,
+                genotype_mem_gb= genotype_mem_gb
         }
     }
 
@@ -150,6 +166,8 @@ task samtools_collate {
         File bam_file
         File bam_index
         String docker
+        String samtools_n_cpu
+        String samtools_mem_gb
     }
 
     Int disk_size = ceil(size(bam_file, "GiB") + 100)
@@ -168,8 +186,8 @@ task samtools_collate {
     >>>
 
     runtime {
-        memory: "8 GB"
-        cpu: "16"
+        memory: samtools_mem_gb + " GB"
+        cpu: samtools_n_cpu
         disks: "local-disk " + disk_size + " HDD"
         docker: docker
     }
@@ -188,6 +206,9 @@ task locityper_preprocess {
         File reference
         File reference_index
         String docker
+        String preproc_n_cpu
+        String preproc_mem_gb
+
     }
 
     Int disk_size = ceil(size(input_fq1, "GiB") + size(input_fq2, "GiB")) * 10 + 50
@@ -208,8 +229,8 @@ task locityper_preprocess {
     >>>
 
     runtime {
-        memory: "8 GB"
-        cpu: "2"
+        memory: preproc_mem_gb + " GB"
+        cpu: preproc_n_cpu
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 3
         docker: docker
@@ -229,6 +250,8 @@ task locityper_genotype {
         File db_targz
         String locus_name
         String docker
+        String genotype_n_cpu
+        String genotype_mem_gb
     }
 
     Int disk_size = ceil(size(input_fq1, "GiB") + size(input_fq2, "GiB")) * 10 + 50

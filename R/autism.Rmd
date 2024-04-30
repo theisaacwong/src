@@ -170,6 +170,9 @@ df01 <- df01[match(df00$SP_ID, df01$SP_ID), ]
 write_sheet(df01, "https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", "temp_isaac")
 
 
+
+bool_merq_resubmit <- df123$QV_Merqury_hap1=="NA"
+
 ```
 
 

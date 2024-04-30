@@ -151,6 +151,13 @@ alias R="R --no-save "
 # https://linuxgazette.net/109/marinov.html
 source /usr/bin/acd_func.sh
 
+
+docky() {
+	docker run -v /docs:/docs -it ${1} /bin/bash
+}
+
+
+
 cp ~/.bashrc /docs/src/profile/
 
 
