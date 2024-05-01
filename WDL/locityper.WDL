@@ -255,29 +255,32 @@ task locityper_genotype {
     }
 
     Int disk_size = ceil(size(input_fq1, "GiB") + size(input_fq2, "GiB")) * 10 + 50
-    String output_tar = sample_id + ".tar.gz"
+    String output_tar = sample_id + "." + locus_name + ".tar.gz"
 
     command <<<
         set -euxo pipefail
         nthreads=$(nproc)
         echo "using ${nthreads} threads"
         
-        tar -xvzf ~{preprocess_tar}
-        tar -xvzf ~{db_targz}
-        mkdir -p ~{sample_id}
+
+        mkdir -p db
+        mkdir -p locityper_prepoc
+        tar --strip-components 1 -C locityper_prepoc -xvzf ~{preprocess_tar}
+        tar --strip-components 1 -C db -xvzf ~{db_targz}
+        mkdir -p out_dir
 
         locityper genotype -i ~{input_fq1} ~{input_fq2} \
-            -d ~{locus_name}.db \
-            -p locityper_prepoc
+            -d db \
+            -p locityper_prepoc \
             -@ ${nthreads} \
             --debug 2 \
-            -o ~{sample_id}
-        tar -czf ~{output_tar} ~{sample_id}
+            -o out_dir
+        tar -czf ~{output_tar} out_dir
     >>>
 
     runtime {
-        memory: "8 GB"
-        cpu: "2"
+        memory: genotype_mem_gb + " GB"
+        cpu: genotype_n_cpu
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 3
         docker: docker

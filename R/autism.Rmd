@@ -119,7 +119,7 @@ write_sheet(df00, "https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1o
 ```
 
 ```{r}
-df1 <- fread("C:/docs/autism/asm_qc/merqury.stats.tsv") %>% as.data.frame()
+df1 <- fread("C:/docs/autism/asm_qc/merq.stats.qv.tsv") %>% as.data.frame()
 df1 <- df1[!grepl("Both", df1$V1), ]
 sample_ids <- df1$V1 %>% str_remove("_hap(1|2)") %>% u
 df10 <- lapply(sample_ids, function(x){
@@ -131,7 +131,7 @@ df10 <- lapply(sample_ids, function(x){
 }) %>% do.call(rbind, . )
 rm(df1)
 
-df2 <- fread("C:/docs/autism/asm_qc/merqury.stats.cs.tsv") %>% as.data.frame()
+df2 <- fread("C:/docs/autism/asm_qc/merq.stats.completeness.tsv") %>% as.data.frame()
 df2 <- df2[!grepl("both", df2$V1), ]
 sample_ids <- df2$V1 %>% str_remove("_hap(1|2)") %>% u
 df20 <- lapply(sample_ids, function(x){
@@ -162,6 +162,7 @@ rm(df3)
 
 df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet="Individual_Stats") %>% as.data.frame()
 
+
 df123 <- merge(df10, df20, all = TRUE) %>% merge(df30, all=TRUE)
 df123[is.na(df123)] <- "NA"
 
@@ -171,7 +172,8 @@ write_sheet(df01, "https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1o
 
 
 
-bool_merq_resubmit <- df123$QV_Merqury_hap1=="NA"
+bool_merq_resubmit <- df123$QV_Merqury_hap1=="NA" | df123$QV_Merqury_hap2=="NA"
+bool_contig_resubmit <- df123$Contig_N50_Mbp_hap1 == "NA" | df123$Contig_N50_Mbp_hap2 == "NA"
 
 ```
 
@@ -188,4 +190,25 @@ temp_df$ALL <- lapply(seq_down(temp_df), function(x){
   all(temp_df[x, ])
 }) %>% unlist
 ```
+
+
+
+```{r}
+df0 <- read.table("C:/docs/autism/manifest.tab", sep="\t", header = TRUE)
+
+df1 <- data.frame(SAMPLE = df0$SAMPLE, 
+                  ROLE = ifelse(
+                    df0$SAMPLE %>% grepl("_fa$", .), "father", ifelse(
+                    df0$SAMPLE %>% grepl("_mo$", .), "mother", ifelse(
+                    df0$SAMPLE %>% grepl("_p.$", .), "proband", "sibling"))),
+                  FAMILY = df0$SAMPLE %>% gsub("_..$", "", .),
+                  HAP1 = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc/QC_results/saffire/results/",
+                                df0$SAMPLE, "_hap1/alignments/", df0$SAMPLE, "_hap1.minimap2.paf"),
+                  HAP2 = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc/QC_results/saffire/results/",
+                                df0$SAMPLE, "_hap2/alignments/", df0$SAMPLE, "_hap2.minimap2.paf"))
+
+```
+
+
+
 
