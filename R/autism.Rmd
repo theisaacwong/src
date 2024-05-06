@@ -206,6 +206,7 @@ df1 <- data.frame(SAMPLE = df0$SAMPLE,
                                 df0$SAMPLE, "_hap1/alignments/", df0$SAMPLE, "_hap1.minimap2.paf"),
                   HAP2 = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc/QC_results/saffire/results/",
                                 df0$SAMPLE, "_hap2/alignments/", df0$SAMPLE, "_hap2.minimap2.paf"))
+write.table(df1, "C:/docs/autism/manifest.concatchr.tab", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 
 ```
 
