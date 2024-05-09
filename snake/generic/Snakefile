@@ -25,8 +25,7 @@ rule all:
     input:
         expand(
             "results/{sample}/success.txt",
-            sample=manifest_df.index,
-            sniffles_ver=SNIFFLES_VERSION
+            sample=manifest_df.index
         ),
 
 rule generic_rule:
