@@ -1,0 +1,51 @@
+import pandas as pd
+import os, sys
+
+configfile: "config.yaml"
+
+MANIFEST = config.get("MANIFEST", "manifest.tab")
+DOCKER = config.get("DOCKER", "docker://iqwong/altina:1.2")
+NTHREADS = config.get("NTHREADS", 1)
+REF = config.get("REF", "/net/eichler/vol28/eee_shared/assemblies/hg38/no_alt/hg38.no_alt.fa")
+
+manifest_df = pd.read_csv(MANIFEST, sep="\t", index_col="SAMPLE")
+
+
+def get_input(wildcards):
+    return manifest_df.at[wildcards.sample, "INPUT"]
+
+
+wildcard_constraints:
+    sample="|".join(manifest_df.index),
+
+localrules:
+    all,
+
+rule all:
+    input:
+        expand(
+            "results/{sample}/success.txt",
+            sample=manifest_df.index,
+            sniffles_ver=SNIFFLES_VERSION
+        ),
+
+rule generic_rule:
+    input: 
+        input_file=get_input,
+    output: 
+        output_file="results/{sample}/success.txt",
+    threads: NTHREADS,
+    resources:
+        mem=lambda wildcards, attempt: attempt * 16,
+        hrs=24,
+    singularity:
+        DOCKER,
+    shell:
+        """
+        set -eux
+
+
+     
+        mkdir -p results/{wildcards.sample}
+        touch success.txt
+        """

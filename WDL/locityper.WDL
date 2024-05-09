@@ -78,7 +78,9 @@ workflow runLocityper {
     }
 
     output {
-        Array[File] results = locityper_genotype.genotype_tar 
+        Array[File] results = locityper_genotype.genotype_tar,
+        Array[File] collated_fq_R1 = samtools_collate.reads_1,
+        Array[File] collated_fq_R2 = samtools_collate.reads_2
     }
 }
 
