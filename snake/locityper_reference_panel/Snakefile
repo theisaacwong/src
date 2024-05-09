@@ -1,0 +1,76 @@
+import pandas as pd
+import os, sys
+
+configfile: "config.yaml"
+
+MANIFEST = config.get("MANIFEST", "manifest.tab")
+DOCKER = config.get("DOCKER", "docker://iqwong/altina:1.2")
+NTHREADS = config.get("NTHREADS", 1)
+REF = config.get("REF", "/net/eichler/vol28/eee_shared/assemblies/hg38/no_alt/hg38.no_alt.fa")
+LIFTOVER_BED = config.get("LIFTOVER")
+GENE = config.get("GENE", "NONAME")
+
+manifest_df = pd.read_csv(MANIFEST, sep="\t", index_col="SAMPLE")
+
+
+def get_assembly_paf(wildcards):
+    return manifest_df.at[wildcards.sample, "ASM_PAF"]
+
+def get_assembly(wildcards):
+    return manifest_df.at[wildcards.sample, "ASSEMBLY"]
+
+
+wildcard_constraints:
+    sample="|".join(manifest_df.index),
+    gene=GENE,
+
+localrules:
+    all,
+
+rule all:
+    input:
+        expand(
+            "results/{sample}/{sample}.{gene}.fa",
+            sample=manifest_df.index,
+            gene=GENE
+        ),
+
+rule liftover:
+    input: 
+        paf=get_assembly_paf,
+    output: 
+        coordinate_bed="results/{sample}/{sample}.{gene}.liftover",
+    threads: NTHREADS,
+    resources:
+        mem=4,
+        hrs=24,
+    singularity:
+        "docker://eichlerlab/rustybam:0.1.33",
+    shell:
+        """
+        set -eux; mkdir -p results/{wildcards.sample}
+
+        rustybam liftover --bed {LIFTOVER_BED} {input.paf} > results/{wildcards.sample}/liftover
+        awk '{print $1 "\t" $3 "\t" $4}' results/{wildcards.sample}/liftover > {output.coordinate_bed}
+        """
+
+rule seqtk:
+    input: 
+        coordinate_bed="results/{sample}/{sample}.{gene}.liftover",
+        assembly=get_assembly,
+    output: 
+        fasta="results/{sample}/{sample}.{gene}.fa",
+    threads: NTHREADS,
+    resources:
+        mem=4,
+        hrs=24,
+    singularity:
+        "docker://eichlerlab/align-basics:0.1",
+    shell:
+        """
+        set -eux; mkdir -p results/{wildcards.sample}
+
+        seqtk subseq {input.assembly} {input.coordinate_bed} > {output.fasta}
+        """
+
+
