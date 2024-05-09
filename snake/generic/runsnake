@@ -5,7 +5,7 @@ JOB_COUNT=$1
 
 shift
 
-SNAKEFILE=/path/to/Snakefile
+SNAKEFILE=Snakefile
 
 SUBMIT_TIME=$(printf '%(%Y-%m-%d_%H.%M.%S)T\n' -1)
 
