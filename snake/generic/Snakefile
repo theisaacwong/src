@@ -41,10 +41,10 @@ rule generic_rule:
         DOCKER,
     shell:
         """
-        set -eux
+        set -eux; mkdir -p results/{wildcards.sample}
 
 
      
-        mkdir -p results/{wildcards.sample}
-        touch success.txt
+        
+        touch {output.output_file}
         """
