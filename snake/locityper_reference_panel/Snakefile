@@ -39,10 +39,10 @@ rule liftover:
     input: 
         paf=get_assembly_paf,
     output: 
-        coordinate_bed="results/{sample}/{sample}.{gene}.liftover",
+        coordinate_bed="results/{sample}/{sample}.{gene}.bed",
     threads: NTHREADS,
     resources:
-        mem=4,
+        mem=8,
         hrs=24,
     singularity:
         "docker://eichlerlab/rustybam:0.1.33",
@@ -51,18 +51,18 @@ rule liftover:
         set -eux; mkdir -p results/{wildcards.sample}
 
         rustybam liftover --bed {LIFTOVER_BED} {input.paf} > results/{wildcards.sample}/liftover
-        awk '{print $1 "\t" $3 "\t" $4}' results/{wildcards.sample}/liftover > {output.coordinate_bed}
+        awk '{{print $1 "\\t" $3 "\\t" $4}}' results/{wildcards.sample}/liftover > {output.coordinate_bed}
         """
 
 rule seqtk:
     input: 
-        coordinate_bed="results/{sample}/{sample}.{gene}.liftover",
+        coordinate_bed="results/{sample}/{sample}.{gene}.bed",
         assembly=get_assembly,
     output: 
         fasta="results/{sample}/{sample}.{gene}.fa",
     threads: NTHREADS,
     resources:
-        mem=4,
+        mem=8,
         hrs=24,
     singularity:
         "docker://eichlerlab/align-basics:0.1",
@@ -70,7 +70,31 @@ rule seqtk:
         """
         set -eux; mkdir -p results/{wildcards.sample}
 
-        seqtk subseq {input.assembly} {input.coordinate_bed} > {output.fasta}
+        seqtk subseq {input.assembly} {input.coordinate_bed} | sed 's/^>.*$/>{wildcards.sample}/' > {output.fasta}
+        """
+
+rule blastn:
+    input: 
+        fasta="results/{sample}/{sample}.{gene}.fa",
+    output: 
+        blast_table="results/{sample}/{sample}.{gene}.blast.table",
+    threads: NTHREADS,
+    resources:
+        mem=8,
+        hrs=24,
+    singularity:
+        "docker://ncbi/blast:2.15.0",
+    shell:
+        """
+        set -eux;
+
+        blastn -query {input.fasta} \
+            -db nt \
+            -remote \
+            -entrez_query "Homo sapiens [organism]" \
+            -out {output.blast_table} \
+            -max_target_seqs 10
+            
         """
 
 
