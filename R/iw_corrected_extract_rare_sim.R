@@ -1,6 +1,7 @@
 #!/usr/env/bin R
 # 5/6/2024: changed DP filter to only be half for males
 # 5/14/2024: changed INFO column to track GT, AD, DP values
+# 5/16/2024: add chrX based DP filter and ped file and be m/f or M/F now
 ## Extract private variants ##
 ## load packages ##
 require(readr)
@@ -60,6 +61,7 @@ extract_rare = function(file){
 	info = c(famid, nrow(raw))
 	info_cols = names(raw)[1:8]
 
+	ped$V6 <- str_to_lower(ped$V6)
 	pro_sex = paste(unique(ped$V6[which(grepl("p", ped$V2) & ped$V1 == famid)]), collapse = ",")
 	if(any(grepl("s", ped$V2) & ped$V1 == famid)){
 		sib_sex = paste(unique(ped$V6[which(grepl("s", ped$V2) & ped$V1 == famid)]), collapse =",")
@@ -109,15 +111,16 @@ extract_rare = function(file){
     temp1[temp1=="."] <- 0
     temp1 <- as.integer(temp1)
 
-    CURR_DP_THRESHOLD <- MIN_DP_THRESHOLD
-    if(colnames(raw)[x]=="MO_DP"){
-      CURR_DP_THRESHOLD <- MIN_DP_THRESHOLD
-    } else if(colnames(raw)[x] == "FA_DP"){
-      CURR_DP_THRESHOLD <- MIN_DP_THRESHOLD/2
-    } else if(colnames(raw)[x] %>% grepl("p._DP$", .)){ # will probably break if there's multiple ps, eg p1, p2, p3
-      CURR_DP_THRESHOLD <- ifelse(pro_sex=="m", MIN_DP_THRESHOLD/2, MIN_DP_THRESHOLD)
-    } else if(colnames(raw)[x] %>% grepl("s._DP$", .)){
-      CURR_DP_THRESHOLD <- ifelse(sib_sex=="m", MIN_DP_THRESHOLD/2, MIN_DP_THRESHOLD)
+
+    CURR_DP_THRESHOLD <- rep(MIN_DP_THRESHOLD, length(temp1))
+
+    curr_col <- colnames(raw)[x]
+
+
+    if(curr_col=="MO_DP" | (grepl("p._DP$", curr_col) & pro_sex=="f")  |  (grepl("s._DP$", curr_col) & sib_sex=="f") ){
+      CURR_DP_THRESHOLD <- rep(MIN_DP_THRESHOLD, length(temp1))
+    } else if(curr_col=="FA_DP" | (grepl("p._DP$", curr_col) & pro_sex=="m")  |  (grepl("s._DP$", curr_col) & sib_sex=="m")){
+      CURR_DP_THRESHOLD[raw[,1]=="chrX"] <- MIN_DP_THRESHOLD/2
     } else {
       print(paste0("WARNING: no sex detected for ", famid, ": ", colnames(raw)[x], ": using default DP filtering value"))
     }
@@ -164,6 +167,7 @@ extract_rare = function(file){
 
 		# assumes order of columns is GT -> AD -> DP (which they should be unless `family_columns_to_cbind` has been changed)
 		info_cols <- colnames(family)[c(1:8, grep("_(GT|AD|DP)$", colnames(family)))]
+		info_cols <- colnames(family)[1:8]
 		INFO_COLS <- colnames(family)[grep("_(GT|AD|DP)$", colnames(family))]
 		INFO_NAME <- INFO_COLS %>% str_remove(famid) %>% str_remove("^\\.") %>% str_remove("_(GT|AD|DP)$") %>% unique %>% paste(collapse = ",")
     NEW_INFO <- lapply(seq_down(family), function(x){

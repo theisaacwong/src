@@ -30,7 +30,7 @@ localrules:
 rule all:
     input:
         expand(
-            "results/{sample}/{sample}.{gene}.fa",
+            "results/{sample}/{sample}.{gene}.blast.table",
             sample=manifest_df.index,
             gene=GENE
         ),
@@ -94,7 +94,7 @@ rule blastn:
             -entrez_query "Homo sapiens [organism]" \
             -out {output.blast_table} \
             -max_target_seqs 10
-            
+
         """
 
 
