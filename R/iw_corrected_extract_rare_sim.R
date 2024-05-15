@@ -1,5 +1,6 @@
 #!/usr/env/bin R
 # 5/6/2024: changed DP filter to only be half for males
+# 5/14/2024: changed INFO column to track GT, AD, DP values
 ## Extract private variants ##
 ## load packages ##
 require(readr)
@@ -24,7 +25,12 @@ MIN_DP_THRESHOLD <- 20
 # extract and format rare variants from a family
 extract_rare = function(file){
   famid = gsub("inheritance/", "", gsub(".inheritance.vcf.gz", "", file))
-  vcf_header <- system2("zcat", args = c(file, ' | grep -m 1 "^#CHROM"'), stdout = TRUE) %>% str_split("\t") %>% unlist # read in just the column header
+
+  if(Sys.info()["sysname"]=="Windows"){
+    vcf_header <- system2("wsl", args = c("zcat", file, ' | grep -m 1 "^#CHROM"'), stdout = TRUE) %>% str_split("\t") %>% unlist # read in just the column header
+  }else{
+    vcf_header <- system2("zcat", args = c(file, ' | grep -m 1 "^#CHROM"'), stdout = TRUE) %>% str_split("\t") %>% unlist # read in just the column header
+  }
   col_index_fa <- grep("\\.fa$", vcf_header) # determine which column is for fa/mo
   col_index_mo <- grep("\\.mo$", vcf_header)
   if(any(col_index_fa %in% col_index_mo) | length(col_index_fa)!=1 | length(col_index_mo)!=1){ # if regex encountered a conflict, stop
@@ -38,7 +44,11 @@ extract_rare = function(file){
                       numeric=6,
                       character=c(1,3:5,6:length(col_names_vcf)))
 
-  skip_lines <- system2("zcat", args = c(file, " | sed '/^#CHROM/q' | wc -l"), stdout = TRUE) %>% as.numeric() # skip header lines
+  if(Sys.info()["sysname"]=="Windows"){
+    skip_lines <- system2("wsl", args = c("zcat", file, " | sed '/^#CHROM/q' | wc -l"), stdout = TRUE) %>% as.numeric() # skip header lines
+  } else {
+    skip_lines <- system2("zcat", args = c(file, " | sed '/^#CHROM/q' | wc -l"), stdout = TRUE) %>% as.numeric() # skip header lines
+  }
   raw = suppressWarnings(
     fread(file,
           sep = "\t",
@@ -66,7 +76,7 @@ extract_rare = function(file){
 
 
 	# get a vector of indexes for columns corresponding to fa, mo, p1, p2, etc. written more verbose to scale dynamically with family size
-	which_columns_to_split <- which(colnames(raw) %in% c("FA", "MO") | grepl("\\.p[0-9]$", colnames(raw)))
+	which_columns_to_split <- which(colnames(raw) %in% c("FA", "MO") | grepl("\\.(p|s)[0-9]$", colnames(raw)))
 	family_columns_to_cbind <- lapply(which_columns_to_split, function(COL_INDEX){
 	  split_member <- raw[, COL_INDEX] %>% str_split(":")
 	  # identify which columns have more FORMAT fields than the FA column has fields, we won't be able to get good AD or DP for for these
@@ -94,7 +104,7 @@ extract_rare = function(file){
 	# Get which rows all have DP values greater than threshold for variable number of columns
   which_raw_DP_columns <-  colnames(raw) %>% grep("_DP", .)
 
-  temp_DP_bool <- lapply(which_raw_DP_columns, function(x){
+  temp_DP_bool <- lapply(which_raw_DP_columns, function(x){ # some version of map is probably much faster instead of lapply
     temp1 <- raw[, x]
     temp1[temp1=="."] <- 0
     temp1 <- as.integer(temp1)
@@ -151,9 +161,15 @@ extract_rare = function(file){
 		family$PROBAND_SEX = pro_sex
 		family$SIBLING_SEX = sib_sex
 		family$INFO = paste(family$INFO, ";CARRIER=", family$CARRIER, ";PROBAND_SEX=", family$PROBAND_SEX, ";SIBLING_SEX=", family$SIBLING_SEX, ";FAMID=", family$FAMILY, sep = "")
-		## add more columns for column number == family members, want to track: GT and AD from input file for each individual, need to check if each individual has enough read support,
 
+		# assumes order of columns is GT -> AD -> DP (which they should be unless `family_columns_to_cbind` has been changed)
 		info_cols <- colnames(family)[c(1:8, grep("_(GT|AD|DP)$", colnames(family)))]
+		INFO_COLS <- colnames(family)[grep("_(GT|AD|DP)$", colnames(family))]
+		INFO_NAME <- INFO_COLS %>% str_remove(famid) %>% str_remove("^\\.") %>% str_remove("_(GT|AD|DP)$") %>% unique %>% paste(collapse = ",")
+    NEW_INFO <- lapply(seq_down(family), function(x){
+      paste0("VAL_GT_AD_DP=", INFO_NAME, ",", paste0(family[x,INFO_COLS], collapse = ","))
+    }) %>% unlist
+    family$INFO <- paste0(family$INFO, ";", NEW_INFO)
 		write.table(family[which(is.na(family$CARRIER) == F), info_cols], file = paste("results_new_ys/rare/families/", famid, ".txt", sep = ""), sep = "\t", col.names = F, row.names = F, quote = F)
 
 		info_cols <- colnames(family)[grep("_(GT|AD|DP)$", colnames(family))]

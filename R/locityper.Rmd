@@ -1,0 +1,26 @@
+---
+title: "locityper"
+output: html_document
+date: "2024-05-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+MY_GENE_REGEX <- "cytochrome P450 2D6 \\(CYP2D6\\) gene"
+files <- list.files("C:/docs/locityper/results/", pattern=".blast.table$", recursive=TRUE, full.names=TRUE)
+bool_match <- lapply(files, function(x){
+  temp1 <- readLines(x)
+  temp2 <- temp1[grep("^>", temp1)]
+  # return(temp2 )
+  grepl(MY_GENE_REGEX, temp1) %>% any %>% return
+}) %>% unlist
+
+df1 <- data.frame(
+  sample = files %>% str_extract("(?<=results/).*?(?=/)"),
+  CYP2D6_match = bool_match
+)
+```
+

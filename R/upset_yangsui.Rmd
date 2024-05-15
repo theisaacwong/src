@@ -1,0 +1,33 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-05-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+# install.packages("ComplexUpset")
+library(ComplexUpset)
+library(tidyverse)
+
+
+df = read.csv("C:/Users/iwong1/Downloads/new_MC102.csv", header = TRUE, sep = ',')
+indvs <- df %>%
+  uncount(count) 
+
+symptoms <- colnames(indvs)
+
+upset(data = indvs, intersect = symptoms, 
+      #name="Phenotype groupings by frequency.", 
+      min_size = 0,
+      width_ratio = 0.125,
+      queries=list(upset_query(intersect=c('NDD_MC309'), color='red', fill='red')),
+      sort_intersections_by='degree') +
+  labs(title = "Co-occurence of de novo genes",
+       caption = "Data: 60,941 NDD (29,907 ASD & 31,034 DD) | Graph: @yangsui")
+```
+
