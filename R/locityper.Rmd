@@ -24,3 +24,31 @@ df1 <- data.frame(
 )
 ```
 
+```{r}
+library(jsonlite)
+files <- list.files("C:/docs/locityper/CYP2D6/", pattern = "res.json.gz", full.names=TRUE, recursive = TRUE)
+
+list_jsons <- lapply(files, function(x){
+  read_json(x) %>% return
+})
+
+df0 <- lapply(seq_along(list_jsons), function(x){
+  temp_sample <- files[x] %>% str_extract("(?<=sample_set/).*?(?=.CYP2D6)")
+  gt <- list_jsons[[x]]$genotype
+  
+  which_match <- lapply(list_jsons[[x]]$options, function(x){
+    x$genotype == gt
+  }) %>% unlist %>% which
+  
+  data.frame(sample=temp_sample,
+             genotype = gt,
+             lik_mean = list_jsons[[x]]$options[[which_match]]$lik_mean, 
+             lik_sd = list_jsons[[x]]$options[[which_match]]$lik_sd, 
+             prob = list_jsons[[x]]$options[[which_match]]$prob, 
+             log10_prob = list_jsons[[x]]$options[[which_match]]$log10_prob, 
+             dist_to_primary = list_jsons[[x]]$options[[which_match]]$dist_to_primary)
+  
+}) %>% do.call(rbind, .)
+
+```
+

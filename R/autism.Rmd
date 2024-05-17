@@ -213,3 +213,20 @@ write.table(df1, "C:/docs/autism/manifest.concatchr.tab", sep="\t", col.names = 
 
 
 
+
+
+```{r}
+df0 <- fread("C:/docs/autism/fofn/sample_list_fofn_to_Isaac.txt") %>% as.data.frame()
+
+my_samples <- u(df0$SAMPLE)
+
+lapply(my_samples, function(x){
+  
+  write.table(df0$FASTQ[df0$SAMPLE == x], paste0("C:/docs/autism/fofn/", x, ".fofn"), sep="\t", col.names = FALSE, row.names = FALSE, quote=FALSE)
+  
+  
+})
+
+
+```
+

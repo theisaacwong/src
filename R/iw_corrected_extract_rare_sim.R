@@ -122,7 +122,7 @@ extract_rare = function(file){
     } else if(curr_col=="FA_DP" | (grepl("p._DP$", curr_col) & pro_sex=="m")  |  (grepl("s._DP$", curr_col) & sib_sex=="m")){
       CURR_DP_THRESHOLD[raw[,1]=="chrX"] <- MIN_DP_THRESHOLD/2
     } else {
-      print(paste0("WARNING: no sex detected for ", famid, ": ", colnames(raw)[x], ": using default DP filtering value"))
+      print(paste0("WARNING: no sex detected for ", famid, ": ", curr_col, "::: using default DP filtering value"))
     }
 
     return(temp1 >= CURR_DP_THRESHOLD)

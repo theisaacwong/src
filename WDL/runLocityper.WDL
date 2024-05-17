@@ -110,7 +110,7 @@ task locityper_preprocess_and_genotype {
         String locus_name
     }
 
-    Int disk_size = ceil(size(input_fq1, "GiB") + size(input_fq2, "GiB")) * 10 + 50
+    Int disk_size = ceil(size(input_fq1, "GiB") + size(input_fq2, "GiB")) + 70
     String output_tar = sample_id + "." + locus_name + ".tar.gz"
 
     command <<<
