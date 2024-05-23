@@ -230,3 +230,38 @@ lapply(my_samples, function(x){
 
 ```
 
+
+
+```{r}
+df0 <- fread("C:/docs/autism/ncdu_autism_sorted.tsv") %>% as.data.frame()
+df0$notes <- NULL
+
+file_types <- c(".gfa", ".bin", ".bed", ".yak")
+my_regex <- paste0("assemblies/hifiasm/0.16.1/.*","(", paste0(file_types, collapse = "|"), ")$"  )
+my_regex2 <- paste0("/asm_ys/.*_(s|p)1/.*.hifiasm.bp.hap")
+
+df1 <- df0[grepl("^/net/eichler/vol28/projects/autism_genome_assembly/nobackups/asm_ys", df0$file), ]
+df11 <- df1[grepl(my_regex, df1$file) | grepl(my_regex2, df1$file), ]
+write.table(df11$file, "C:/docs/autism/to_delete.txt", sep="\t", col.names = FALSE, row.names = FALSE, quote=FALSE)
+```
+
+```{r}
+df1 <- readLines("C:/docs/autism/asm_files.txt") %>% as.data.frame()
+
+file_types <- c(".gfa", ".bin", ".bed", ".yak")
+my_regex <- paste0("assemblies/hifiasm/0.16.1/.*","(", paste0(file_types, collapse = "|"), ")$"  )
+my_regex2 <- paste0("/asm_ys/.*_(s|p)1/.*.hifiasm.bp.hap")
+
+df11 <- df1[grepl(my_regex, df1$.) | grepl(my_regex2, df1$.), ]
+write.table(df11, "C:/docs/autism/to_delete.txt", sep="\t", col.names = FALSE, row.names = FALSE, quote=FALSE)
+```
+
+```{r}
+formals(write.table)$row.names <- FALSE
+formals(write.table)$col.names <- TRUE
+formals(write.table)$sep <- "\t"
+formals(write.table)$quote <- FALSE
+
+write.table(df12, "C:/Users/iwong1/Downloads/temp.tsv")
+```
+
