@@ -133,6 +133,10 @@ bname <- function(file_path){
   }) %>% unlist %>% return
 }
 
+formals(write.table)$row.names <- FALSE
+formals(write.table)$col.names <- TRUE
+formals(write.table)$sep <- "\t"
+formals(write.table)$quote <- FALSE
 
 fortune() %>% paste(collapse = "\n\t-") %>% say(by="egret")
 
