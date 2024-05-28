@@ -333,10 +333,13 @@ df0 <- lapply(list_by_sample, function(x){
   fastas <- grepl(".hifiasm.bp.hap2.p_ctg.gfa.fasta", x) %>% any
   
   data.frame(sample = curr_sample, 
+             PASS = correct_fofn & no_logs & fastas,
              fofn = correct_fofn,
              logs = no_logs, 
              fasta = fastas) %>% return()
 }) %>% do.call(rbind, .)
+
+df0$sample[df0$PASS] %>% write.table("C:/docs/autism/outs_succ.txt", col.names = FALSE, row.names = FALSE, quote=FALSE)
 ```
 
 

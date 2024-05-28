@@ -1,0 +1,65 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-05-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(wesanderson)
+df0 <- read_sheet("https://docs.google.com/spreadsheets/d/1zZP9tZZqLydz7tnPKlQTDWkiuuVRIwGO6m63kkV_8wc/edit#gid=0") %>% as.data.frame()
+df0[is.na(df0)] <- ""
+df0$dt_full <- as.POSIXct(paste(df0$year, df0$month, df0$day, df0$time, sep="-"), format = "%Y-%m-%d-%H:%M")
+df0$dt_day <- as.POSIXct(df0$time, format = "%H:%M")
+```
+
+Lipton time
+```{r}
+df1 <- df0[df0$tea == "lipton", ]
+
+ggplot(df1, aes(x = dt_full, y = dt_day)) + 
+  geom_point() + 
+  coord_cartesian(ylim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
+  scale_y_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",4), rep(" PM", 5)))) + 
+  ylab("") + 
+  geom_smooth(method='lm') +
+  ggtitle("daily Lipton time")
+```
+
+
+```{r}
+df1 <- df0[df0$tea != "lipton", ]
+
+ggplot(df1, aes(x = dt_full, y = dt_day)) + 
+  geom_point() + 
+  coord_cartesian(ylim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
+  scale_y_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",4), rep(" PM", 5)))) + 
+  ylab("") + 
+  geom_smooth(method='lm') +
+  ggtitle("daily time")
+
+ggplot(df1, aes(x=dt_day)) + 
+  geom_histogram(fill=wes_palette("Cavalcanti1")[4], bins = 22) +
+  scale_x_continuous(breaks = as.POSIXct(8:18 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(8:12,1:6), c(rep(" AM",5), rep(" PM", 6))))
+```
+
+things that would be fun to keep track of:
+1. N of teas per day
+2. avg time between teas
+3. avg time of tea
+
+
+
+```{r}
+df1 <- df0
+df1$date <- paste(df1$year, df1$month, df1$day, sep="-")
+list_by_day <- lapply(u(df1$date), function(x){
+  df1[df1$date == x, ]
+})
+names(list_by_day) <- u(df1$date)
+
+```
+
