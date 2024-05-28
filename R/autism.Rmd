@@ -265,3 +265,80 @@ formals(write.table)$quote <- FALSE
 write.table(df12, "C:/Users/iwong1/Downloads/temp.tsv")
 ```
 
+
+```{r}
+df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet = "Individual_Stats")
+df01 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet = "VBI_stats")
+
+table(df00$SP_ID %in% df01$sample)
+df00$SP_ID[!df00$SP_ID %in% df01$sample]
+
+
+```
+  "14444_fa" : ys
+  "11569_mo" : na
+  "13799_fa" : ys
+  "12608_mo" : na
+
+
+```{bash}
+cat batch_2_samples.txt  | xargs -I {} sh -c "mkdir {}; cd {}; ln -s /net/eichler/vol26/7200/software/pipelines/hifiasm-smk/hifi/runlocal; cp ../hifiasm_trio.yaml .; cd .."
+```
+
+
+```{r}
+input_file <- "C:/Users/iwong1/Downloads/batch_2_autism.txt"
+df0 <- fread(input_file, header = FALSE) %>% as.data.frame()
+fofn_dir <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/0_hifi_fofn/"
+out_dir <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/asm_iw/"
+temp1 <- lapply(df0$V1, function(x){
+  fam_id <- x %>% str_remove("_..$")
+  temp_df <- data.frame(
+    sample = x,
+    hifi_fofn = paste0(fofn_dir, x, ".fofn"),
+    maternal_illumina = ifelse(grepl("(_p|_s)", x), paste0(fofn_dir, fam_id, "_mo.fofn"), "NA"),
+    paternal_illumina = ifelse(grepl("(_p|_s)", x), paste0(fofn_dir, fam_id, "_fa.fofn"), "NA"),
+    family_id = fam_id
+  )
+  # write.table(temp_df, paste0(out_dir, x, "/man.tab"), sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+  return(temp_df)
+})
+names(temp1) <- paste0(out_dir, df0$V1, "/man.tab")
+```
+
+
+
+
+
+
+
+
+```{r}
+my_lines <- readLines("C:/docs/autism/outputs.txt")
+new_breaks <- grep("____________", my_lines)
+list_by_sample <- lapply(seq_along(new_breaks)[-c(1)], function(x){
+  if(x == 1){
+    return(my_lines[1:new_breaks[x]])
+  } else if(x >= (length(new_breaks)-1)){
+    return(my_lines[new_breaks[x]:length(my_lines)])
+  } else {
+    return(my_lines[new_breaks[x]:new_breaks[x+1]])    
+  }
+})
+
+df0 <- lapply(list_by_sample, function(x){
+  curr_sample <- x[2]
+  correct_fofn <- grepl("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/0_hifi_fofn/", x) %>% any
+  no_logs <- grepl("total 0", x) %>% any
+  fastas <- grepl(".hifiasm.bp.hap2.p_ctg.gfa.fasta", x) %>% any
+  
+  data.frame(sample = curr_sample, 
+             fofn = correct_fofn,
+             logs = no_logs, 
+             fasta = fastas) %>% return()
+}) %>% do.call(rbind, .)
+```
+
+
+
+

@@ -17,8 +17,6 @@ library("googlesheets4")
 
 srt <- function(x){sort(table(x), decreasing = TRUE)}
 
-read <- function(wd, file, head=TRUE){read.table(paste0(wd, file), sep="\t", header = head, stringsAsFactors = FALSE, na.strings = "!@#$%^")}
-
 u <- function(x) {unique(x)}
 lu <- function(x) {length(unique(x))}
 
@@ -26,7 +24,8 @@ heda <- function(x) {head(x)}
 heaD <- function(x) {head(x)}
 h <- function(x) {head(x)}
 
-read <- function(x){read.table(x, sep="\t", header=TRUE)}
+read <- function(x){fread(x) %>% as.data.frame()}
+write <- function(data, file) {write.table(x = data, file = file, quote=FALSE, row.names = FALSE, col.names = TRUE, sep="\t")}
 
 seq_down <- function(x){ 1:nrow(x)}
 lo <- function(x){sapply(x, length)==1}
@@ -133,10 +132,11 @@ bname <- function(file_path){
   }) %>% unlist %>% return
 }
 
-formals(write.table)$row.names <- FALSE
-formals(write.table)$col.names <- TRUE
-formals(write.table)$sep <- "\t"
-formals(write.table)$quote <- FALSE
+# default(write.table) <- list(row.names <- FALSE, col.names <- TRUE, sep <- "\t", quote <- FALSE)
+# formals(utils::write.table, envir = environment(utils::write.table))$row.names <- FALSE
+# formals(utils:::write.table)$col.names <- TRUE
+# formals(utils:::write.table)$sep <- "\t"
+# formals(utils:::write.table)$quote <- FALSE
 
 fortune() %>% paste(collapse = "\n\t-") %>% say(by="egret")
 
