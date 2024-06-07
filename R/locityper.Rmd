@@ -25,6 +25,20 @@ df1 <- data.frame(
 ```
 
 ```{r}
+MY_GENE_REGEX <- "(Homo sapiens PMS1 homolog 2)|(PMS2)"
+files <- list.files("C:/docs/locityper/results/", pattern=".blast.table$", recursive=TRUE, full.names=TRUE)
+bool_match <- lapply(files, function(x){
+  temp1 <- readLines(x)
+  grepl(MY_GENE_REGEX, temp1) %>% any %>% return
+}) %>% unlist
+
+df1 <- data.frame(
+  sample = files %>% str_extract("(?<=results/).*?(?=/)"),
+  PMS2_match = bool_match
+)
+```
+
+```{r}
 library(jsonlite)
 files <- list.files("C:/docs/locityper/CYP2D6/", pattern = "res.json.gz", full.names=TRUE, recursive = TRUE)
 

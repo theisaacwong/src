@@ -2,9 +2,13 @@
 args = commandArgs(trailingOnly=TRUE)
 library(googlesheets4)
 options(gargle_oauth_email = TRUE)
-tea_type <- "costco_green"
+
 if(length(args)==1){
   tea_type <- args[1]
+} else if(length(args)==0){
+  tea_type <- "costco_green"
+} else {
+  tea_type <- paste0(args, collapse = "_")
 }
 
 temp1 <- data.frame(year = format(Sys.Date(), "%Y") %>% as.numeric(),

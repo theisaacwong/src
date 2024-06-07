@@ -161,3 +161,10 @@ docky() {
 cp ~/.bashrc /docs/src/profile/
 
 
+
+# fnm
+FNM_PATH="/home/iw/.local/share/fnm"
+if [ -d "$FNM_PATH" ]; then
+  export PATH="$FNM_PATH:$PATH"
+  eval "`fnm env`"
+fi

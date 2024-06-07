@@ -54,7 +54,7 @@ things that would be fun to keep track of:
 
 
 ```{r}
-df1 <- df0
+df1 <- df0[df0$tea != "lipton", ]
 df1$date <- paste(df1$year, df1$month, df1$day, sep="-")
 list_by_day <- lapply(u(df1$date), function(x){
   df1[df1$date == x, ]

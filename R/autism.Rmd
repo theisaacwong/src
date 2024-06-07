@@ -49,25 +49,28 @@ family_columns_to_cbind <- lapply(which_columns_to_split, function(COL_INDEX){
 # asm qc manifest
 ```{r}
 df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet = "Individual_Stats")
-df0 <- fread("C:/home/autism/asm_qc/manifest_job_done1.tab") %>% as.data.frame()
-df0[is.na(df0)] <- "NA"
+# df0 <- fread("C:/home/autism/asm_qc/manifest_job_done1.tab") %>% as.data.frame()
+# df0[is.na(df0)] <- "NA"
+
+df0 <- read.table("C:/docs/autism/finished_asm_samples.txt")
+colnames(df0) <- "sample"
 
 
 bool_child <- grepl("_(p.|s.)$", df0$sample)
 df1 <- data.frame(SAMPLE = df0$sample, 
                   H1 = paste0(
-                    "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/asm_ys/", 
-                    df0$sample, 
+                    "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/asm_iw/", 
+                    df0$sample, "/", df0$sample, 
                     "/assemblies/hifiasm/",
                     ifelse(bool_child, "trio/", ""),
                     "0.16.1/",
-                    df0$sample, 
+                    df0$sample,
                     ".hifiasm.",
                     ifelse(bool_child, "dip", "bp"),
                     ".hap1.p_ctg.gfa.fasta"),
                   H2 = paste0(
-                    "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/asm_ys/", 
-                    df0$sample, 
+                    "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/asm_iw/", 
+                    df0$sample, "/", df0$sample, 
                     "/assemblies/hifiasm/",
                     ifelse(bool_child, "trio/", ""),
                     "0.16.1/",
@@ -94,7 +97,7 @@ df1 <- data.frame(SAMPLE = df0$sample,
                                   "NA")
                   
                   )
-write.table(df1, "C:/home/autism/asm_qc/manifest.tab.asm_qc.docker.new", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df1, "C:/home/autism/asm_qc/manifest.rerun.new", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 
 ```
 
@@ -282,7 +285,7 @@ df00$SP_ID[!df00$SP_ID %in% df01$sample]
 
 
 ```{bash}
-cat batch_2_samples.txt  | xargs -I {} sh -c "mkdir {}; cd {}; ln -s /net/eichler/vol26/7200/software/pipelines/hifiasm-smk/hifi/runlocal; cp ../hifiasm_trio.yaml .; cd .."
+cat batch_2_samples.txt  | xargs -I {} sh -c "mkdir {}; cd {}; ln -s /net/eichler/vol26/7200/software/pipelines/hifiasm-smk/hifi/runlocal; cp ../hifiasm_trio.yaml a; cd .."
 ```
 
 
@@ -307,12 +310,6 @@ names(temp1) <- paste0(out_dir, df0$V1, "/man.tab")
 ```
 
 
-
-
-
-
-
-
 ```{r}
 my_lines <- readLines("C:/docs/autism/outputs.txt")
 new_breaks <- grep("____________", my_lines)
@@ -333,15 +330,131 @@ df0 <- lapply(list_by_sample, function(x){
   fastas <- grepl(".hifiasm.bp.hap2.p_ctg.gfa.fasta", x) %>% any
   
   data.frame(sample = curr_sample, 
-             PASS = correct_fofn & no_logs & fastas,
              fofn = correct_fofn,
              logs = no_logs, 
              fasta = fastas) %>% return()
 }) %>% do.call(rbind, .)
 
-df0$sample[df0$PASS] %>% write.table("C:/docs/autism/outs_succ.txt", col.names = FALSE, row.names = FALSE, quote=FALSE)
+df_ys <- read.table("C:/docs/autism/finished_ys", header = FALSE)
+df0$ys <- df0$sample %in% df_ys$V1
+
+df0$FINISHED <- df0$ys | (df0$fofn & df0$logs & df0$fasta)
+
+df0$sample[!df0$FINISHED] %>% write.table("C:/docs/autism/outs_fail.txt", col.names = FALSE, row.names = FALSE, quote=FALSE)
+
+
+
+files_all <- readLines("C:/docs/autism/all_files.txt")
+df1 <- data.frame(sample = files_all %>% str_extract("(?<=./).*?(?=/)"), 
+                  file = files_all)
+df1 <- df1[!is.na(df1$sample), ]
+df1 <- df1[df1$sample %in% df0$sample[df0$FINISHED], ]
+files_to_delete <- c(".hifiasm.bp.hap1.p_ctg.gfa$",
+                     ".hifiasm.bp.hap1.p_ctg.lowQ.bed$",
+                     ".hifiasm.bp.hap1.p_ctg.noseq.gfa$",
+                     ".hifiasm.bp.hap2.p_ctg.gfa$",
+                     ".hifiasm.bp.hap2.p_ctg.lowQ.bed$",
+                     ".hifiasm.bp.hap2.p_ctg.noseq.gfa$",
+                     ".hifiasm.bp.p_ctg.gfa$",
+                     ".hifiasm.bp.p_ctg.lowQ.bed$",
+                     ".hifiasm.bp.p_ctg.noseq.gfa$",
+                     ".hifiasm.bp.p_utg.gfa$",
+                     ".hifiasm.bp.p_utg.lowQ.bed4",
+                     ".hifiasm.bp.p_utg.noseq.gfa$",
+                     ".hifiasm.bp.r_utg.gfa$",
+                     ".hifiasm.bp.r_utg.lowQ.bed$",
+                     ".hifiasm.bp.r_utg.noseq.gfa$",
+                     ".hifiasm.dip.hap1.p_ctg.gfa$",
+                     ".hifiasm.dip.hap1.p_ctg.lowQ.bed$",
+                     ".hifiasm.dip.hap1.p_ctg.noseq.gfa$",
+                     ".hifiasm.dip.hap2.p_ctg.gfa$",
+                     ".hifiasm.dip.hap2.p_ctg.lowQ.bed$",
+                     ".hifiasm.dip.hap2.p_ctg.noseq.gfa$",
+                     ".hifiasm.dip.p_utg.gfa$",
+                     ".hifiasm.dip.p_utg.lowQ.bed$",
+                     ".hifiasm.dip.p_utg.noseq.gfa$",
+                     ".hifiasm.dip.r_utg.gfa$",
+                     ".hifiasm.dip.r_utg.lowQ.bed$",
+                     ".hifiasm.dip.r_utg.noseq.gfa$",
+                     ".hifiasm.ec.bin$",
+                     ".hifiasm.ovlp.reverse.bin$",
+                     ".hifiasm.ovlp.source.bin$",
+                     ".hifiasm.bp.p_utg.lowQ.bed$") %>% paste(. , collapse = ")|(") %>% paste0("(", ., ")")
+df1$to_delete <- lapply(df1$file, function(x){grepl(files_to_delete, x)}) %>% unlist
+write.table(df1$file[df1$to_delete], "C:/docs/autism/files_to_delete.tsv", row.names = FALSE, quote=FALSE, col.names = FALSE)
 ```
 
 
+
+get vcf counts per region
+PAR:
+chrY:10,000-2,781,479 and chrY:56,887,902-57,217,415
+chrX:10,000-2,781,479 and chrX:155,701,382-156,030,895
+```{r}
+files_vcf <- list.files(path="/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pav", pattern = "vcf$", full.names = TRUE)
+
+
+df0 <- lapply(files_vcf, function(x){
+  sample_id <- x %>% bname %>% str_remove(".vcf.gz$")
+  n_chrY_all <- system2("bcftools", paste0("view -H ",  x, " chrY | wc -l"), stdout=TRUE)
+  n_chrY_PAR1 <- system2("bcftools", paste0("view -H ",  x, " chrY:10000-2781479 | wc -l"), stdout=TRUE)
+  n_chrY_PAR2 <- system2("bcftools", paste0("view -H ",  x, " chrY:56887902-57217415 | wc -l"), stdout=TRUE)
+  n_chrX_all <- system2("bcftools", paste0("view -H ",  x, " chrY | wc -l"), stdout=TRUE)
+  n_chrX_PAR1 <- system2("bcftools", paste0("view -H ",  x, " chrX:10000-2781479 | wc -l"), stdout=TRUE)
+  n_chrX_PAR2 <- system2("bcftools", paste0("view -H ",  x, " chrX:155701382-156030895 | wc -l"), stdout=TRUE)
+  
+  data.frame(sample = sample_id, 
+             n_chrY_all = n_chrY_all,
+             n_chrY_PAR1 = n_chrY_PAR1, 
+             n_chrY_PAR2 = n_chrY_PAR2,
+             n_chrX_all = n_chrX_all,
+             n_chrX_PAR1 = n_chrX_PAR1, 
+             n_chrX_PAR2 = n_chrX_PAR2,) %>% return
+}) %>% do.call(rbind, .)
+
+write.table(df0, "vcf_counts.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+
+
+```
+
+
+get F samples
+```{r}
+df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet = "Individual_Stats") 
+df0 <- df00 %>% as.data.frame()
+df1 <- df0$SP_ID[df0$Sex == "F"]
+write.table(df1, "C:/docs/autism/F_samples.txt", quote=FALSE, row.names = FALSE)
+```
+
+
+as.POSIXct(paste(df0$year, df0$month, df0$day, df0$time, sep="-"), format = "%Y-%m-%d-%H:%M")
+
+ggplot(df1, aes(x = dt_full, y = dt_day)) + 
+  geom_point() + 
+  coord_cartesian(ylim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
+  scale_y_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",4), rep(" PM", 5)))) + 
+  ylab("") + 
+  geom_smooth(method='lm') +
+  ggtitle("daily Lipton time")
+
+```{r}
+time <- c("03:05:12", "03:13:06", "03:18:12", "03:26:15", "03:26:47", "03:36:50", "03:37:37", "03:45:02", "03:49:51", "03:55:25", "03:59:19") %>% as.POSIXct(format="%H:%M:%S")
+available <- c(722, 664, 626, 570, 565, 490, 485, 434, 398, 357, 326)
+
+df_free <- data.frame(time = time,
+                      free = available)
+
+slope <- -(max(available) - min(available)) / as.numeric(max(time) - min(time))
+b <- available[1] - slope * as.numeric(time[1])
+deadline <- -b / (slope)
+
+
+ggplot(df_free, aes(x=time, y = free)) + 
+  geom_point() + 
+  geom_smooth(method='lm') +
+  coord_cartesian(ylim=c(0,800), xlim=c(as.POSIXct("03:00:00", format="%H:%M:%S"), as.POSIXct("05:00:00", format="%H:%M:%S")))
+
+```
 
 
