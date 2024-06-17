@@ -52,7 +52,7 @@ df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1
 # df0 <- fread("C:/home/autism/asm_qc/manifest_job_done1.tab") %>% as.data.frame()
 # df0[is.na(df0)] <- "NA"
 
-df0 <- read.table("C:/docs/autism/finished_asm_samples.txt")
+df0 <- read.table("C:/docs/autism/finished_20240617")
 colnames(df0) <- "sample"
 
 
@@ -97,9 +97,19 @@ df1 <- data.frame(SAMPLE = df0$sample,
                                   "NA")
                   
                   )
-write.table(df1, "C:/home/autism/asm_qc/manifest.rerun.new", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df1, "C:/home/autism/asm_qc/manifest.asmqc.20240613.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 
 ```
+
+
+```{r}
+df2 <- read.table("C:/docs/autism/manifest.rerun.new", header=TRUE)
+df3 <- df1[!df1$SAMPLE %in% df2$SAMPLE, ]
+write.table(df3, "C:/home/autism/asm_qc/manifest.asmqc.20240617.asmqc.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+```
+
+
 
 ```{r}
 df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=448025372", sheet = "FOFN_summary") %>% as.data.frame()
@@ -439,8 +449,8 @@ ggplot(df1, aes(x = dt_full, y = dt_day)) +
   ggtitle("daily Lipton time")
 
 ```{r}
-time <- c("03:05:12", "03:13:06", "03:18:12", "03:26:15", "03:26:47", "03:36:50", "03:37:37", "03:45:02", "03:49:51", "03:55:25", "03:59:19") %>% as.POSIXct(format="%H:%M:%S")
-available <- c(722, 664, 626, 570, 565, 490, 485, 434, 398, 357, 326)
+time <- c("04:15:52", "04:20:22") %>% as.POSIXct(format="%H:%M:%S")
+available <- c(2138, 2096)
 
 df_free <- data.frame(time = time,
                       free = available)
@@ -453,8 +463,26 @@ deadline <- -b / (slope)
 ggplot(df_free, aes(x=time, y = free)) + 
   geom_point() + 
   geom_smooth(method='lm') +
-  coord_cartesian(ylim=c(0,800), xlim=c(as.POSIXct("03:00:00", format="%H:%M:%S"), as.POSIXct("05:00:00", format="%H:%M:%S")))
+  coord_cartesian(ylim=c(0,2300), xlim=c(as.POSIXct("04:00:00", format="%H:%M:%S"), as.POSIXct("09:00:00", format="%H:%M:%S")))
 
 ```
 
+
+
+BGV (OC12)
+29/36 S5 AP2 2D 
+
+PSB
+5 S6 AP2 2D twin-linked
+3 S9 AP2 2D Dev
+12 S6 AP2 2D
+12 S7 AP2 2D
+5 
+
+
+```{r}
+5*6 + 6
+4*6 + 5
+
+```
 
