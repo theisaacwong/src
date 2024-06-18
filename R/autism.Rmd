@@ -495,6 +495,8 @@ p1 and s1/2 samples without trio files but with normal files
 
 ```{r}
 df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet = "Individual_Stats")
+df_comments <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=1859063258", sheet = "output-paths-iw") %>% as.data.frame()
+df_comments[is.na(df_comments)] <- ""
 df1 <- readLines("C:/docs/autism/asm_qc/files.fasta.iw.txt")
 df2 <- readLines("C:/docs/autism/asm_qc/files.fasta.ys.txt")
 
@@ -554,17 +556,16 @@ df6 <- readLines("C:/docs/autism/asm_qc/files_fcs_batch01.txt")
 df7 <- readLines("C:/docs/autism/asm_qc/files_fcs_batch02.txt")
 find_fcs_outputs <- function(sample_id, hap){
   
-  str_bpdp <- ifelse(grepl("_(p|s).$", sample_id), "dip", "bp")
   
-  mypath <- paste0("assembly_qc/QC_results/contamination_screening/results/", sample_id, "_", hap, "/fcs_adaptor/cleaned_sequences/", sample_id, ".hifiasm.", str_bpdp, ".", hap, ".p_ctg.gfa.fasta")
+  mypath <- paste0("assembly_qc/QC_results/contamination_screening/results/", sample_id,"_", hap,"/fasta/", sample_id, "_", hap, ".fasta")
   if(mypath %in% df6){return(mypath)}
-
-  mypath <- paste0("assembly_qc_GROUP2/QC_results/contamination_screening/results/", sample_id, "_", hap, "/fcs_adaptor/cleaned_sequences/", sample_id, ".hifiasm.", str_bpdp, ".", hap, ".p_ctg.gfa.fasta")
+  
+  mypath <- paste0("assembly_qc_GROUP2/QC_results/contamination_screening/results/", sample_id,"_", hap,"/fasta/", sample_id, "_", hap, ".fasta")
   if(mypath %in% df7){return(mypath)}
   
-  mypath <- paste0("assembly_qc/QC_results_old/contamination_screening/results/", sample_id, "_", hap, "/fcs_adaptor/cleaned_sequences/", sample_id, ".hifiasm.", str_bpdp, ".", hap, ".p_ctg.gfa.fasta")
+  mypath <- paste0("assembly_qc/QC_results_old/contamination_screening/results/", sample_id,"_", hap,"/fasta/", sample_id, "_", hap, ".fasta")
   if(mypath %in% df5){return(mypath)}
-  
+
   return("")
 }
 df0$asm_qc_hap1 <- lapply(df0$sample, function(x){find_fcs_outputs(x, "hap1")}) %>% unlist
@@ -589,8 +590,22 @@ df0$`aln_grch38-noY` <- lapply(df0$sample, function(x){
 }) %>% unlist
 
 
+df_comments <- df_comments[order(df_comments$sample), ]
+df0 <- df0[order(df0$sample), ]
+BOOL_CONTROL <- all(df_comments$sample == df0$sample)
 
-write.table(df0[order(df0$sample), ], "C:/docs/autism/asm_qc/autism_output_manifest_20240618.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+if(BOOL_CONTROL){
+  for(row in 1:nrow(df0)){
+    for(col in 1:ncol(df0)){
+      if(df0[row,col] == "" & df_comments[row,col]!="" & !grepl("/", df_comments[row,col])){
+        df0[row,col] <- df_comments[row,col]
+      }
+    }
+  }
+  write.table(df0[order(df0$sample), ], "C:/docs/autism/asm_qc/autism_output_manifest_20240618.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+} else {
+  print("warning new samples added!!")
+}
 ```
 
 
@@ -605,10 +620,12 @@ df_toasmqc <- df0[df0$asm_qc_hap1 == "" & df0$hap1 !="", ]
 ```
 
 ```{r}
-df_pbsv_issues <- df0[(df0$PBSV_GRCH38_BND=="" | df0$PBSV_GRCH38_DUP=="" | df0$PBSV_GRCH38_SV=="") & df0$aln_grch38!="",]
-write(df_pbsv_issues[], "C:/docs/autism/asm_qc/pbsv_to_run.tsv")
-
-df_pav_man <- df0[, c("sample", "asm_qc_hap1", "asm_qc_hap1")]
+my_comments <- df0$asm_qc_hap1[!grepl("/", df0$asm_qc_hap1)] %>% u
+df_pav_man <- df0[!df0$asm_qc_hap1 %in% my_comments, c("sample", "asm_qc_hap1", "asm_qc_hap2")]
+colnames(df_pav_man) <- c("NAME", "HAP1", "HAP2")
+df_pav_man$HAP1 <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_pav_man$HAP1)
+df_pav_man$HAP2 <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_pav_man$HAP2)
+write(df_pav_man, "C:/docs/autism/asm_qc/pav.man.refresh.20240618.tab")
 ```
 
 
