@@ -494,7 +494,8 @@ p1 and s1/2 samples without trio files but with normal files
 
 
 ```{r}
-df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet = "Individual_Stats")
+df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet = "Individual_Stats") 
+df00 <- df00[-1, ]
 df_comments <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=1859063258", sheet = "output-paths-iw") %>% as.data.frame()
 df_comments[is.na(df_comments)] <- ""
 df1 <- readLines("C:/docs/autism/asm_qc/files.fasta.iw.txt")
@@ -504,6 +505,11 @@ all_samples <- df00$SP_ID
 all_samples <- all_samples[!is.na(all_samples)]
 
 df0 <- data.frame(sample = all_samples)
+df0$type <- lapply(df0$sample, function(x){
+  bool_is_quad <- grepl("Quad", df00$Family_Type[df00$SP_ID==x]) %>% unlist
+  if(bool_is_quad){return("Quad")} else {return("Trio")}
+}) %>% unlist
+
 find_asm_output <- function(sample_id, hap){
     if(grepl("_(s|p).$", sample_id)){
     mypath <- paste0("asm_iw/", sample_id,"/", sample_id, "/assemblies/hifiasm/trio/0.16.1/", sample_id, ".hifiasm.dip.", hap,".p_ctg.gfa.fasta")
@@ -530,9 +536,6 @@ df0$hap1 <- lapply(df0$sample, function(x){
 df0$hap2 <- lapply(df0$sample, function(x){
   find_asm_output(x, "hap2")
 }) %>% unlist
-
-write.table(df0, "C:/docs/autism/asm_qc/asm_paths_20240617.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
-
 
 df3 <- readLines("C:/docs/autism/asm_qc/pbsv.grch38.files.txt")
 df4 <- readLines("C:/docs/autism/asm_qc/pbsv.grch38_noY.files.txt")
@@ -599,6 +602,8 @@ if(BOOL_CONTROL){
     for(col in 1:ncol(df0)){
       if(df0[row,col] == "" & df_comments[row,col]!="" & !grepl("/", df_comments[row,col])){
         df0[row,col] <- df_comments[row,col]
+      } else if(df0[row,col] == "" & df_comments[row,col]!=""){
+        print(paste0("change in ", row, ", ", col, ": ", df_comments[row,col]))
       }
     }
   }
@@ -609,6 +614,21 @@ if(BOOL_CONTROL){
 ```
 
 
+```{r}
+df_asmqc_03 <- df0[grepl("fasta", df0$hap1) & !grepl("fasta", df0$asm_qc_hap1), c("sample", "hap1", "hap2", "asm_qc_hap1", "asm_qc_hap2")]
+
+df_asmqc_03_man <- data.frame(
+  SAMPLE = df_asmqc_03$sample, 
+  H1 = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_asmqc_03$hap1), 
+  H2 = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_asmqc_03$hap2), 
+  ILLUMINA = df_asmqc_03$sample, 
+  FOFN = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/fofn/Illumina/", df_asmqc_03$sample,"-Illumina.fastq.fofn"), 
+  TRIO = "NO", 
+  MO_ID = ifelse(grepl("_(p|s).$", df_asmqc_03$sample), str_replace(df_asmqc_03$sample, "_(p|s).$", "_mo"), "NA"), 
+  FA_ID = ifelse(grepl("_(p|s).$", df_asmqc_03$sample), str_replace(df_asmqc_03$sample, "_(p|s).$", "_fa"), "NA")
+  )
+write(df_asmqc_03_man, "C:/docs/autism/asm_qc/asm_qc_man_20240621.tsv")
+```
 
 
 ```{r}
@@ -625,7 +645,11 @@ df_pav_man <- df0[!df0$asm_qc_hap1 %in% my_comments, c("sample", "asm_qc_hap1", 
 colnames(df_pav_man) <- c("NAME", "HAP1", "HAP2")
 df_pav_man$HAP1 <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_pav_man$HAP1)
 df_pav_man$HAP2 <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_pav_man$HAP2)
-write(df_pav_man, "C:/docs/autism/asm_qc/pav.man.refresh.20240618.tab")
+
+
+
+write(df_pav_man[df_pav_man$NAME %in% df00$SP_ID[df00$Sex=="M"], ], "C:/docs/autism/asm_qc/pav.male.refresh.20240618.tsv")
+write(df_pav_man[df_pav_man$NAME %in% df00$SP_ID[df00$Sex=="F"], ], "C:/docs/autism/asm_qc/pav.female.refresh.20240618.tsv")
 ```
 
 
