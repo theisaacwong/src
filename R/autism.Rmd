@@ -492,7 +492,7 @@ bool_has_base <- lapply(target_samples, function(x){
 
 p1 and s1/2 samples without trio files but with normal files
 
-
+# MAIN MANIFEST UPDATE LOG FILE PATHS 
 ```{r}
 df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet = "Individual_Stats") 
 df00 <- df00[-1, ]
@@ -593,6 +593,20 @@ df0$`aln_grch38-noY` <- lapply(df0$sample, function(x){
 }) %>% unlist
 
 
+df10 <- read.table("C:/docs/autism/asm_qc/files.pav.txt")
+df0$`pav_GRCH38` <- lapply(df0$sample, function(x){
+  mypath <- paste0("pav_new/GRCH38/results_vcf/pav_", x, ".vcf.gz")
+  if(mypath %in% df10$V1){return(mypath)}
+  
+  mypath <- paste0("pav_new/GRCH38_noY/results_vcf/pav_", x, ".vcf.gz")
+  if(mypath %in% df10$V1){return(mypath)}
+  return("")
+}) %>% unlist
+
+
+
+
+
 df_comments <- df_comments[order(df_comments$sample), ]
 df0 <- df0[order(df0$sample), ]
 BOOL_CONTROL <- all(df_comments$sample == df0$sample)
@@ -615,6 +629,36 @@ if(BOOL_CONTROL){
 
 
 ```{r}
+df_01 <- df0[!grepl("vcf.gz",df0$pav_GRCH38) & grepl("fasta", df0$asm_qc_hap1), c("sample", "asm_qc_hap1", "asm_qc_hap2", "pav_GRCH38")]
+df_01_m <- df_01[df_01$sample %in% df00$SP_ID[df00$Sex=="M"], ]
+df_01_f <- df_01[df_01$sample %in% df00$SP_ID[df00$Sex=="F"], ]
+
+
+df_01_m_man <- data.frame(NAME = df_01_m$sample, 
+                          HAP1 = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_01_m$asm_qc_hap1), 
+                          HAP2 = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_01_m$asm_qc_hap1))
+
+df_01_f_man <- data.frame(NAME = df_01_f$sample, 
+                          HAP1 = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_01_f$asm_qc_hap1), 
+                          HAP2 = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_01_f$asm_qc_hap1))
+
+write(df_01_m_man, "C:/docs/autism/pav.manifest.m.rescue.tsv")
+write(df_01_f_man, "C:/docs/autism/pav.manifest.f.rescue.tsv")
+
+
+df_01 <- df0[!grepl("vcf.gz",df0$pav_GRCH38) & grepl("fasta", df0$asm_qc_hap1), c("sample", "hap1", "hap2")]
+df_01_rescue <- data.frame(NAME = df_01$sample, 
+                          HAP1 = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_01$hap1), 
+                          HAP2 = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_01$hap2))
+
+write(df_01_rescue, "C:/docs/autism/asm_qc/pav_man_rescue.tsv")
+```
+
+
+
+
+
+```{r}
 df_asmqc_03 <- df0[grepl("fasta", df0$hap1) & !grepl("fasta", df0$asm_qc_hap1), c("sample", "hap1", "hap2", "asm_qc_hap1", "asm_qc_hap2")]
 
 df_asmqc_03_man <- data.frame(
@@ -629,6 +673,30 @@ df_asmqc_03_man <- data.frame(
   )
 write(df_asmqc_03_man, "C:/docs/autism/asm_qc/asm_qc_man_20240621.tsv")
 ```
+
+
+```{r}
+df01 <- read.table("C:/docs/autism/asm_qc/files.fix_sex.txt")
+df02 <- data.frame(sample = df01$V1 %>% str_extract("(?<=_fa/).*(?=_hap..fasta)") %>% u)
+
+get_fix_sex <- function(x, hap){
+  mypath <- paste0("fix_sex/results/", x, "/", x, "_", hap, ".fasta")
+  if(mypath %in% df01$V1){return(mypath)}
+  mypath <- paste0("fix_sex/results_old/", x, "/", x, "_", hap, ".fasta")
+  if(mypath %in% df01$V1){return(mypath)}
+  return("")
+}
+
+df02$hap1 <- df02$sample %>%  lapply(function(x){get_fix_sex(x, "hap1")})
+df02$hap2 <- df02$sample %>%  lapply(function(x){get_fix_sex(x, "hap2")})
+
+df02$hap1 <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df02$hap1)
+df02$hap2 <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df02$hap2)
+
+colnames(df02) <- c("NAME", "HAP1", "HAP2")
+write(df02, "C:/docs/autism/asm_qc/pav.male.refresh.20240624.tsv")
+```
+
 
 
 ```{r}
@@ -651,6 +719,193 @@ df_pav_man$HAP2 <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/no
 write(df_pav_man[df_pav_man$NAME %in% df00$SP_ID[df00$Sex=="M"], ], "C:/docs/autism/asm_qc/pav.male.refresh.20240618.tsv")
 write(df_pav_man[df_pav_man$NAME %in% df00$SP_ID[df00$Sex=="F"], ], "C:/docs/autism/asm_qc/pav.female.refresh.20240618.tsv")
 ```
+
+
+
+
+
+
+
+
+
+```{bash}
+find pbsv/GRCH38_noY/results/ | grep .vcf.gz$ | xargs -I {} sh -c 'echo -n "{}/$(zcat {} | grep -v "^#" | wc -l) \n"' | awk -F "/" '{print $4 "\t" $5 "\t" $6}' > pbsv/counts_GRCH38_noY.tsv
+```
+
+```{r}
+df0 <- fread("C:/docs/autism/asm_qc/counts_GRCH38.tsv") %>% as.data.frame()
+samples <- df0$V1 %>% u
+list_by_sample <- lapply(samples, function(x){df0[df0$V1==x, ]})
+df_by_sample <- lapply(list_by_sample, function(x){
+  count_bnd <- ifelse(1==length(grep("_bnd.vcf.gz", x$V2)), x$V3[grepl("_bnd.vcf.gz", x$V2)], "NA")   
+  count_dup <- ifelse(1==length(grep("_dup.vcf.gz", x$V2)), x$V3[grepl("_dup.vcf.gz", x$V2)], "NA")   
+  count_sv  <- ifelse(1==length(grep("_sv.vcf.gz" , x$V2)),  x$V3[grepl("_sv.vcf.gz" , x$V2)], "NA")   
+  data.frame(SAMPLE=x$V1[1], BND=count_bnd, DUP=count_dup, SV=count_sv, TOTAL=count_sv+count_dup+count_bnd)
+}) %>% do.call(rbind, .) %>% as.data.frame()
+df_by_sample <- df_by_sample[order(df_by_sample$SAMPLE), ]
+write(df_by_sample, "C:/docs/autism/asm_qc/pbsv_GRCH38_counts.tsv")
+
+df1 <- fread("C:/docs/autism/asm_qc/counts_GRCH38_noY.tsv") %>% as.data.frame()
+samples <- df1$V1 %>% u
+list_by_sample <- lapply(samples, function(x){df1[df1$V1==x, ]})
+df_by_sample <- lapply(list_by_sample, function(x){
+  count_bnd <- ifelse(1==length(grep("_bnd.vcf.gz", x$V2)), x$V3[grepl("_bnd.vcf.gz", x$V2)], "NA")   
+  count_dup <- ifelse(1==length(grep("_dup.vcf.gz", x$V2)), x$V3[grepl("_dup.vcf.gz", x$V2)], "NA")   
+  count_sv  <- ifelse(1==length(grep("_sv.vcf.gz" , x$V2)),  x$V3[grepl("_sv.vcf.gz" , x$V2)], "NA")   
+  data.frame(SAMPLE=x$V1[1], BND=count_bnd, DUP=count_dup, SV=count_sv, TOTAL=count_sv+count_dup+count_bnd)
+}) %>% do.call(rbind, .) %>% as.data.frame()
+df_by_sample <- df_by_sample[order(df_by_sample$SAMPLE), ]
+write(df_by_sample, "C:/docs/autism/asm_qc/pbsv_GRCH38_counts_noY.tsv")
+
+```
+
+
+
+
+
+
+
+
+
+```{r}
+MY_NAME <- "ISAAC"
+
+
+df_issac <- data.frame(
+  letters = str_split(MY_NAME, "") %>% unlist
+)
+
+
+hash_codons <- HashMap$new()
+hash_codons$put("I", "ATT,ATC,ATA")
+hash_codons$put("S", "AGT,AGC,TCT,TCA,TCC,TCG")
+hash_codons$put("A", "GCA,GCT,GCC,GCG")
+hash_codons$put("C", "TGT,TGC")
+hash_codons$put("T", "ACT,ACA,ACG,ACC")
+hash_codons$put("R", "CGT,CGA,CGC,CGG")
+hash_codons$put("H", "CAT,CAC")
+hash_codons$put("W", "TGG")
+hash_codons$put("N", "AAT,AAc")
+hash_codons$put("G", "GGT,GGA,GGC,GGG")
+hash_codons$put("Y", "TAT,TAC")
+
+df_issac$codons <- lapply(df_issac$letters, function(x){hash_codons$get(x)})
+
+df_issac$list <- lapply(df_issac$codons, function(x){str_split(x, ",") %>% unlist})
+
+df_temp <- expand.grid(df_issac$list, stringsAsFactors = FALSE)
+name_strings <- lapply(seq_down(df_temp), function(x){
+  paste0(df_temp[x, ]) %>% paste(collapse = "") %>% str_to_lower()
+}) %>% unlist 
+
+library(seqinr)
+df_output <- data.frame(dna = name_strings)
+df_output$temp <- lapply(name_strings, function(x){unlist(str_split(x, ""))})
+df_output$frame153 <- lapply(df_output$temp, function(x){translate(x, frame=0, sens="F") %>% paste(collapse = "")}) %>% unlist
+df_output$frame253 <- lapply(df_output$temp, function(x){translate(x, frame=1, sens="F") %>% paste(collapse = "")}) %>% unlist
+df_output$frame353 <- lapply(df_output$temp, function(x){translate(x, frame=2, sens="F") %>% paste(collapse = "")}) %>% unlist
+df_output$frame135 <- lapply(df_output$temp, function(x){translate(x, frame=0, sens="R") %>% paste(collapse = "")}) %>% unlist
+df_output$frame235 <- lapply(df_output$temp, function(x){translate(x, frame=1, sens="R") %>% paste(collapse = "")}) %>% unlist
+df_output$frame335 <- lapply(df_output$temp, function(x){translate(x, frame=2, sens="R") %>% paste(collapse = "")}) %>% unlist
+df_output$temp <- NULL
+write(df_output, "C:/Users/iwong1/Downloads/isaac.txt")
+```
+
+
+
+
+```{r}
+df0 <- read.table("C:/docs/autism/asm_qc/files.txt")
+
+df1 <- data.frame(sample = df0$V1 %>% str_extract("(?<=n50/).*(?=_hap..n50.stats$)") %>% u)
+df1$hap1_path <- df1$sample %>% lapply(function(x){
+  temp1 <- df0$V1[grepl(paste0(x, ".*hap1"), df0$V1)]
+  mypath <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc/QC_results/contig_stats/n50/",x,"_hap1.n50.stats")
+  if(mypath %in% df0$V1){return(mypath)}
+  mypath <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc_GROUP2/QC_results/contig_stats/n50/",x,"_hap1.n50.stats")
+  if(mypath %in% df0$V1){return(mypath)}
+  mypath <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc/QC_results_old/contig_stats/n50/",x,"_hap1.n50.stats")
+  if(mypath %in% df0$V1){return(mypath)}
+  return("")
+}) %>% unlist
+
+df1$hap2_path <- df1$sample %>% lapply(function(x){
+  temp1 <- df0$V1[grepl(paste0(x, ".*hap1"), df0$V1)]
+  mypath <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc/QC_results/contig_stats/n50/",x,"_hap2.n50.stats")
+  if(mypath %in% df0$V1){return(mypath)}
+  mypath <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc_GROUP2/QC_results/contig_stats/n50/",x,"_hap2.n50.stats")
+  if(mypath %in% df0$V1){return(mypath)}
+  mypath <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc/QC_results_old/contig_stats/n50/",x,"_hap2.n50.stats")
+  if(mypath %in% df0$V1){return(mypath)}
+  return("")
+}) %>% unlist
+
+df1$n50_hap1 <- df1$hap1_path %>% lapply(function(x){
+  temp1 <- readLines(x)
+  temp1[grepl("N50", temp1)] %>% str_extract("(?<=N50 \\(Mbp\\):).*") %>% str_trim()
+}) %>% unlist
+
+df1$n50_hap2 <- df1$hap2_path %>% lapply(function(x){
+  temp1 <- readLines(x)
+  temp1[grepl("N50", temp1)] %>% str_extract("(?<=N50 \\(Mbp\\):).*") %>% str_trim()
+}) %>% unlist
+
+
+write.table()
+```
+
+
+```{r}
+df0 <- read.table("C:/docs/autism/asm_qc/files1.txt")
+
+df1 <- data.frame(sample = df0$V1 %>% str_extract("(?<=_(fa|mo|p.|s.)/).*(?=.qv)") %>% u)
+df1$qv_path <- df1$sample %>% lapply(function(x){
+  mypath <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc/QC_results/merqury/results/", x, "/",x,".qv")
+  if(mypath %in% df0$V1){return(mypath)}
+  mypath <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc_GROUP2/QC_results/merqury/results/", x, "/",x,".qv")
+  if(mypath %in% df0$V1){return(mypath)}
+  mypath <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc/QC_results_old/merqury/results/", x, "/",x,".qv")
+  if(mypath %in% df0$V1){return(mypath)}
+  return("")
+}) %>% unlist
+
+df1$qv_hap1 <- df1$qv_path %>% lapply(function(x){
+  temp1 <- read.table(x)
+  if(any(grepl("_hap1", temp1$V1))){
+    temp1$V4[grepl("_hap1", temp1$V1)]    
+  } else {
+    return("")
+  }
+}) %>% unlist
+
+df1$qv_hap2 <- df1$qv_path %>% lapply(function(x){
+  temp1 <- read.table(x)
+  if(any(grepl("_hap2", temp1$V1))){
+    temp1$V4[grepl("_hap2", temp1$V1)]    
+  } else {
+    return("")
+  }
+}) %>% unlist
+
+
+
+```
+
+
+
+
+ataagcgcggcttgt	ISAAC	*ARL	KRGL	TSRAY	QAAL	KPRL
+acacggatttcgcatgcacgcgcttat     TRISHARAY       HGFRMHAL        TDFACTRL        ISACMRNPC       *ARACEIR        KRVHAKSV
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -685,3 +940,17 @@ strandseq protocol
   
   
 will need to meet with david seperately later to go over pipeline?????????????????????????
+  
+ 
+   
+GT:AD:AO:DP:PL:QA:QR:RO
+0/0:8,0:0:9:0,24,165:0:204:8
+0/1:8,4:4:13:63,0,132:115:218:8 
+0/1:12,4:4:17:38,0,220:110:329:12
+```{r}
+df_temp <- c("GT:AD:AO:DP:PL:QA:QR:RO",
+"0/0:8,0:0:9:0,24,165:0:204:8",
+"0/1:8,4:4:13:63,0,132:115:218:8", 
+"0/1:12,4:4:17:38,0,220:110:329:12") %>% str_split(":") %>% do.call(rbind, .) %>% as.data.frame()
+```
+
