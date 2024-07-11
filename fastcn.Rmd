@@ -9,6 +9,43 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+df0 <- fread("C:/docs/fastcn/populations.tab") %>% as.data.frame()
+df1 <- read.table("C:/docs/fastcn/nhp.tracks", header=FALSE)
+df1$keywords <- lapply(df1$V1, function(x){x %>% str_remove("_wssd.bb") %>% str_split("_") %>% unlist})
+overcounts <- df1$keywords %>% unlist %>% srt
+overcounts <- overcounts[overcounts > 5]
+df1$matches <- lapply(df1$keywords, function(x){
+  lapply(x, function(y){
+    if(!y %in% names(overcounts)){
+      df0$sample[grepl(y, df0$sample)]  %>% u
+    }
+  }) %>% unlist %>% u
+})
 
+df2 <- lapply(seq_down(df1), function(x){
+  if(length(df1$matches[[x]]) > 0  & !grepl("Human", df1$V1[x])){
+    return(c(df1$V1[x], df1$matches[[x]][1]))
+  }
+}) %>% do.call(rbind, .) %>% as.data.frame()
+df2$V1 <- paste0("/net/eichler/vol28/projects/primate_sv/nobackups/fastcn/hg38/tracks/", df2$V1)
+
+my_script <- paste0("~/nobackups/conda/bigBedToBed ", df2$V1, " ", bname(df2$V1) %>% str_replace(".bb$", ".bed") )
+write.table(my_script, "C:/docs/fastcn/convertBB.sh", col.names = FALSE, quote=FALSE, row.names = FALSE)
+
+df2$V1 <- paste0("/net/eichler/vol28/home/iwong1/nobackups/fastcn/nhp_tracks/", df2$V1 %>% bname)
+
+df3 <- data.frame(V1 = df2$V2, V2 = df2$V1)
+write(df3, "C:/docs/fastcn/nhp.man")
+```
+
+```{r}
+df2 <- fread("C:/docs/fastcn/Table2.txt") %>% as.data.frame()
+
+df20 <- data.frame(chr = df2$`Genomic location (hg38)` %>% str_extract("chr.*(?=:)"),
+                   start = df2$`Genomic location (hg38)` %>% str_extract("(?<=:).*(?=-)") %>% str_remove_all(","),
+                   end = df2$`Genomic location (hg38)` %>% str_extract("(?<=-).*") %>% str_remove_all(","),
+                   name = df2$`Gene name`)
+
+write.table(df20, "C:/docs/fastcn/table2.tsv", sep="\t", col.names = FALSE, row.names = FALSE, quote=FALSE)
 ```
 

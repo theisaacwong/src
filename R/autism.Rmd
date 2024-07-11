@@ -598,8 +598,15 @@ df0$`pav_GRCH38` <- lapply(df0$sample, function(x){
   mypath <- paste0("pav_new/GRCH38/results_vcf/pav_", x, ".vcf.gz")
   if(mypath %in% df10$V1){return(mypath)}
   
+  mypath <- paste0("pav_new/GRCH38/rescue/pav_", x, ".vcf.gz")
+  if(mypath %in% df10$V1){return(mypath)}
+  
   mypath <- paste0("pav_new/GRCH38_noY/results_vcf/pav_", x, ".vcf.gz")
   if(mypath %in% df10$V1){return(mypath)}
+  
+  mypath <- paste0("pav_new/GRCH38_noY/rescue/pav_", x, ".vcf.gz")
+  if(mypath %in% df10$V1){return(mypath)}
+  
   return("")
 }) %>% unlist
 
@@ -660,6 +667,10 @@ write(df_01_rescue, "C:/docs/autism/asm_qc/pav_man_rescue.tsv")
 
 ```{r}
 df_asmqc_03 <- df0[grepl("fasta", df0$hap1) & !grepl("fasta", df0$asm_qc_hap1), c("sample", "hap1", "hap2", "asm_qc_hap1", "asm_qc_hap2")]
+df_asmqc_03 <- df0[grepl("fasta", df0$hap1), c("sample", "hap1", "hap2", "asm_qc_hap1", "asm_qc_hap2")]
+df_temp <- fread("C:/docs/autism/asm_qc/asm_qc_group3.txt") %>% as.data.frame()
+df_asmqc_03 <- df_asmqc_03[df_asmqc_03$sample %in% df_temp$SP_ID, ]
+
 
 df_asmqc_03_man <- data.frame(
   SAMPLE = df_asmqc_03$sample, 
@@ -671,7 +682,17 @@ df_asmqc_03_man <- data.frame(
   MO_ID = ifelse(grepl("_(p|s).$", df_asmqc_03$sample), str_replace(df_asmqc_03$sample, "_(p|s).$", "_mo"), "NA"), 
   FA_ID = ifelse(grepl("_(p|s).$", df_asmqc_03$sample), str_replace(df_asmqc_03$sample, "_(p|s).$", "_fa"), "NA")
   )
-write(df_asmqc_03_man, "C:/docs/autism/asm_qc/asm_qc_man_20240621.tsv")
+
+df_temp <- readLines("C:/docs/autism/asm_qc/files.fix_sex.txt")
+df_asmqc_03_man$H1[grepl("_fa", df_asmqc_03_man$SAMPLE)] <- df_asmqc_03_man$SAMPLE[grepl("_fa", df_asmqc_03_man$SAMPLE)] %>% lapply(function(x){
+  paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_temp[grepl(paste0(x, "_hap1.fasta"), df_temp)])
+}) %>% unlist
+
+df_asmqc_03_man$H2[grepl("_fa", df_asmqc_03_man$SAMPLE)] <- df_asmqc_03_man$SAMPLE[grepl("_fa", df_asmqc_03_man$SAMPLE)] %>% lapply(function(x){
+  paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/", df_temp[grepl(paste0(x, "_hap2.fasta"), df_temp)])
+}) %>% unlist
+
+write(df_asmqc_03_man, "C:/docs/autism/asm_qc/asm_qc_man_20240710.tsv")
 ```
 
 
