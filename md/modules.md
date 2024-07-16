@@ -1,3 +1,6 @@
+# snakemake --forceall --rulegraph | dot -Tpdf > dag.pdf
+#  chmod a-w -R
+
 # Module organization
  /net/eichler/vol26/7200/software/modules-sw
  /net/eichler/vol26/7200/software/modules-repo/CentOS7

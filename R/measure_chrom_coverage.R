@@ -2,19 +2,23 @@
 args = commandArgs(trailingOnly=TRUE)
 
 
-
 INPUT_BED_FOFN <- args[1] # must be merged
 INDEX_FAI <- args[2]
 
 OUTPUT_FILE <- args[3]
 
-df_index <- read.table(INDEX_FAI, header=FALSE)
-colnames(df_index) <- c("chr", "length", "V3", "V4", "V5")
-
 INDEX_FAI <- "C:/docs/autism/coverage/T2T-CHM13v2.fasta.fai"
 INPUT_BED_FOFN <- "C:/docs/autism/coverage/my_beds.txt"
 
+
+df_index <- read.table(INDEX_FAI, header=FALSE)
+colnames(df_index) <- c("chr", "length", "V3", "V4", "V5")
+
+
+
 list_by_bed <- lapply(INPUT_BED_FOFN %>% readLines, function(INPUT_BED){
+  print(INPUT_BED)
+
   if(Sys.info()["sysname"]=="Windows"){
     df_bed <- read.table(text = system2("wsl", c("bedtools", "merge", "-i", INPUT_BED), stdout = TRUE), header=FALSE, comment.char = "")
   }else{

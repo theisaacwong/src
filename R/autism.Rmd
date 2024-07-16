@@ -782,12 +782,6 @@ write(df_by_sample, "C:/docs/autism/asm_qc/pbsv_GRCH38_counts_noY.tsv")
 
 
 
-
-
-
-
-
-
 ```{r}
 MY_NAME <- "ISAAC"
 
@@ -912,30 +906,10 @@ df1$qv_hap2 <- df1$qv_path %>% lapply(function(x){
 
 ```
 
-
-
-
 ataagcgcggcttgt	ISAAC	*ARL	KRGL	TSRAY	QAAL	KPRL
 acacggatttcgcatgcacgcgcttat     TRISHARAY       HGFRMHAL        TDFACTRL        ISACMRNPC       *ARACEIR        KRVHAKSV
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc/QC_results/contamination_screening/results/12832_p1_hap1/fasta/12832_p1_hap1.fasta
-
-
 
 
 software/pipelines/ss_analyses/202004
@@ -947,8 +921,6 @@ requests:
 - add automatic library selection
 - add strandseq pool genotyping
 
-
-
 strandseq protocol
 - merge bams 
   - samtools merge -@4 merged.bam {input.bam}
@@ -959,10 +931,7 @@ strandseq protocol
   - exportRegions(datapath= {breakpointr.data})
   - trying to ask which sample differes the lest from the given cell haplotype, then that is the sample of origin for the given cell. 
   
-  
 will need to meet with david seperately later to go over pipeline?????????????????????????
-  
- 
    
 GT:AD:AO:DP:PL:QA:QR:RO
 0/0:8,0:0:9:0,24,165:0:204:8

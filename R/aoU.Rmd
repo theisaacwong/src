@@ -1,0 +1,18 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-07-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+df0 <- fread("C:/docs/aou/sample_3-7-8.tsv") %>% as.data.frame()
+df1 <- data.frame(`membership:sample_3-7-8_set_id` = paste0("samtools_", rep(c(1:4), length.out = nrow(df0))),
+                  `sample_3-7-8` = )
+```
+

@@ -5,6 +5,9 @@ workflow samtoolsCollate {
         Array[File] bam_files
         Array[File] bam_index_files
         String docker
+        File reference_fasta
+        File reference_fai
+        File reference_dict
 
         String samtools_n_cpu = 4
         String samtools_mem_gb = 8
@@ -17,12 +20,15 @@ workflow samtoolsCollate {
                 bam_index = bam_index_files[scatter_index],
                 docker = docker,
                 samtools_n_cpu = samtools_n_cpu,
-                samtools_mem_gb = samtools_mem_gb
+                samtools_mem_gb = samtools_mem_gb,
+                reference_fasta = reference_fasta,
+                reference_fai = reference_fai,
+                reference_dict = reference_dict
         }
     }
 
     output {
-        Array[File] collated_fq_R1 = samtools_collate.reads_1,
+        Array[File] collated_fq_R1 = samtools_collate.reads_1
         Array[File] collated_fq_R2 = samtools_collate.reads_2
     }
 }
@@ -35,6 +41,10 @@ task samtools_collate {
         String docker
         String samtools_n_cpu
         String samtools_mem_gb
+
+        File reference_fasta
+        File reference_fai
+        File reference_dict
     }
 
     Int disk_size = ceil(size(bam_file, "GiB") + 100)
@@ -47,7 +57,7 @@ task samtools_collate {
         nthreads=$(nproc)
         echo "using ${nthreads} threads"
         free -h
-        samtools collate -@ ${nthreads} -u -O ~{bam_file} | samtools fastq -@ ${nthreads} -1 ~{output_fq1} -2 ~{output_fq2} -0 /dev/null -s /dev/null -n
+        samtools collate -@ ${nthreads} reference=~{reference_fasta} -u -O ~{bam_file} | samtools fastq -@ ${nthreads} -1 ~{output_fq1} -2 ~{output_fq2} -0 /dev/null -s /dev/null -n
         # samtools collate -@ ${nthreads} -o TEMP_BAM.bam ~{bam_file}
         # samtools fastq -@ ${nthreads} -1 ~{output_fq1} -2 ~{output_fq2} -0 /dev/null -s /dev/null -n TEMP_BAM.bam
     >>>
