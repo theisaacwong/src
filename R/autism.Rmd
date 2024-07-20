@@ -944,3 +944,37 @@ df_temp <- c("GT:AD:AO:DP:PL:QA:QR:RO",
 "0/1:12,4:4:17:38,0,220:110:329:12") %>% str_split(":") %>% do.call(rbind, .) %>% as.data.frame()
 ```
 
+
+
+
+
+
+
+
+```{r}
+df0 <- fread("C:/docs/lab_meeting_presentation/0_summary_stats.txt") %>% as.data.frame()
+list_by_family <- lapply(u(df0$Family_ID), function(x){
+  return(df0[df0$Family_ID == x, ])
+})
+
+
+g1 <- ggplot(df0, aes(x=asm_n50_hap1, y=asm_qv_hap1)) + 
+  geom_point(aes(color=Family_ID )) + 
+  ggtitle("HiFi Assembly") + 
+  xlab("Contig N50 (Mbp)") + 
+  ylab("Quality Value (Merqury)")
+g1
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
