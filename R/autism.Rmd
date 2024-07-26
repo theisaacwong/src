@@ -960,19 +960,126 @@ list_by_family <- lapply(u(df0$Family_ID), function(x){
 
 g1 <- ggplot(df0, aes(x=asm_n50_hap1, y=asm_qv_hap1)) + 
   geom_point(aes(color=Family_ID )) + 
-  ggtitle("HiFi Assembly") + 
+  ggtitle("Hap1 HiFi Assembly") + 
   xlab("Contig N50 (Mbp)") + 
   ylab("Quality Value (Merqury)")
 g1
+
+g2 <- ggplot(df0, aes(x=asm_n50_hap2, y=asm_qv_hap2)) + 
+  geom_point(aes(color=Family_ID )) + 
+  ggtitle("Hap2 HiFi Assembly") + 
+  xlab("Contig N50 (Mbp)") + 
+  ylab("Quality Value (Merqury)")
+g2
+
+
+g3 <- ggplot(df0, aes(x=read_cov_X, y=`PBSV_SV>49bp`)) + 
+  geom_point(aes(color=Family_ID )) + 
+  ggtitle("Read Coverage vs PBSV Calls") + 
+  xlab("Read Coverage") + 
+  ylab("PBSV Calls > 49bp") + 
+  scale_x_continuous(trans="log10") + 
+  scale_y_continuous(trans="log10") 
+g3
+
+
+g4 <- ggplot(df0, aes(x=asm_n50_hap1, y=`PAV_SV>49bp`)) + 
+  geom_point(aes(color=Family_ID )) + 
+  ggtitle("Assembly N50 vs PAV Calls") + 
+  xlab("Assembly N50") + 
+  ylab("PAV Calls > 49bp") + 
+  scale_x_continuous(trans="log10") 
+g4
+
+
+
+g5 <- ggplot(df0[df0$`PAV_SV>49bp` < 22000, ], aes(x=asm_n50_hap1, y=asm_qv_hap1)) + 
+  geom_point(aes(color=SP_ID )) + 
+  ggtitle("Assembly N50 vs PAV Calls") + 
+  xlab("Assembly N50") + 
+  ylab("PAV Calls > 49bp") + 
+  scale_x_continuous(trans="log10") 
+g5
+
+
+
+
+```
+
+
+
+# Measure X Coverage
+```{r}
+FAI_HAP1_FILE <- "C:/docs/autism/fix_sex/BK143_fa_hap1.fasta.fai"
+FAI_HAP2_FILE <- "C:/docs/autism/fix_sex/BK143_fa_hap2.fasta.fai"
+PAF_HAP1_FILE <- "C:/docs/autism/fix_sex/BK143_fa_hap1.paf"
+PAF_HAP2_FILE <- "C:/docs/autism/fix_sex/BK143_fa_hap2.paf"
+REASSIGN_FILE <- "C:/docs/autism/fix_sex/BK143_fa_reassign.tab"
+CTG_HAP1_FILE <- "C:/docs/autism/fix_sex/BK143_fa_hap1.fasta.contigs"
+CTG_HAP2_FILE <- "C:/docs/autism/fix_sex/BK143_fa_hap2.fasta.contigs"
+
+df_fai_1 <- read.table(FAI_HAP1_FILE, header=FALSE, sep="\t")
+df_fai_2 <- read.table(FAI_HAP2_FILE, header=FALSE, sep="\t")
+
+df_paf_1 <- fread(PAF_HAP1_FILE, header=FALSE, fill=TRUE) %>% as.data.frame()
+df_paf_2 <- fread(PAF_HAP2_FILE, header=FALSE, fill=TRUE) %>% as.data.frame()
+
+df_reass <- read.table(REASSIGN_FILE, header=TRUE, sep="\t")
+
+df_ctg_1 <- read.table(CTG_HAP1_FILE, header = FALSE)$V1 %>% str_remove(">")
+df_ctg_2 <- read.table(CTG_HAP2_FILE, header = FALSE)$V1 %>% str_remove(">")
+
+
+table(df_reass$ctg[df_reass$dest=="hap1"] %in% df_ctg_1)
+table(df_reass$ctg[df_reass$dest=="hap1"] %in% df_ctg_2)
+table(df_reass$ctg[df_reass$dest=="hap2"] %in% df_ctg_1)
+table(df_reass$ctg[df_reass$dest=="hap2"] %in% df_ctg_2)
+
+
+df_reass$final_location <- lapply(seq_down(df_reass), function(x){
+  results <- ""
+  
+  if(grepl(df_reass$ctg[x], df_ctg_1) %>% any){
+    results <- c(results, "HAP1")
+  }
+  if(grepl(df_reass$ctg[x], df_ctg_2) %>% any){
+    results <- c(results, "HAP2")
+  }
+  return(results)
+}) 
+
 
 ```
 
 
 
 
+```{r}
+library(GenomicRanges)
+library(IRanges)
+
+PAF_FILE <- "C:/docs/autism/fix_sex/BK143_fa_hap1.paf"
+df0 <- fread(PAF_FILE, header=FALSE, fill=TRUE) %>% as.data.frame()
+df0$V24 <- NULL
+df0$V25 <- NULL
+
+df1 <- lapply(df0$V1 %>% u, function(x){
+  temp1 <- df0[df0$V1==x, ]
+  AS_SCORE <- temp1$V15 %>% str_remove("AS:i:") %>% as.numeric()
+  return(temp1[which(AS_SCORE==max(AS_SCORE)), ])
+}) %>% do.call(rbind, .) 
+
+gr1 <- GRanges(seqnames = df1$V6, 
+               ranges=IRanges(start=df1$V8,
+                              end=df1$V9))
+gr1 <- sortSeqlevels(gr1)
+gr1 <- sort(gr1)
+
+df2 <- reduce(gr1) %>% as.data.frame(stringsAsFactors=FALSE)
+df2$seqnames <- df2$seqnames %>% as.character()
 
 
-
+```
 
 
 

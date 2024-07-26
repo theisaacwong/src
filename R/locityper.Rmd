@@ -66,3 +66,16 @@ df0 <- lapply(seq_along(list_jsons), function(x){
 
 ```
 
+```{r}
+df0 <- fread("C:/docs/locityper/muc5ac_haplogroups_manifest.txt") %>% as.data.frame()
+df1 <- fread("C:/docs/aou/locityper.MUC5AC.tsv") %>% as.data.frame()
+
+
+all_genotypes <- df1$genotype %>% str_split(",") %>% unlist %>% u
+  
+df0$is_avail <- df0$haplotype %in% all_genotypes
+
+missing_samples <- df0$haplotype[df0$is_avail == FALSE]
+write.table(missing_samples, "C:/docs/aou/missing_haplotypes.txt", quote=FALSE, row.names = FALSE, col.names = FALSE)
+```
+

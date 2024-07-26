@@ -1,0 +1,58 @@
+---
+title: "generic"
+output: html_document
+date: "2024-07-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+df0 <- read.table("C:/docs/etc/miss_fofn.txt", header=FALSE)
+df1 <- read.table("C:/docs/etc/lra.find", header=FALSE)
+
+list_by_sample_long <- lapply(df0$V1, function(x){
+  df1$V1[grepl(x, df1$V1)]
+})
+names(list_by_sample_long) <- df0$V1
+
+lapply(seq_along(list_by_sample_long), function(x){
+  write.table(list_by_sample_long[[x]], paste0("C:/docs/etc/fastas/", names(list_by_sample_long)[x], "_files.txt"), row.names = FALSE, quote=FALSE, col.names = FALSE)
+})
+```
+
+
+```{r}
+fasta_strings <- c("\\.fa", "\\.fq", "\\.fasta", "\\.fastq")
+endings <- c(".gz$", "$")
+temp1 <- expand.grid(fasta_strings, endings) %>% as.data.frame()
+temp2 <- paste0(temp1$Var1, temp1$Var2, collapse = ")|(")
+MY_REGEX <- paste0("(", temp2, ")")
+
+list_type_by_sample <- lapply(seq_along(df0$V1), function(x){
+  hiC <- lapply(x, function(x){
+    possible_strings <- list_by_sample_long[[x]]
+    possible_strings <- possible_strings[!grepl("assemblies", possible_strings)]
+    
+    possible_strings[grepl(MY_REGEX, possible_strings)]
+  }) %>% unlist
+})
+names(list_type_by_sample) <- df0$V1
+```
+
+
+
+```{r}
+library(stringr)
+library(magrittr)
+df0 <- data.frame(Chr=LETTERS[1:7], 
+                  Start = 1:7,
+                  End = 2:8,
+                  Samples=c("Eye1","Liver3", "Eye1", "Liver1,Eye4", "Eye3,Spleen3", "Liver2,Eye1", "Eye1,Eye2,Eye3"))
+df0$tissues <- df0$Samples %>% str_remove_all("[0-9]") %>% str_split(",")
+unique_tissues <- df0$tissues %>% unlist %>% unique
+df0$N_tissues <- lapply(df0$tissues, function(x){sum(unique_tissues %in% x)}) %>% unlist
+
+```
+
