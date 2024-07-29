@@ -15,7 +15,9 @@ df_index <- read.table(INDEX_FAI, header=FALSE, comment.char="")
 colnames(df_index) <- c("chr", "length", "V3", "V4", "V5")
 
 df_coverage <- lapply(INPUT_PAF_FOFN %>% readLines, function(INPUT_PAF){
+  print(INPUT_PAF)
   df0 <- fread(INPUT_PAF, header=FALSE, fill=TRUE) %>% as.data.frame()
+  df0$V23 <- NULL
   df0$V24 <- NULL
   df0$V25 <- NULL
 
@@ -23,7 +25,7 @@ df_coverage <- lapply(INPUT_PAF_FOFN %>% readLines, function(INPUT_PAF){
     temp1 <- df0[df0$V1==x, ]
     AS_SCORE <- temp1$V15 %>% str_remove("AS:i:") %>% as.numeric()
     return(temp1[which(AS_SCORE==max(AS_SCORE)), ])
-  }) %>% do.call(rbind, .)
+  }) %>% do.call(rbind, .) %>% as.data.frame()
 
   gr1 <- GRanges(seqnames = df1$V6,
                  ranges=IRanges(start=df1$V8,
@@ -35,16 +37,16 @@ df_coverage <- lapply(INPUT_PAF_FOFN %>% readLines, function(INPUT_PAF){
   df2$seqnames <- df2$seqnames %>% as.character()
   df2$length <- df2$end - df2$start
 
-  MY_CHROMOSOMES <- sort(unique(df2$chr))
+  MY_CHROMOSOMES <- sort(unique(df2$seqnames))
   coverage_by_chrom <- lapply(MY_CHROMOSOMES, function(x){
-    curr_sum <- sum(df2$length[df2$chr == x])
+    curr_sum <- sum(df2$length[df2$seqnames == x])
     return(curr_sum)
   }) %>% as.data.frame()
   names(coverage_by_chrom) <- MY_CHROMOSOMES
   coverage_by_chrom$SAMPLE <- INPUT_PAF # %>% str_extract("....._(fa|mo|p1|s1|s2)")
   return(coverage_by_chrom[, c("SAMPLE", MY_CHROMOSOMES)])
 
-}) %>% do.call(rbind, .)
+}) %>% do.call(rbind.fill, .)
 
 df_coverage$chrM <- NULL
 
