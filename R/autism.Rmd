@@ -1082,6 +1082,127 @@ df2$seqnames <- df2$seqnames %>% as.character()
 ```
 
 
+```{r}
+df0 <- fread("C:/docs/autism/asm_qc/chromosome_coverage_percentage_fixed.tsv") %>% as.data.frame()
+lapply(2:25, function(x){
+  
+  hist(df0[[x]]) %>% plot
+  
+})
+```
 
 
+
+```{r}
+df01 <- data.frame(SAMPLE=all_samples, 
+                   ROLE=all_samples %>% ifelse(grepl("_p.", all_samples), "proband", 
+                                               ifelse(grepl("_s.", all_samples), "sibling", 
+                                                      ifelse(grepl("_mo", all_samples), "mother", "father"))))
+```
+
+
+```{r}
+df0 <- fread("C:/docs/autism/files_paf.fofn", header=FALSE) %>% as.data.frame()
+df_paf1 <- data.frame(paf=df0$V1[grepl("_hap1", df0$V1)])
+df_paf2 <- data.frame(paf=df0$V1[grepl("_hap2", df0$V1)])
+df_paf1$sample <- df_paf1$paf %>% bname %>% str_remove("_hap.*")
+df_paf2$sample <- df_paf2$paf %>% bname %>% str_remove("_hap.*")
+
+df1 <- data.frame(SAMPLE = df_paf1$sample[df_paf1$sample %in% df_paf2$sample] %>% sort %>% u)
+
+df1$ROLE <- ifelse(grepl("_p.", df1$SAMPLE), "proband", 
+                   ifelse(grepl("_s.", df1$SAMPLE), "sibling", 
+                          ifelse(grepl("_mo", df1$SAMPLE), "mother", "father")))
+
+df1$FAMILY <- df1$SAMPLE %>% str_remove("_..$")
+df1 <- df1[order(df1$FAMILY), ]
+
+df1$HAP1 <- lapply(df1$SAMPLE, function(x){
+  df_paf1$paf[df_paf1$sample==x][1]
+}) %>% unlist
+
+df1$HAP2 <- lapply(df1$SAMPLE, function(x){
+  df_paf2$paf[df_paf2$sample==x][1]
+}) %>% unlist
+
+temp1 <- srt(df1$FAMILY)
+df2 <- df1[df1$FAMILY %in% names(temp1)[temp1==4], ]
+
+write.table(df2, "C:/docs/autism/concat_chrom.man.test.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+
+df3 <- data.frame(SAMPLE=c(paste0(df2$SAMPLE), paste0(df2$SAMPLE)), 
+           ROLE="sibling", 
+           FAMILY=c(paste0(df2$FAMILY), paste0(df2$FAMILY)),
+           HAP1=c(df2$HAP1, df2$HAP2),
+           HAP2=c(df2$HAP1, df2$HAP2))
+df3 <- df3[!grepl("(_fa)|(_mo)", df3$SAMPLE), ]
+write.table(df3, "C:/docs/autism/man.ver2.test.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+
+df4 <- data.frame(SAMPLE=df2$SAMPLE[df2$ROLE=="sibling"])
+
+```
+
+
+
+```{r}
+df00 <- read_sheet("https://docs.google.com/spreadsheets/d/1NYBlpsY9rizPnUMT_qE1oHg8ZGnYocCaMk7CXciZqyk/edit#gid=0", sheet = "Individual_Stats")
+df01 <- df00 %>% as.data.frame()
+df02 <- df01[grepl("batch1", df01$Deposit_HiFi), ]
+
+df02_pro <- df02[grep("_p", df02$SP_ID), ]
+df02_sib <- df02[grep("_s", df02$SP_ID), ]
+
+df0 <- fread("C:/docs/autism/paf_man.txt", header=FALSE) %>% as.data.frame()
+df_paf1 <- data.frame(paf=df0$V1[grepl("_hap1", df0$V1)])
+df_paf2 <- data.frame(paf=df0$V1[grepl("_hap2", df0$V1)])
+df_paf1$sample <- df_paf1$paf %>% bname %>% str_remove("_hap.*")
+df_paf2$sample <- df_paf2$paf %>% bname %>% str_remove("_hap.*")
+
+df02_pro <- df02_sib
+df_pro <- data.frame(SAMPLE = df02_pro$SP_ID %>% paste0(rep(c("hap1", "hap2"), each=nrow(df02_pro))),
+                     ROLE = paste0(rep(c("hap1", "hap2"), each=nrow(df02_pro))))
+df_pro$FAMILY <- df_pro$SAMPLE %>% str_extract(".*(?=_)")
+df_pro$HAP1 <- seq_down(df_pro) %>% lapply(function(x){
+  sample_id <- df_pro$SAMPLE[x] %>% str_remove(df_pro$ROLE[x])
+  if(df_pro$ROLE[x] == "hap1"){
+    rval <- df_paf1$paf[df_paf1$sample==sample_id]
+  } else {
+    rval <- df_paf2$paf[df_paf2$sample==sample_id]
+  }
+  
+  if(length(rval)!=1){
+    return(rval[length(rval)])
+  } else {
+    return(rval)
+  }
+}) %>% unlist
+
+df_pro$HAP2 <- seq_down(df_pro) %>% lapply(function(x){
+  sample_id <- df_pro$SAMPLE[x] %>% str_remove(df_pro$ROLE[x])
+  if(df_pro$ROLE[x] == "hap1"){
+    rval <- df_paf1$paf[df_paf1$sample==sample_id]
+  } else {
+    rval <- df_paf2$paf[df_paf2$sample==sample_id]
+  }
+  
+  if(length(rval)!=1){
+    return(rval[length(rval)])
+  } else {
+    return(rval)
+  }
+}) %>% unlist
+
+# write.table(df_pro, "C:/docs/autism/concat_chrom_sib.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+```
+
+
+```{r}
+df_col <- read.table("C:/docs/etc/my_colors.txt", header=FALSE, sep="\t")
+df_col$xkcd <- paste0("'xkcd:", df_col$V1, "'")
+
+paste(df_col$xkcd, collapse = ", ")
+
+```
 

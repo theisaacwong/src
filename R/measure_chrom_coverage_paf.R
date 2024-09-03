@@ -7,7 +7,9 @@ library(IRanges)
 library(stringr)
 
 INPUT_PAF_FOFN <- args[1]
+INPUT_PAF_FOFN <- "C:/docs/autism/plots/paf/files.local.paf2"
 INDEX_FAI <- "/net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v2.0/T2T-CHM13v2.fasta.fai"
+INDEX_FAI <- "C:/docs/autism/plots/paf/T2T-CHM13v2.fasta.fai"
 
 OUTPUT_FILE <- args[2]
 
@@ -27,9 +29,8 @@ df_coverage <- lapply(INPUT_PAF_FOFN %>% readLines, function(INPUT_PAF){
     return(temp1[which(AS_SCORE==max(AS_SCORE)), ])
   }) %>% do.call(rbind, .) %>% as.data.frame()
 
-  gr1 <- GRanges(seqnames = df1$V6,
-                 ranges=IRanges(start=df1$V8,
-                                end=df1$V9))
+  gr1 <- GRanges(seqnames = df1$V6,ranges=IRanges(start=df1$V8,end=df1$V9))
+  gr1 <- GRanges(seqnames = df0$V6,ranges=IRanges(start=df0$V8,end=df0$V9))
   gr1 <- sortSeqlevels(gr1)
   gr1 <- sort(gr1)
 

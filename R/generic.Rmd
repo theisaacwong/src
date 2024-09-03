@@ -56,3 +56,8 @@ df0$N_tissues <- lapply(df0$tissues, function(x){sum(unique_tissues %in% x)}) %>
 
 ```
 
+```{r}
+library(jsonlite)
+df0 <- read_json("C:/docs/temp/ncdu_2024-08-26")
+```
+

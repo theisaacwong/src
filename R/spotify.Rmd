@@ -1,0 +1,144 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-08-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(jsonlite)
+
+files <- list.files("C:/docs/mike/my_spotify_data/Spotify Extended Streaming History/", pattern = "json", full.names = TRUE)
+
+df0 <- lapply(files, function(x){read_json(x)}) %>% do.call(c, .)
+df1 <- do.call(rbind, df0) %>% as.data.frame()
+
+trackToTime <- HashMap$new()
+temp1 <- lapply(seq_along(df0), function(x){
+  if(!grepl("^2024", df0[[x]]$ts)){return(-1)}
+  curr_track <- df0[[x]]$master_metadata_track_name
+  if(is.null(curr_track)){return(x)}
+  # print(paste0(x, " ", curr_track))
+  if(trackToTime$containsKey(curr_track)){
+    trackToTime$put(curr_track, trackToTime$get(curr_track) + df0[[x]]$ms_played)
+  } else {
+    trackToTime$put(curr_track, df0[[x]]$ms_played)
+  }
+  return(0)
+}) %>% unlist
+temp1 <- trackToTime$toString()
+
+df2 <- data.frame(track = temp1 %>% names(),
+                  time = unname(unlist(temp1)) / 3600000)
+df2 <- df2[order(df2$time, decreasing = TRUE), ]
+dft <- df2
+
+artistToTime <- HashMap$new()
+temp1 <- lapply(seq_along(df0), function(x){
+  if(!grepl("^2024", df0[[x]]$ts)){return(-1)}
+  curr_artist <- df0[[x]]$master_metadata_album_artist_name
+  if(is.null(curr_artist)){return(x)}
+  # print(paste0(x, " ", curr_artist))
+  if(artistToTime$containsKey(curr_artist)){
+    artistToTime$put(curr_artist, artistToTime$get(curr_artist) + df0[[x]]$ms_played)
+  } else {
+    artistToTime$put(curr_artist, df0[[x]]$ms_played)
+  }
+  return(0)
+}) %>% unlist
+temp1 <- artistToTime$toString()
+
+df2 <- data.frame(artist = temp1 %>% names(),
+                  time = unname(unlist(temp1)) / 3600000)
+df2 <- df2[order(df2$time, decreasing = TRUE), ]
+dfa <- df2
+
+trackToArtist <- HashMap$new()
+temp1 <- lapply(seq_along(df0), function(x){
+  curr_track <- df0[[x]]$master_metadata_track_name
+  if(is.null(curr_track)){return(x)}
+  trackToArtist$append(curr_track, df0[[x]]$master_metadata_album_artist_name)
+  return(0)
+}) %>% unlist
+
+dft$artist <- lapply(dft$track, function(x){names(srt(trackToArtist$get(x)))[1]}) %>% unlist
+```
+
+```{r}
+library(jsonlite)
+
+files <- list.files("C:/docs/mike/my_spotify_data/Spotify Extended Streaming History/", pattern = "json", full.names = TRUE)
+
+df0 <- lapply(files, function(x){read_json(x)}) %>% do.call(c, .)
+df1 <- do.call(rbind, df0) %>% as.data.frame()
+
+trackToTime <- HashMap$new()
+temp1 <- lapply(seq_along(df0), function(x){
+  curr_track <- df0[[x]]$master_metadata_track_name
+  if(is.null(curr_track)){return(x)}
+  # print(paste0(x, " ", curr_track))
+  if(trackToTime$containsKey(curr_track)){
+    trackToTime$put(curr_track, trackToTime$get(curr_track) + df0[[x]]$ms_played)
+  } else {
+    trackToTime$put(curr_track, df0[[x]]$ms_played)
+  }
+  return(0)
+}) %>% unlist
+temp2 <- df1[temp1[temp1!=0], ]
+temp1 <- trackToTime$toString()
+
+df2 <- data.frame(track = temp1 %>% names(),
+                  time = unname(unlist(temp1)) / 3600000)
+df2 <- df2[order(df2$time, decreasing = TRUE), ]
+dft0 <- df2
+
+trackToArtist <- HashMap$new()
+temp1 <- lapply(seq_along(df0), function(x){
+  curr_track <- df0[[x]]$master_metadata_track_name
+  if(is.null(curr_track)){return(x)}
+  trackToArtist$append(curr_track, df0[[x]]$master_metadata_album_artist_name)
+  return(0)
+}) %>% unlist
+dft0$artist <- lapply(dft0$track, function(x){names(srt(trackToArtist$get(x)))[1]}) %>% unlist
+
+artistToTime <- HashMap$new()
+temp1 <- lapply(seq_along(df0), function(x){
+  curr_artist <- df0[[x]]$master_metadata_album_artist_name
+  if(is.null(curr_artist)){return(x)}
+  # print(paste0(x, " ", curr_artist))
+  if(artistToTime$containsKey(curr_artist)){
+    artistToTime$put(curr_artist, artistToTime$get(curr_artist) + df0[[x]]$ms_played/1000)
+  } else {
+    artistToTime$put(curr_artist, df0[[x]]$ms_played/1000)
+  }
+  return(0)
+}) %>% unlist
+temp2 <- df1[temp1[temp1!=0], ]
+temp1 <- artistToTime$toString()
+
+df2 <- data.frame(artist = temp1 %>% names(),
+                  time = unname(unlist(temp1)) / 3600)
+df2 <- df2[order(df2$time, decreasing = TRUE), ]
+dfa0 <- df2
+```
+
+
+
+```{r}
+dfa_plot <- within(dfa, artist <- factor(artist, levels=names(sort(table(artist), decreasing = TRUE))))
+
+g1 <- ggplot(dfa[1:50, ], aes(y=reorder(artist, time), x=time)) + 
+  geom_bar(stat="identity")
+g1
+```
+
+## set the levels in order we want
+theTable <- within(theTable, 
+                   Position <- factor(Position, 
+                                      levels=names(sort(table(Position), 
+                                                        decreasing=TRUE))))
+## plot
+ggplot(theTable,aes(x=Position))+geom_bar(binwidth=1)
