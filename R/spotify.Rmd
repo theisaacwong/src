@@ -17,16 +17,27 @@ df0 <- lapply(files, function(x){read_json(x)}) %>% do.call(c, .)
 df1 <- do.call(rbind, df0) %>% as.data.frame()
 
 trackToTime <- HashMap$new()
+trackToLength <- HashMap$new()
+artistToMonthToTime <- HashMap$new()
+
 temp1 <- lapply(seq_along(df0), function(x){
   if(!grepl("^2024", df0[[x]]$ts)){return(-1)}
   curr_track <- df0[[x]]$master_metadata_track_name
   if(is.null(curr_track)){return(x)}
-  # print(paste0(x, " ", curr_track))
+
   if(trackToTime$containsKey(curr_track)){
     trackToTime$put(curr_track, trackToTime$get(curr_track) + df0[[x]]$ms_played)
   } else {
     trackToTime$put(curr_track, df0[[x]]$ms_played)
   }
+  
+  if(trackToLength$containsKey(curr_track)){
+    trackToTime$put(curr_track, max(df0[[x]]$ms_played), trackToTime$get(curr_track))
+  } else {
+    trackToTime$put(curr_track, df0[[x]]$ms_played)    
+  }
+  
+  
   return(0)
 }) %>% unlist
 temp1 <- trackToTime$toString()
@@ -142,3 +153,77 @@ theTable <- within(theTable,
                                                         decreasing=TRUE))))
 ## plot
 ggplot(theTable,aes(x=Position))+geom_bar(binwidth=1)
+```{r}
+library(plyr)
+TOP_N_ARTIST <- 4
+
+files <- list.files("C:/docs/mike/my_spotify_data/Spotify Extended Streaming History/", pattern = "json", full.names = TRUE)
+df0 <- lapply(files, function(x){read_json(x)}) %>% do.call(c, .)
+df1 <- do.call(rbind, df0) %>% as.data.frame()
+df2 <- df0 %>% lapply(function(x){data.frame(as.list(unlist(x)), stringsAsFactors = FALSE)})
+df3 <- rbind.fill(df2)
+df3[is.na(df3)] <- "NA"
+df3 <- df3[df3$master_metadata_album_artist_name != "NA", ]
+df3$year <- df3$ts %>% str_extract("^202.(?=-)")
+df3$month <- df3$ts %>% str_extract("(?<=-)..(?=-)")
+df3$timecode <- paste0(df3$year, df3$month) %>% as.numeric()
+df3$binID <- paste0(df3$timecode, "__", df3$master_metadata_album_artist_name)
+df3$ms_played <- df3$ms_played %>% as.numeric()
+
+df_monthly <- lapply(df3$binID %>% u, function(x){
+  df_temp <- df3[df3$binID == x, ]
+  rval <- data.frame(master_metadata_album_artist_name = df_temp$master_metadata_album_artist_name[1],
+                     year = df_temp$year[1], 
+                     month = df_temp$month[1], 
+                     timecode = df_temp$timecode[1],
+                     binID = df_temp$binID[1],
+                     time_minute = sum(df_temp$ms_played)/60000)
+  return(rval)
+}) %>% do.call(rbind, .)
+df_monthly$hour <- df_monthly$time_minute / 60
+
+df_condensed <- df_monthly
+df_condensed <- lapply(df_monthly$timecode %>% u, function(x){
+  df_temp <- df_monthly[df_monthly$timecode == x, ]
+  top_artists_monthly <- df_temp$master_metadata_album_artist_name[order(df_temp$hour, decreasing = TRUE)][1:TOP_N_ARTIST]
+  df_temp1 <- df_temp[df_temp$master_metadata_album_artist_name %in% top_artists_monthly, ]
+  df_temp2 <- rbind(df_temp1, 
+                    data.frame(master_metadata_album_artist_name = "Other", 
+                               year = df_temp$year[1], 
+                               month = df_temp$month[1],
+                               timecode = df_temp$timecode[1],
+                               binID = paste0(df_temp$timecode[1], "__Other"),
+                               time_minute = sum(df_temp$time_minute[!df_temp$master_metadata_album_artist_name %in% top_artists_monthly]),
+                               hour = sum(df_temp$hour[!df_temp$master_metadata_album_artist_name %in% top_artists_monthly]))) 
+  df_temp2$n_artist <- df_temp$master_metadata_album_artist_name %>% lu
+  df_temp2 <- df_temp2[order(df_temp2$hour, decreasing = TRUE), ]
+  return(df_temp2)
+}) %>% do.call(rbind, .)
+
+df_filtered <- df_condensed
+df_filtered <- df_filtered[df_filtered$year == "2023", ]
+df_filtered <- df_filtered[order(df_filtered$timecode, decreasing = FALSE), ]
+timeCodeToX <- HashMap$new()
+devnull <- lapply(seq_down(df_filtered), function(x){
+  curr_key <- paste0("KEY_", df_filtered$timecode[x])
+  if(timeCodeToX$containsKey(curr_key) == FALSE){
+    timeCodeToX$put(curr_key, timeCodeToX$size())
+  }
+})
+df_filtered$rowID <- lapply(seq_down(df_filtered), function(x){timeCodeToX$get( paste0("KEY_", df_filtered$timecode[x]))}) %>% unlist + 1
+
+df_filtered$total_a_time <- lapply(df_filtered$master_metadata_album_artist_name, function(x){df_filtered$hour[df_filtered$master_metadata_album_artist_name==x] %>% sum}) %>% unlist
+df_filtered$master_metadata_album_artist_name <- reorder(df_filtered$master_metadata_album_artist_name, df_filtered$total_a_time, decreasing = FALSE)
+df_filtered$master_metadata_album_artist_name <- factor(df_filtered$master_metadata_album_artist_name, levels=levels(df_filtered$master_metadata_album_artist_name))
+
+
+ggplot(df_filtered, aes(fill=master_metadata_album_artist_name, y=hour, x = rowID, label = master_metadata_album_artist_name)) + 
+  geom_bar(position="stack", stat="identity") +
+  scale_x_continuous(breaks = df_filtered$rowID %>% u, labels = df_filtered$timecode %>% u) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+  geom_text(size = 3, position = position_stack(vjust = 0.5)) +
+  xlab("") + 
+  ylab("hours")
+```
+
+want to calculate the top 7 artists per month then have an "other" category for everything else that month

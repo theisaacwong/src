@@ -1154,13 +1154,13 @@ df02 <- df01[grepl("batch1", df01$Deposit_HiFi), ]
 df02_pro <- df02[grep("_p", df02$SP_ID), ]
 df02_sib <- df02[grep("_s", df02$SP_ID), ]
 
-df0 <- fread("C:/docs/autism/paf_man.txt", header=FALSE) %>% as.data.frame()
+df0 <- fread("C:/docs/autism/paf/hg38_paf.txt", header=FALSE) %>% as.data.frame()
 df_paf1 <- data.frame(paf=df0$V1[grepl("_hap1", df0$V1)])
 df_paf2 <- data.frame(paf=df0$V1[grepl("_hap2", df0$V1)])
 df_paf1$sample <- df_paf1$paf %>% bname %>% str_remove("_hap.*")
 df_paf2$sample <- df_paf2$paf %>% bname %>% str_remove("_hap.*")
 
-df02_pro <- df02_sib
+# df02_pro <- df02_sib
 df_pro <- data.frame(SAMPLE = df02_pro$SP_ID %>% paste0(rep(c("hap1", "hap2"), each=nrow(df02_pro))),
                      ROLE = paste0(rep(c("hap1", "hap2"), each=nrow(df02_pro))))
 df_pro$FAMILY <- df_pro$SAMPLE %>% str_extract(".*(?=_)")
@@ -1172,8 +1172,8 @@ df_pro$HAP1 <- seq_down(df_pro) %>% lapply(function(x){
     rval <- df_paf2$paf[df_paf2$sample==sample_id]
   }
   
-  if(length(rval)!=1){
-    return(rval[length(rval)])
+  if(length(rval)==0){
+    return("NA")
   } else {
     return(rval)
   }
@@ -1187,14 +1187,15 @@ df_pro$HAP2 <- seq_down(df_pro) %>% lapply(function(x){
     rval <- df_paf2$paf[df_paf2$sample==sample_id]
   }
   
-  if(length(rval)!=1){
-    return(rval[length(rval)])
+  if(length(rval)==0){
+    return("NA")
   } else {
     return(rval)
   }
 }) %>% unlist
 
-# write.table(df_pro, "C:/docs/autism/concat_chrom_sib.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+write.table(df_pro, "C:/docs/autism/paf/concat_chrom_pro.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+# write.table(df_pro[df_pro$HAP1!="NA", ], "C:/docs/autism/paf/concat_chrom_sib.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
 ```
 
 
@@ -1203,6 +1204,20 @@ df_col <- read.table("C:/docs/etc/my_colors.txt", header=FALSE, sep="\t")
 df_col$xkcd <- paste0("'xkcd:", df_col$V1, "'")
 
 paste(df_col$xkcd, collapse = ", ")
+
+```
+
+```{r}
+
+files <- list.files(".", full.names = TRUE, recursive = TRUE, pattern = ".tsv")
+df01 <- lapply(files, function(x){
+  df_temp <- fread(x, header=FALSE) %>% as.data.frame()
+  df_temp <- df_temp[df_temp$V7 >= 0.95 & df0$V4 < 3, ]
+  rval <- data.frame(sample = bname(x), 
+                     coverage = sum(df1$V3 - df1$V2))
+  return(rval)
+}) %>% do.call(rbind, .)
+write.table(df01, )
 
 ```
 
