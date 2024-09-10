@@ -440,10 +440,83 @@ my_plots <- lapply(my_years, function(this_year){
     ylab("Hours Listened") + 
     ggtitle(paste0("Spotify top ", TOP_N_ARTIST, " Songs by month, ", this_year)) + 
     scale_fill_manual(name = "Artist", values = gg_color_hue(df_filtered$spotify_track_uri %>% lu) %>% my_rev) + 
-    # scale_y_continuous(breaks=seq(0, max_hours, 5)) + 
+    scale_y_continuous(breaks=seq(0, max_hours+5, 2)) +
     theme(legend.position="none")
   return(g1)
 })
+my_plots
+```
+
+
+# top tracks by year
+```{r}
+trackToLength <- HashMap$new()
+trackToLengths <- HashMap$new()
+trackToName <- HashMap$new()
+
+temp1 <- lapply(seq_down(df3), function(x){
+  curr_track <- df3$spotify_track_uri[x]
+  if(is.null(curr_track)){return(x)}
+  
+  trackToLengths$append(curr_track, df3$ms_played[x])    
+  trackToName$put(curr_track, df3$master_metadata_track_name[x])
+  
+  return(0)
+}) %>% unlist
+temp1 <- lapply(trackToLengths$keySet(), function(x){trackToLength$put(x, median(trackToLengths$get(x)))})
+
+
+
+TOP_N_ARTIST <- 10
+df3$binID <- paste0(df3$year, "__", df3$spotify_track_uri )
+df_monthly <- lapply(df3$binID %>% u, function(x){
+  df_temp <- df3[df3$binID == x, ]
+  rval <- data.frame(spotify_track_uri  = df_temp$spotify_track_uri[1],
+                     master_metadata_track_name = df_temp$master_metadata_track_name[1],
+                     year = df_temp$year[1], 
+                     month = df_temp$month[1], 
+                     timecode = df_temp$timecode[1],
+                     binID = df_temp$binID[1],
+                     time_minute = sum(df_temp$ms_played)/60000)
+  rval$n_listens <- rval$time_minute / (trackToLength$get(df_temp$spotify_track_uri[1])/60000)
+  return(rval)
+}) %>% do.call(rbind, .)
+df_monthly$hour <- df_monthly$time_minute / 60
+df_monthly$label <- paste0(df_monthly$master_metadata_track_name, " (", round(df_monthly$n_listens), ")")
+
+df_condensed <- df_monthly
+df_condensed <- lapply(df_monthly$year %>% u, function(x){
+  df_temp <- df_monthly[df_monthly$year == x, ]
+  top_tracks_monthly <- df_temp$spotify_track_uri[order(df_temp$hour, decreasing = TRUE)][1:TOP_N_ARTIST]
+  df_temp1 <- df_temp[df_temp$spotify_track_uri  %in% top_tracks_monthly, ]
+  df_temp1 <- df_temp1[order(df_temp1$hour, decreasing = TRUE), ]
+  return(df_temp1)
+}) %>% do.call(rbind, .)
+df_condensed <- df_condensed[df_condensed$year != "2020", ]
+
+df_filtered <- df_condensed
+df_filtered <- df_filtered[order(df_filtered$timecode, decreasing = FALSE), ]
+timeCodeToX <- HashMap$new()
+devnull <- lapply(seq_down(df_filtered), function(x){
+  curr_key <- paste0("KEY_", df_filtered$timecode[x])
+  if(timeCodeToX$containsKey(curr_key) == FALSE){
+    timeCodeToX$put(curr_key, timeCodeToX$size())
+  }
+})
+max_hours <- lapply(df_filtered$timecode %>% u, function(x){sum(df_filtered$hour[df_filtered$timecode==x])}) %>% unlist %>% max
+df_filtered$rowID <- lapply(seq_down(df_filtered), function(x){timeCodeToX$get( paste0("KEY_", df_filtered$timecode[x]))}) %>% unlist + 1
+df_filtered$total_a_time <- lapply(df_filtered$spotify_track_uri , function(x){df_filtered$hour[df_filtered$spotify_track_uri ==x] %>% sum}) %>% unlist
+df_filtered$spotify_track_uri  <- reorder(df_filtered$spotify_track_uri , df_filtered$total_a_time, decreasing = FALSE)
+df_filtered$spotify_track_uri  <- factor(df_filtered$spotify_track_uri , levels=levels(df_filtered$spotify_track_uri ))
+ggplot(df_filtered, aes(fill=spotify_track_uri , y=hour, x = year, label = label )) + 
+  geom_bar(position="stack", stat="identity") +
+  geom_text(size = 3, position = position_stack(vjust = 0.5)) +
+  xlab("") + 
+  ylab("Hours Listened") + 
+  ggtitle(paste0("Spotify top ", TOP_N_ARTIST, " Songs by month, ")) + 
+  scale_fill_manual(name = "Artist", values = gg_color_hue(df_filtered$spotify_track_uri %>% lu) %>% my_rev) + 
+  scale_y_continuous(breaks=seq(0, max_hours+5, 25)) +
+  theme(legend.position="none")
 my_plots
 ```
 
