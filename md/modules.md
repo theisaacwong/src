@@ -13,7 +13,7 @@ umask 002
 ```
 
 # Methods for installing modules
-## Conda Env
+## Conda Envsssh lige
 ## https://github.com/deeptools/HiCExplorer
 ```bash
 MODNAME="hicexplorer"
@@ -110,4 +110,3 @@ prepend-path    PATH    $MOD_DIR/bin/
 
 setenv   MOD_MINICONDA_BASE $MOD_DIR
 ```
-

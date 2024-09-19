@@ -1221,3 +1221,15 @@ write.table(df01, )
 
 ```
 
+```{r}
+df0 <- fread("C:/docs/autism/batch_1_samples.txt") %>% as.data.frame()
+df1 <- data.frame(SAMPLE = paste0(rep(df0$sample, 2), rep(c("hap1", "hap2"), each=nrow(df0))),
+                  ROLE = rep(c("hap1", "hap2"), each=nrow(df0)), 
+                  FAMILY = rep(df0$sample, 2) %>% str_remove("_.."), 
+                  HAP1 = paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/assembly_qc/saffire_hg38/QC_results/saffire/results/", rep(df0$sample, 2), "_", rep(c("hap1", "hap2"), each=nrow(df0)), "/alignments/", rep(df0$sample, 2), "_", rep(c("hap1", "hap2"), each=nrow(df0)), ".minimap2.paf"))
+df1$HAP2 <- df1$HAP1
+
+write.table(df1, "C:/docs/autism/concat_chrom_batch_1_samples.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+```
+
