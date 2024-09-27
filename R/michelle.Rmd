@@ -1,0 +1,161 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-09-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Hifi males migration
+```{r}
+SOURCE_DIR <- "/net/eichler/vol28/projects/denovo_variation/nobackups/quads_batch_4/alignment/hifi/males/CHM13v2.0_maskedYpars/CCS/"
+DEST_DIR <- "/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/SAMPLEREGEX/alignments/PacBio_HiFi/CHM13v2.0_maskedYpars/alignment.bam"
+df0 <- fread("C:/docs/michelle/hifi_to_migrate.txt", header=FALSE) %>% as.data.frame()
+df0$SAMPLE <- df0$V1 %>% str_remove(".hifi_to_t2t.bam")
+
+df0$ORIGINAL_LOCATION <- paste0(SOURCE_DIR, df0$SAMPLE, ".hifi_to_t2t.bam")
+df0$MKDIR <- paste0(DEST_DIR %>% str_replace("SAMPLEREGEX", df0$SAMPLE)) %>% str_remove("alignment.bam")
+df0$FINAL_LOCATION <- paste0(DEST_DIR %>% str_replace("SAMPLEREGEX", df0$SAMPLE))
+
+temp1 <- lapply(seq_down(df0), function(x){
+  grepl(df0$SAMPLE[x], df0$FINAL_LOCATION[x])
+}) %>% unlist
+
+script <- c("#!/usr/bin/env bash", "set -euxo pipefail")
+script <- c(script, paste0("mkdir -p ", df0$MKDIR))
+script <- c(script, paste0("mv ", df0$ORIGINAL_LOCATION, " ", df0$FINAL_LOCATION))
+script <- c(script, paste0("mv ", df0$ORIGINAL_LOCATION, ".bai", " ", df0$FINAL_LOCATION, ".bai"))
+script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, " ", df0$V1))
+script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, ".bai", " ", df0$V1, ".bai"))
+write.table(script, "C:/docs/michelle/hifi_male_migration.sh", col.names = FALSE, row.names = FALSE, quote = FALSE)
+```
+
+# Hifi females migration
+```{r}
+SOURCE_DIR <- "/net/eichler/vol28/projects/denovo_variation/nobackups/quads_batch_4/alignment/hifi/females/CHM13v2.0_maskedY/CCS/"
+DEST_DIR <- "/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/SAMPLEREGEX/alignments/PacBio_HiFi/CHM13v2.0_maskedY/alignment.bam"
+df0 <- fread("C:/docs/michelle/hifi_to_migrate_female.txt", header=FALSE) %>% as.data.frame()
+df0$SAMPLE <- df0$V1 %>% str_remove(".hifi_to_t2t.bam")
+
+df0$ORIGINAL_LOCATION <- paste0(SOURCE_DIR, df0$SAMPLE, ".hifi_to_t2t.bam")
+df0$MKDIR <- paste0(DEST_DIR %>% str_replace("SAMPLEREGEX", df0$SAMPLE)) %>% str_remove("alignment.bam")
+df0$FINAL_LOCATION <- paste0(DEST_DIR %>% str_replace("SAMPLEREGEX", df0$SAMPLE))
+
+temp1 <- lapply(seq_down(df0), function(x){
+  grepl(df0$SAMPLE[x], df0$FINAL_LOCATION[x])
+}) %>% unlist
+
+script <- c("#!/usr/bin/env bash", "set -euxo pipefail")
+script <- c(script, paste0("mkdir -p ", df0$MKDIR))
+script <- c(script, paste0("mv ", df0$ORIGINAL_LOCATION, " ", df0$FINAL_LOCATION))
+script <- c(script, paste0("mv ", df0$ORIGINAL_LOCATION, ".bai", " ", df0$FINAL_LOCATION, ".bai"))
+script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, " ", df0$V1))
+script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, ".bai", " ", df0$V1, ".bai"))
+write.table(script, "C:/docs/michelle/hifi_female_migration.sh", col.names = FALSE, row.names = FALSE, quote = FALSE)
+```
+
+
+```{r}
+df0$RG <- ifelse(grepl("_fa", df0$SAMPLE), 1, ifelse(grepl("_mo", df0$SAMPLE), 2, ifelse(grepl("_p", df0$SAMPLE), 3, 4)))
+```
+
+# ont male migration
+```{r}
+SOURCE_DIR <- "/net/eichler/vol28/projects/denovo_variation/nobackups/quads_batch_4/alignment/ont/males/CHM13v2.0_maskedYpars/ONT/"
+DEST_DIR <- "/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/SAMPLEREGEX/alignments/nanopore/STD/CHM13v2.0_maskedYpars/alignment.bam"
+df0 <- fread("C:/docs/michelle/ont_to_migrate_male.txt", header=FALSE) %>% as.data.frame()
+df0$SAMPLE <- df0$V1 %>% str_remove(".ont_to_t2t.bam")
+
+df0$ORIGINAL_LOCATION <- paste0(SOURCE_DIR, df0$SAMPLE, ".ont_to_t2t.bam")
+df0$MKDIR <- paste0(DEST_DIR %>% str_replace("SAMPLEREGEX", df0$SAMPLE)) %>% str_remove("alignment.bam")
+df0$FINAL_LOCATION <- paste0(DEST_DIR %>% str_replace("SAMPLEREGEX", df0$SAMPLE))
+
+temp1 <- lapply(seq_down(df0), function(x){
+  grepl(df0$SAMPLE[x], df0$FINAL_LOCATION[x])
+}) %>% unlist
+
+script <- c("#!/usr/bin/env bash", "set -euxo pipefail")
+script <- c(script, paste0("mkdir -p ", df0$MKDIR))
+script <- c(script, paste0("mv ", df0$ORIGINAL_LOCATION, " ", df0$FINAL_LOCATION))
+script <- c(script, paste0("mv ", df0$ORIGINAL_LOCATION, ".bai", " ", df0$FINAL_LOCATION, ".bai"))
+script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, " ", df0$V1))
+script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, ".bai", " ", df0$V1, ".bai"))
+write.table(script, "C:/docs/michelle/ont_male_migration.sh", col.names = FALSE, row.names = FALSE, quote = FALSE)
+```
+
+# ont female migration
+```{r}
+SOURCE_DIR <- "/net/eichler/vol28/projects/denovo_variation/nobackups/quads_batch_4/alignment/ont/females/CHM13v2.0_maskedY/ONT/"
+DEST_DIR <- "/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/SAMPLEREGEX/alignments/nanopore/STD/CHM13v2.0_maskedY/alignment.bam"
+df0 <- fread("C:/docs/michelle/ont_to_migrate_female.txt", header=FALSE) %>% as.data.frame()
+df0$SAMPLE <- df0$V1 %>% str_remove(".ont_to_t2t.bam")
+
+df0$ORIGINAL_LOCATION <- paste0(SOURCE_DIR, df0$SAMPLE, ".ont_to_t2t.bam")
+df0$MKDIR <- paste0(DEST_DIR %>% str_replace("SAMPLEREGEX", df0$SAMPLE)) %>% str_remove("alignment.bam")
+df0$FINAL_LOCATION <- paste0(DEST_DIR %>% str_replace("SAMPLEREGEX", df0$SAMPLE))
+
+temp1 <- lapply(seq_down(df0), function(x){
+  grepl(df0$SAMPLE[x], df0$FINAL_LOCATION[x])
+}) %>% unlist
+
+script <- c("#!/usr/bin/env bash", "set -euxo pipefail")
+script <- c(script, paste0("mkdir -p ", df0$MKDIR))
+script <- c(script, paste0("mv ", df0$ORIGINAL_LOCATION, " ", df0$FINAL_LOCATION))
+script <- c(script, paste0("mv ", df0$ORIGINAL_LOCATION, ".bai", " ", df0$FINAL_LOCATION, ".bai"))
+script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, " ", df0$V1))
+script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, ".bai", " ", df0$V1, ".bai"))
+write.table(script, "C:/docs/michelle/ont_female_migration.sh", col.names = FALSE, row.names = FALSE, quote = FALSE)
+```
+
+
+#illumina male migration
+```{r}
+SOURCE_DIR <- "/net/eichler/vol28/projects/denovo_variation/nobackups/quads_batch_4/alignment/illumina/males/CHM13v2.0_maskedYpars/Illumina/"
+DEST_DIR <- "/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/SAMPLEREGEX/alignments/Illumina/CHM13v2.0_maskedYpars/alignment.bam"
+df0 <- fread("C:/docs/michelle/illumina_to_migrate_male.txt", header=FALSE) %>% as.data.frame()
+df0$SAMPLE <- df0$V1 %>% str_remove(".illumina_to_t2t.bam")
+
+df0$ORIGINAL_LOCATION <- paste0(SOURCE_DIR, df0$SAMPLE, ".illumina_to_t2t.bam")
+df0$MKDIR <- paste0(DEST_DIR %>% str_replace("SAMPLEREGEX", df0$SAMPLE)) %>% str_remove("alignment.bam")
+df0$FINAL_LOCATION <- paste0(DEST_DIR %>% str_replace("SAMPLEREGEX", df0$SAMPLE))
+
+temp1 <- lapply(seq_down(df0), function(x){
+  grepl(df0$SAMPLE[x], df0$FINAL_LOCATION[x])
+}) %>% unlist
+
+script <- c("#!/usr/bin/env bash", "set -euxo pipefail")
+script <- c(script, paste0("mkdir -p ", df0$MKDIR))
+script <- c(script, paste0("mv ", df0$ORIGINAL_LOCATION, " ", df0$FINAL_LOCATION))
+script <- c(script, paste0("mv ", df0$ORIGINAL_LOCATION, ".bai", " ", df0$FINAL_LOCATION, ".bai"))
+script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, " ", df0$V1))
+script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, ".bai", " ", df0$V1, ".bai"))
+write.table(script, "C:/docs/michelle/illumina_male_migration.sh", col.names = FALSE, row.names = FALSE, quote = FALSE)
+```
+
+
+
+#illumina female migration
+```{r}
+SOURCE_DIR <- "/net/eichler/vol28/projects/denovo_variation/nobackups/quads_batch_4/alignment/illumina/females/CHM13v2.0_maskedY/Illumina/"
+DEST_DIR <- "/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/SAMPLEREGEX/alignments/Illumina/CHM13v2.0_maskedY/alignment.bam"
+df0 <- fread("C:/docs/michelle/illumina_to_migrate_female.txt", header=FALSE) %>% as.data.frame()
+df0$SAMPLE <- df0$V1 %>% str_remove(".illumina_to_t2t.bam")
+
+df0$ORIGINAL_LOCATION <- paste0(SOURCE_DIR, df0$SAMPLE, ".illumina_to_t2t.bam")
+df0$MKDIR <- paste0(DEST_DIR %>% str_replace("SAMPLEREGEX", df0$SAMPLE)) %>% str_remove("alignment.bam")
+df0$FINAL_LOCATION <- paste0(DEST_DIR %>% str_replace("SAMPLEREGEX", df0$SAMPLE))
+
+temp1 <- lapply(seq_down(df0), function(x){
+  grepl(df0$SAMPLE[x], df0$FINAL_LOCATION[x])
+}) %>% unlist
+
+script <- c("#!/usr/bin/env bash", "set -euxo pipefail")
+script <- c(script, paste0("mkdir -p ", df0$MKDIR))
+script <- c(script, paste0("mv ", df0$ORIGINAL_LOCATION, " ", df0$FINAL_LOCATION))
+script <- c(script, paste0("mv ", df0$ORIGINAL_LOCATION, ".bai", " ", df0$FINAL_LOCATION, ".bai"))
+script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, " ", df0$V1))
+script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, ".bai", " ", df0$V1, ".bai"))
+write.table(script, "C:/docs/michelle/illumina_female_migration.sh", col.names = FALSE, row.names = FALSE, quote = FALSE)
+```

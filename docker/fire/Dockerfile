@@ -1,0 +1,57 @@
+FROM ubuntu:22.04
+
+WORKDIR /home
+
+#### Basic image utilities
+RUN apt-get update && \
+    apt-get full-upgrade -y && \
+    apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    wget \
+    curl \
+    bc \
+    unzip \
+    bzip2 \
+    less \
+    bedtools \
+    bcftools \
+    gcc \
+    tabix \
+    jq \
+    git \
+    gpg-agent \
+    build-essential \
+    openjdk-17-jdk \
+    cmake \
+    clang \
+    libclang-dev \
+    libncurses-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    libssl-dev \
+    liblzma-dev \
+    libcurl4-openssl-dev \
+    make \
+    cmake \
+    vim \
+    software-properties-common && \
+    apt-get -y clean  && \
+    apt-get -y autoclean  && \
+    apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install mamba
+WORKDIR /
+RUN wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+RUN bash Miniforge3-$(uname)-$(uname -m).sh -b
+
+RUN mamba create -c conda-forge -c bioconda -n snakemake 'snakemake>=8.4'
+RUN mkdir /fire
+ENV SNAKEMAKE_CONDA_PREFIX=/fire
+ENV APPTAINER_CACHEDIR=/fire
+
+WORKDIR /fire
+RUN git clone https://github.com/fiberseq/FIRE.git
+
+COPY Dockerfile .
