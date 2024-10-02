@@ -159,3 +159,5 @@ script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, " ", df0$V1))
 script <- c(script, paste0("ln -s ", df0$FINAL_LOCATION, ".bai", " ", df0$V1, ".bai"))
 write.table(script, "C:/docs/michelle/illumina_female_migration.sh", col.names = FALSE, row.names = FALSE, quote = FALSE)
 ```
+
+
