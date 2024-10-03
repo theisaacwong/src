@@ -1,0 +1,428 @@
+import pandas as pd
+from itertools import product
+from itertools import chain
+
+configfile: "config.json"
+
+REF = config["ref"]
+MANIFEST = config["manifest"]
+BED = config["bed"]
+PICARD = config["picard"]
+NAIVE = config["naive"]
+ADJUST = config["adjust"]
+DENOVO = config["denovo"]
+
+chr_df = pd.read_csv(BED, sep="\t", low_memory=False, index_col=0, header=None)
+chrs = chr_df.index
+
+manifest_df = pd.read_csv(MANIFEST, sep="\t", low_memory=False, header=0)
+manifest_df = manifest_df.astype(str)
+families = list(set(manifest_df.family))
+sample_names  = []
+sample_dict = {}
+child_dict = {}
+
+for idx, row in manifest_df.iterrows():
+	sm = row["sample"]; fm = row["family"]
+	sm_id = f"{fm}.{sm}"
+	if(fm not in sample_dict):
+		sample_dict[fm] = []
+		child_dict[fm] = []
+	sample_dict[fm].append(sm)
+	sample_names.append(sm_id)
+	if (sm[0] == 'p' or sm[0] == 's') and sm[1].isnumeric():
+		child_dict[fm].append(sm)
+
+samples = set(chain(*sample_dict.values()))
+
+localrules: all
+
+def filter_samples(*args, **kwargs):
+	for wc_comb in product(*args, **kwargs):
+		sm_id = ".".join(x[1] for x in wc_comb[0:2])
+		if sm_id in sample_names:
+			yield(wc_comb)
+
+def filter_children(*args, **kwargs):
+	for wc_comb in product(*args, **kwargs):
+		sm_id = ".".join(x[1] for x in wc_comb[0:2])
+		if sm_id in sample_names and (sm_id[-2] == 'p' or sm_id[-2] == 's') and sm_id[-1].isnumeric():
+			yield(wc_comb)
+
+def find_cram(wildcards):
+	return manifest_df.loc[(manifest_df["family"] == wildcards.family) & \
+						   (manifest_df["sample"] == wildcards.sample), 'cram'].values[0]
+
+def get_samples(wildcards):
+	return [wildcards.family + "." + x for x in sample_dict[wildcards.family]]
+
+rule all:
+	input: expand("results/{family}.{sample}.{chr}.g.vcf.gz", filter_samples, family = families, sample = samples, chr = chr_df.index),
+		expand("{family}.{sample}.denovo.gatk.tsv", filter_children, family = families, sample = samples)
+
+rule split_bed:
+	input:
+		bed = BED
+	output:
+		split =	expand("bed/{chr}.bed", chr=chr_df.index)
+	params:
+		sge_opts = " -l mfree=2G -cwd -N s_p_l_i_t"
+	shell: """
+		chrs=$(cut -f1 {input.bed})
+		for chr in $chrs; do grep -w $chr {input.bed} > bed/$chr.bed; done
+"""
+
+rule haplotypecaller:
+	input:
+		bed = "bed/{chr}.bed",
+		cram = find_cram,
+		ref = REF
+	output:
+		gvcf = "results/{family}.{sample}.{chr}.g.vcf.gz"
+	params:
+		sge_opts = " -l mfree=8G -l h_rt=96:00:0 -pe serial 4 -cwd -N fam.{family}.{sample}.{chr}.haplotypecaller"
+	shell: """
+		source /etc/profile.d/modules.sh
+		module load java/1.8.0 GATK/4.3.0.0
+
+		sample={wildcards.sample}
+		fam={wildcards.family}
+
+		gatk --java-options -Xmx8G HaplotypeCaller \
+			--native-pair-hmm-threads 4 \
+			--reference {input.ref} \
+			--input {input.cram} \
+			--output {output.gvcf} \
+			--pcr-indel-model AGGRESSIVE \
+			--intervals {input.bed} \
+			--minimum-mapping-quality 60 \
+			--read-filter MappingQualityReadFilter \
+			--read-filter NotSecondaryAlignmentReadFilter \
+			--read-filter NotSupplementaryAlignmentReadFilter \
+			-ERC GVCF
+	"""
+
+rule reheader:
+        input:
+                gvcf = "results/{family}.{sample}.{chr}.g.vcf.gz"
+        output:
+                reheaded = "results/{family}.{sample}.{chr}.reheader.g.vcf.gz"
+        params:
+                sge_opts = " -l mfree=2G -l h_rt=2:00:0 -pe serial 1 -cwd -N {sample}.{chr}.reheader"
+        shell: """
+		source /etc/profile.d/modules.sh
+		module load modules modules-init modules-gs
+		module load htslib/1.19 bcftools/1.19
+		module load tabix/0.2.6
+
+                sample={wildcards.sample}
+                chr={wildcards.chr}
+                fam={wildcards.family}
+
+                oldname=$(bcftools query -l {input.gvcf})
+
+                printf "$oldname\t$fam.$sample" > $fam.$sample.$chr.name.txt
+                bcftools reheader {input.gvcf} --output {output.reheaded} -s $fam.$sample.$chr.name.txt
+                tabix {output.reheaded}
+
+                rm $fam.$sample.$chr.name.txt
+        """
+
+rule combine_chroms:
+	input:
+		gvcfs = lambda wildcards: \
+           ["results/{fm}.{sm}.{chr}.reheader.g.vcf.gz".format(fm=wildcards.family, sm=sm, chr=wildcards.chr) \
+               for sm in sample_dict[wildcards.family]],
+		bed = BED
+	output:
+		temp = "{family}.{chr}.done.txt"
+	params:
+		sge_opts = " -l mfree=2G -l h_rt=10:00:0 -pe serial 1 -cwd -N fam.{family}.{chr}.merge"
+	shell: """
+		source /etc/profile.d/modules.sh
+		module load modules modules-init modules-gs
+		module load gsits-util/1.0
+		module load java/1.8.0 GATK/4.3.0.0
+
+		chr={wildcards.chr}
+		fam={wildcards.family}
+		gvcfs=$(echo {input.gvcfs} | sed 's/ / -V /g')
+
+		gatk --java-options "-Xmx2g" GenomicsDBImport \
+			-V $gvcfs \
+			--genomicsdb-workspace-path $fam.$chr.database \
+			--genomicsdb-vcf-buffer-size 16384000 \
+			-L {input.bed}
+
+		echo "done!" > $fam.$chr.done.txt
+	"""
+
+rule jointgenotype:
+	input:
+		temp = "{family}.{chr}.done.txt",
+		ref = REF
+	output:
+		joint = "results/{family}.{chr}.joint.vcf.gz"
+	params:
+		sge_opts = " -l mfree=2G -l h_rt=20:00:0 -pe serial 1 -cwd -N fam.{family}.{chr}.joint"
+	shell: """
+	source /etc/profile.d/modules.sh
+		module load modules modules-init modules-gs
+		module load gsits-util/1.0
+		module load java/1.8.0 GATK/4.3.0.0
+
+		chr={wildcards.chr}
+		fam={wildcards.family}
+		rm {input.temp}
+
+		gatk --java-options "-Xmx2g" GenotypeGVCFs \
+			-R {input.ref} \
+			-V gendb://$fam.$chr.database \
+			-O {output.joint}
+
+		rm -r $fam.$chr.database
+	"""
+
+rule merge_vcfs:
+	input:
+		vcfs = expand("results/{{family}}.{chr}.joint.vcf.gz", chr = chr_df.index)
+	output:
+		vcf = "{family}.gatk4.vcf.gz"
+	params:
+		sge_opts = " -l mfree=2G -l h_rt=20:00:0 -pe serial 1 -cwd -N fam.{family}.vcf_merge"
+	shell: """
+		source /etc/profile.d/modules.sh
+		module load modules modules-init modules-gs
+		module load gsits-util/1.0
+		module load htslib/1.19 bcftools/1.19
+		module load tabix/0.2.6
+
+		fam={wildcards.family}
+
+		bcftools concat {input.vcfs} -a -o $fam.gatk4.vcf
+
+		bgzip $fam.gatk4.vcf
+		tabix {output.vcf}
+	"""
+
+rule partition:
+	input:
+		vcf = "{family}.gatk4.vcf.gz",
+		ref = REF
+	output:
+		snps = "{family}.gatk4.raw.snps.vcf.gz",
+		short_indels = "{family}.gatk4.raw.1bp.indels.vcf.gz",
+		large_indels = "{family}.gatk4.raw.large.indels.vcf.gz"
+	params:
+		sge_opts = " -l mfree=2G -l h_rt=2:00:0 -pe serial 1 -cwd -N fam.{family}.partition"
+	shell: """
+		source /etc/profile.d/modules.sh
+		module load modules modules-init modules-gs
+		module load gsits-util/1.0
+		module load java/1.8.0 GATK/4.3.0.0
+
+		gatk --java-options "-Xmx2g" SelectVariants\
+			-R {input.ref}\
+			-V {input.vcf}\
+			--select-type-to-include SNP\
+			-O {output.snps}
+
+		gatk --java-options "-Xmx2g" SelectVariants\
+			-R {input.ref}\
+			-V {input.vcf}\
+			--select-type-to-include INDEL\
+			--max-indel-size 2\
+			-O {output.short_indels}
+
+		gatk --java-options "-Xmx2g" SelectVariants\
+			-R {input.ref}\
+			-V {input.vcf}\
+			--select-type-to-include INDEL\
+			--min-indel-size 3\
+			-O {output.large_indels}
+	"""
+
+rule filter_snps:
+	input:
+		raw = "{family}.gatk4.raw.snps.vcf.gz"
+	output:
+		filtered = "{family}.gatk4.filtered.snps.vcf.gz"
+	params:
+		sge_opts = " -l mfree=2G -l h_rt=20:00:0 -pe serial 1 -cwd -N fam.{family}.filter_snps"
+	shell: """
+	source /etc/profile.d/modules.sh
+		module load modules modules-init modules-gs
+		module load gsits-util/1.0
+		module load java/1.8.0 GATK/4.3.0.0
+
+		gatk --java-options "-Xmx2g" VariantFiltration\
+			-V {input.raw} \
+			-filter "QD < 2.0" --filter-name "QD2" \
+			-filter "QUAL < 30.0" --filter-name "QUAL30" \
+			-filter "ReadPosRankSum < -8.0" --filter-name "ReadPosRankSum-8" \
+			-O {output.filtered}
+	"""
+
+rule filter_indels:
+	input:
+		short = "{family}.gatk4.raw.1bp.indels.vcf.gz",
+		large = "{family}.gatk4.raw.large.indels.vcf.gz"
+	output:
+		filtered_short = "{family}.gatk4.filtered.1bp.indels.vcf.gz",
+		filtered_large = "{family}.gatk4.filtered.large.indels.vcf.gz"
+	params:
+		sge_opts = " -l mfree=2G -l h_rt=20:00:0 -pe serial 1 -cwd -N fam.{family}.filter_indels"
+	shell: """
+		source /etc/profile.d/modules.sh
+		module load modules modules-init modules-gs
+		module load gsits-util/1.0
+		module load java/1.8.0 GATK/4.3.0.0
+
+		gatk --java-options "-Xmx2g" VariantFiltration \
+			-V {input.short} \
+			-filter "QD < 8.0" --filter-name "QD2" \
+			-filter "QUAL < 30.0" --filter-name "QUAL30" \
+			-filter "ReadPosRankSum < -20.0" --filter-name "ReadPosRankSum-20" \
+			-O {output.filtered_short}
+
+		gatk --java-options "-Xmx2g" VariantFiltration \
+			-V {input.large} \
+			-filter "QD < 2.0" --filter-name "QD2" \
+			-filter "QUAL < 30.0" --filter-name "QUAL30" \
+			-filter "ReadPosRankSum < -20.0" --filter-name "ReadPosRankSum-20" \
+			-O {output.filtered_large}
+	"""
+
+rule merge_and_filter:
+	input:
+		snps = "{family}.gatk4.filtered.snps.vcf.gz",
+		short = "{family}.gatk4.filtered.1bp.indels.vcf.gz",
+		large = "{family}.gatk4.filtered.large.indels.vcf.gz",
+		picard = PICARD
+	output:
+		callset = "{family}.gatk4.callset.recode.vcf.gz"
+	params:
+		sge_opts = " -l mfree=8G -l h_rt=10:00:0 -pe serial 1 -cwd -N fam.{family}.merge_and_filter"
+	shell: """
+		source /etc/profile.d/modules.sh
+		module load modules modules-init modules-gs
+		module load gsits-util/1.0
+		module load java/1.8.0
+		module load vcftools/0.1.17
+		module load tabix/0.2.6
+
+		fam={wildcards.family}
+
+		java -jar {input.picard} SortVcf I={input.snps} O=$fam.gatk4.sorted.snps.vcf.gz
+
+		java -jar {input.picard} SortVcf I={input.short} O=$fam.gatk4.sorted.1bp.indels.vcf.gz
+
+		java -jar {input.picard} SortVcf I={input.large} O=$fam.gatk4.sorted.large.indels.vcf.gz
+
+		java -Xmx240g -jar {input.picard} MergeVcfs \
+			I=$fam.gatk4.sorted.snps.vcf.gz \
+			I=$fam.gatk4.sorted.1bp.indels.vcf.gz \
+			I=$fam.gatk4.sorted.large.indels.vcf.gz \
+			O=$fam.gatk4.filtered.variants.vcf
+
+		vcftools --vcf $fam.gatk4.filtered.variants.vcf --remove-filtered-all --recode --recode-INFO-all --out $fam.gatk4.callset
+		bgzip $fam.gatk4.callset.recode.vcf
+		tabix {output.callset}
+
+		rm $fam.gatk4.sorted.snps.vcf.gz*
+		rm $fam.gatk4.sorted.1bp.indels.vcf.gz*
+		rm $fam.gatk4.sorted.large.indels.vcf.gz*
+	"""
+
+rule normalize_vcf:
+	input:
+		callset = "{family}.gatk4.callset.recode.vcf.gz"
+	output:
+		tmp = temp("{family}.tmp1.vcf.gz")
+	singularity:
+		"docker://eichlerlab/vcflib:1.0.9"
+	params:
+		sge_opts = " -l mfree=2G -l h_rt=10:00:0 -pe serial 1 -cwd -N normalize_vcf"
+	shell: """
+		fam={wildcards.family}
+		vcffixup {input.callset} | vcffilter -f "AC > 0" | vcfbreakmulti > $fam.tmp1.vcf
+		bgzip $fam.tmp1.vcf
+	"""
+
+rule finish_up:
+	input:
+		tmp = "{family}.tmp1.vcf.gz",
+		ref = REF
+	output:
+		norm = "{family}.gatk.family.norm.vcf.gz"
+	params:
+		sge_opts = " -l mfree=2G -l h_rt=10:00:0 -pe serial 1 -cwd -N normalize_vcf"
+	shell: """
+		source /etc/profile.d/modules.sh
+		module load tabix/0.2.6
+		module load htslib/1.19 bcftools/1.19
+
+		fam={wildcards.family}
+
+		tabix -p vcf $fam.tmp1.vcf.gz
+
+		bcftools norm $fam.tmp1.vcf.gz -c e -f {input.ref} -o $fam.gatk.family.norm.vcf.gz -O z -s -m -
+		tabix -f -p vcf $fam.gatk.family.norm.vcf.gz
+
+	"""
+
+rule naive_inheritance:
+	input:
+		norm = "{family}.gatk.family.norm.vcf.gz",
+		naive_script = NAIVE
+	output:
+		naive_calls = "{family}.{sample}.candidate.denovo.sites.gatk.txt"
+	params:
+		sge_opts = " -l mfree=12G -l h_rt=24:00:00 -pe serial 1 -cwd -N fam.{family}.{sample}.naive_inheritance"
+	shell: """
+		module load modules modules-init modules-gs modules-eichler
+		module load tabix/0.2.6
+		module load python/3.7.7 numpy/1.21.1 pandas/1.3.1 tqdm/4.61.2 six/1.15.0
+		module load vcflib/202002
+
+		fam={wildcards.family}
+		sample={wildcards.sample}
+
+		tabix -f -p vcf {input.norm}
+		vcfkeepsamples {input.norm} $fam.fa $fam.mo $fam.$sample > $fam.$sample.gatk.norm.vcf
+		bgzip $fam.$sample.gatk.norm.vcf
+
+		python {input.naive_script} -i $fam.$sample.gatk.norm.vcf.gz -c gatk -f $fam
+
+	"""
+
+rule adjust_depth:
+	input:
+		naive_calls = "{family}.{sample}.candidate.denovo.sites.gatk.txt",
+		adjust_script = ADJUST,
+		bamifest = MANIFEST
+	output:
+		adjusted = "{family}.{sample}.depth.adjusted.candidate.denovo.txt"
+	params:
+		sge_opts = " -l mfree=12G -l h_rt=24:00:00 -pe serial 8 -cwd -N fam.{family}.{sample}.adjust_depth"
+	shell: """
+		module load modules modules-init modules-gs modules-eichler
+		module load python/3.7.7 numpy/1.21.1 pandas/1.3.1 tqdm/4.61.2 joblib/0.15.1 pysam/0.16.0.1 six/1.15.0
+
+		python {input.adjust_script} -i {input.naive_calls} -b {input.bamifest} -f {wildcards.family} -s {wildcards.sample}
+	"""
+
+rule denovo_calls:
+	input:
+		naive_calls = "{family}.{sample}.depth.adjusted.candidate.denovo.txt",
+		denovo_script = DENOVO
+	output:
+		denovo = "{family}.{sample}.denovo.gatk.tsv"
+	params:
+		sge_opts = " -l mfree=2G -l h_rt=10:00:0 -pe serial 1 -cwd -N fam.{family}.{sample}.denovo_calls"
+	shell: """
+		module load gcc/8.1.0
+		module load R/3.5.1
+
+		Rscript {input.denovo_script} -i {input.naive_calls} -f {wildcards.family} -s {wildcards.sample}
+	"""
