@@ -343,7 +343,7 @@ df_yearly_monthly <- lapply(yearToMonthToTime$keySet, function(curr_year){
 
 
 ```{r}
-TOP_N_ARTIST <- 7
+TOP_N_ARTIST <- 12
 df3$binID <- paste0(df3$timecode, "__", df3$master_metadata_album_album_name)
 df_monthly <- lapply(df3$binID %>% u, function(x){
   df_temp <- df3[df3$binID == x, ]

@@ -1451,3 +1451,30 @@ paste(my_fams$V1, collapse = "', '")
 
 ```
 
+```{r}
+df0 <- fread("C:/docs/autism/assemblies.txt2", header=FALSE) %>% as.data.frame()
+df0$sample <- df0$V1 %>% str_extract("(?<=fasta/)....._..")
+df1 <- df0[!grepl("(old|redo|_fa)", df0$V1), ]
+
+dff <- fread("C:/docs/autism/assemblies.txt3", header=FALSE) %>% as.data.frame()
+dff$sample <- dff$V1 %>% str_extract("(?<=results/)....._fa")
+
+df2 <- rbind(df1, dff)
+
+LRA <- "/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/"
+child_paths <- ifelse(grepl("(_p.|_s.)", df2$sample), "trio/0.16.1/", "0.16.1/")
+df2$destination <- paste0(LRA, df2$sample, "/assemblies/hifiasm/", child_paths, df2$V1 %>% bname)
+
+script <- paste0("cp ", df2$V1, " ", df2$destination)
+df_man <- data.frame(SAMPLE = df2$sample, 
+                     SOURCE = df2$V1, 
+                     DEST = df2$destination)
+df_man <- df_man[order(df_man$SAMPLE), ]
+df_man$SAMPLE <- paste0(df_man$SAMPLE, seq_down(df_man))
+
+
+write.table(script, "C:/docs/autism/asm_mig.sh", col.names = FALSE, row.names = FALSE, quote=FALSE, sep="\t")
+write.table(df_man, "C:/docs/autism/asm_mig.man", col.names = TRUE, row.names = FALSE, quote=FALSE, sep="\t")
+
+```
+
