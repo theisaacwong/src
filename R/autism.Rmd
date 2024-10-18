@@ -1402,7 +1402,7 @@ df00 <- df00[!grepl("_|M|Y", df00$chr), ]
 df00$position <- ifelse(grepl("chrX", df00$chr), 23, str_remove(df00$chr, "chr")) %>% as.numeric()
 df00$Role <- ifelse(grepl("p", df00$role), "proband", "sibling")
 
-write.table(df00, "C:/docs/autism/coverage/T2T_coverage_ggplot.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+# write.table(df00, "C:/docs/autism/coverage/T2T_coverage_ggplot.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 sampleToChr <- HashMap$new()
 temp1 <- lapply(seq_down(df00), function(x){
   curr_sample <- df00$sample[x]
@@ -1420,7 +1420,7 @@ df_print <- lapply(sampleToChr$keySet(), function(curr_sample){
   names(rval)[1] <- "sample"
   return(rval)
 }) %>% do.call(rbind, .) %>% as.data.frame()
-write.table(df_print, "C:/docs/autism/coverage/T2T_coverage_main.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+# write.table(df_print, "C:/docs/autism/coverage/T2T_coverage_main.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 
 my_samples <- read.table("C:/docs/autism/coverage/temp.txt")
 my_samples$sample <- my_samples$V1 %>% str_remove("hap.")
@@ -1439,7 +1439,7 @@ g2 <- ggplot(df02) +
   coord_cartesian(ylim=c(0,1)) + 
   ggtitle("Haplotype Assembly T2T Coverage by Chromosome") + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) ; g2
-ggsave("C:/docs/autism/coverage/coverage_T2T_window.pdf", g2, width = 15, height = 7, units = "in")
+# ggsave("C:/docs/autism/coverage/coverage_T2T_window.pdf", g2, width = 15, height = 7, units = "in")
 ```
 
 

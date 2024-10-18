@@ -1,0 +1,121 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-10-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+Y_HEIGHT <- 0.25
+df00 <- fread("C:/docs/mike/mbti.tsv") %>% as.data.frame()
+df01 <- df00[!grepl("vote_", df00$person), ]
+df02 <- df00[grepl("vote_", df00$person), ]
+
+df01$type <- "self"
+df02$type <- "vote"
+df02$person <- df02$person %>% str_remove("vote_") %>% str_to_title()
+df03 <- rbind(df01, df02)
+
+df04 <- lapply(seq_down(df03), function(x){
+  df_rval <- lapply(2:11, function(y){
+    data.frame(person = df03[x, 1],
+               category = colnames(df03)[y],
+               value = df03[x, y],
+               type  = df03[x, 12]) %>% return()
+  }) %>% do.call(rbind, .) %>% as.data.frame() %>%  return()
+}) %>% do.call(rbind, .) %>% as.data.frame()
+df04$y <- ifelse(df04$type=="self", Y_HEIGHT, -Y_HEIGHT)
+
+
+STEP_SIZE <- 0.15
+TOUCH_DISTANCE <- 0.2
+
+getSteps <- function(VALUES, STEP_SIZE=0.12, TOUCH_DISTANCE=10){
+  N_VALUES <- length(VALUES)
+  STEPS <- rep(0, N_VALUES)
+  FLIP <- 1
+  for(i in seq(2, N_VALUES)){
+    if((VALUES[i]-VALUES[i-1]) < TOUCH_DISTANCE){
+      if(i > 2){
+        if((abs(VALUES[i-1]-VALUES[i-2]) < TOUCH_DISTANCE) & (abs(VALUES[i]-VALUES[i-2]) >= TOUCH_DISTANCE)){
+          FLIP <- FLIP * -1
+        } else {
+          FLIP <- 1
+        } 
+      }
+      STEPS[i] <- STEPS[i-1] + STEP_SIZE * FLIP
+    }
+  }
+  return(STEPS)
+}
+
+df04$y2 <- df04$y + ifelse(df04$type=="self", STEP_SIZE, -STEP_SIZE)
+
+
+TICK_HEIGHT <- 0.1
+N_TICKS <- 10
+df_ticks <- data.frame(x_tick = seq(0,100,N_TICKS) %>% rep(each=2),
+                       y_tick = rep(c(TICK_HEIGHT/1.5, -TICK_HEIGHT), times=N_TICKS+1),
+                       type = paste0("tick_", seq(0,100,N_TICKS) %>% rep(each=2)))
+
+df_labels <- data.frame(x=c(0,0),
+                        y=1.5*c(Y_HEIGHT,-Y_HEIGHT),
+                        labels=c("SELF", "VOTE"))
+
+lapply(u(df04$category), function(MY_CAT){
+df_temp <- df04[df04$category==MY_CAT, ]
+df_temp <- df_temp[order(df_temp$value, decreasing = FALSE), ]
+df_temp$y2[df_temp$type=="self"] <- df_temp$y2[df_temp$type=="self"] + getSteps(VALUES=df_temp$value [df_temp$type=="self"])
+df_temp$y2[df_temp$type=="vote"] <- df_temp$y2[df_temp$type=="vote"] - getSteps(VALUES=df_temp$value [df_temp$type=="vote"])
+
+ggplot() + 
+  geom_line(data=df_temp, mapping=aes(x = value, y = y, colour = person), size=2) + 
+  geom_point(data=df_temp, mapping=aes(x = value, y = y, colour = person),size=4) +
+  scale_x_continuous(breaks = seq(0,100,10)) + 
+  coord_cartesian(xlim=c(0,100), ylim=c(-1, 1)) + 
+  geom_text(data=df_temp, mapping=aes(x=value, y=y2, label=person), color="black") +
+  theme_void() +
+  geom_segment(aes(x = 0, y = 0, xend = 100, yend = 0), color="BLACK", size=3) +
+  geom_line(data = df_ticks, mapping=aes(x = x_tick, y=y_tick, group=type), size=2) + 
+  geom_text(data=df_ticks[df_ticks$y_tick > 0, ], mapping = aes(x=x_tick, y=y_tick + TICK_HEIGHT/2, label=x_tick)) + 
+  ggtitle(MY_CAT) +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none") +
+  geom_text(data=df_labels, aes(x=x, y=y, label=labels), angle=90)  
+})
+
+
+```
+
+
+
+
+
+```{r}
+# g1 <- ggplot(df_temp, aes(x = value, y = y, colour = person, label=person)) + 
+#   geom_line(size=2) + 
+#   geom_point(size=4) +
+#   scale_x_continuous(breaks = seq(0,100,10)) + 
+#   coord_cartesian(xlim=c(0,100), ylim=c(-1, 1)) + 
+#   geom_text(aes(x=value, y=y2), color="black") +
+#   theme_void() +
+#   geom_segment(aes(x = 0, y = 0, xend = 100, yend = 0), color="BLACK", size=3) 
+
+  df_filtered$spotify_track_uri  <- factor(df_filtered$spotify_track_uri , levels=levels(df_filtered$spotify_track_uri ))
+  g1 <- ggplot(df_filtered, aes(fill=spotify_track_uri , y=hour, x = rowID, label = label )) + 
+    geom_bar(position="stack", stat="identity") +
+    scale_x_continuous(breaks = df_filtered$rowID %>% u, labels = month.name[df_filtered$rowID %>% u]) + 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+    geom_text(size = 3, position = position_stack(vjust = 0.5)) +
+    xlab("") + 
+    ylab("Hours Listened") + 
+    ggtitle(paste0("Spotify top ", TOP_N_ARTIST, " Songs by month, ", this_year)) + 
+    scale_fill_manual(name = "Artist", values = gg_color_hue(df_filtered$spotify_track_uri %>% lu) %>% my_rev) + 
+    scale_y_continuous(breaks=seq(0, max_hours+5, 2)) +
+    theme(legend.position="none")
+   ggsave(paste0(OUT_DIR, "top_songs_by_month_", this_year, ".pdf"), g1, width = 14, height = 12, units = "in", limitsize = FALSE)
+  return(g1)
+```

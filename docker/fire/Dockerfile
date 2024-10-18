@@ -1,30 +1,24 @@
-FROM ubuntu:22.04
+FROM continuumio/miniconda3
 
-WORKDIR /home
+USER root
 
-#### Basic image utilities
+ARG FIRE_VERSION=v0.0.7
+
 RUN apt-get update && \
     apt-get full-upgrade -y && \
     apt-get install -y --no-install-recommends \
-    python3 \
-    python3-pip \
     wget \
+    less \
     curl \
     bc \
     unzip \
     bzip2 \
     less \
-    bedtools \
-    bcftools \
     gcc \
-    tabix \
     jq \
     git \
     gpg-agent \
     build-essential \
-    openjdk-17-jdk \
-    cmake \
-    clang \
     libclang-dev \
     libncurses-dev \
     zlib1g-dev \
@@ -32,8 +26,6 @@ RUN apt-get update && \
     libssl-dev \
     liblzma-dev \
     libcurl4-openssl-dev \
-    make \
-    cmake \
     vim \
     software-properties-common && \
     apt-get -y clean  && \
@@ -41,17 +33,21 @@ RUN apt-get update && \
     apt-get -y autoremove && \
     rm -rf /var/lib/apt/lists/*
 
-# Install mamba
-WORKDIR /
-RUN wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-RUN bash Miniforge3-$(uname)-$(uname -m).sh -b
+RUN conda create -c conda-forge -c bioconda -n snakemake 'snakemake>=8.4'
 
-RUN mamba create -c conda-forge -c bioconda -n snakemake 'snakemake>=8.4'
-RUN mkdir /fire
-ENV SNAKEMAKE_CONDA_PREFIX=/fire
-ENV APPTAINER_CACHEDIR=/fire
-
-WORKDIR /fire
+WORKDIR /opt/
 RUN git clone https://github.com/fiberseq/FIRE.git
+WORKDIR /opt/FIRE 
+RUN git checkout ${FIRE_VERSION}
+
+RUN mkdir /opt/fire
+
+ENV PATH="/opt/conda/envs/snakemake/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/fire"
+
+RUN echo "#!/bin/bash\nmkdir -p \${HOME}/fire_env;\nexport SNAKEMAKE_CONDA_PREFIX=\${HOME}/fire_env;\nexport TMP=\${HOME}/fire_env;\nexport TEMPDIR=\${HOME}/fire_env;\nexport TEMP=\${HOME}/fire_env;\nexport APPTAINER_CACHEDIR=\${HOME}/fire_env;\nexport PATH='/opt/conda/envs/snakemake/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/fire:/opt/FIRE';\nconda activate /opt/conda/envs/snakemake/" > /opt/fire/load_fire.sh
+
+RUN chmod +x /opt/fire/load_fire.sh
+
+ENTRYPOINT [". /opt/fire/load_fire.sh"]
 
 COPY Dockerfile .

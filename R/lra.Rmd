@@ -1,0 +1,14 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-10-17"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+df0 <- fread("C:/docs/lra/lra_nhp.find", header=FALSE) %>% as.data.frame()
+df1 <- data.frame(path=df0[df0$V1 %>% str_detect("^./Kamilah_GGO.*\\.(pod5$|fast5$|fastq.gz$)"), ])
+```
