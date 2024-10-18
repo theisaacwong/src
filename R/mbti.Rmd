@@ -10,7 +10,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
+library(cowplot)
 Y_HEIGHT <- 0.25
+OUT_DIR <- "C:/docs/mike/"
 df00 <- fread("C:/docs/mike/mbti.tsv") %>% as.data.frame()
 df01 <- df00[!grepl("vote_", df00$person), ]
 df02 <- df00[grepl("vote_", df00$person), ]
@@ -66,7 +68,7 @@ df_labels <- data.frame(x=c(0,0),
                         y=1.5*c(Y_HEIGHT,-Y_HEIGHT),
                         labels=c("SELF", "VOTE"))
 
-lapply(u(df04$category), function(MY_CAT){
+temp1 <- lapply(u(df04$category), function(MY_CAT){
 df_temp <- df04[df04$category==MY_CAT, ]
 df_temp <- df_temp[order(df_temp$value, decreasing = FALSE), ]
 df_temp$y2[df_temp$type=="self"] <- df_temp$y2[df_temp$type=="self"] + getSteps(VALUES=df_temp$value [df_temp$type=="self"])
@@ -87,10 +89,138 @@ ggplot() +
   geom_text(data=df_labels, aes(x=x, y=y, label=labels), angle=90)  
 })
 
+df_pairs <- data.frame(cat2 = c("Extraverted", "Intuitive", "Thinking", "Judging", "Assertive"),
+                       cat1 = c("Introverted", "Observant", "Feeling", "Prospecting", "Turbulent"))
+temp1 <- lapply(u(df_pairs$cat1), function(MY_CAT){
+  df_temp <- df04[df04$category==MY_CAT, ]
+  df_temp <- df_temp[order(df_temp$value, decreasing = FALSE), ]
+  df_temp$y2[df_temp$type=="self"] <- df_temp$y2[df_temp$type=="self"] + getSteps(VALUES=df_temp$value [df_temp$type=="self"])
+  df_temp$y2[df_temp$type=="vote"] <- df_temp$y2[df_temp$type=="vote"] - getSteps(VALUES=df_temp$value [df_temp$type=="vote"])
+  
+  df_title <- data.frame(x=c(15,85), y=3*c(Y_HEIGHT,Y_HEIGHT),
+                         text=c(df_pairs$cat2[df_pairs$cat1==MY_CAT], MY_CAT))
+  
+  g1 <- ggplot() + 
+    geom_line(data=df_temp, mapping=aes(x = value, y = y, colour = person), size=2) + 
+    geom_point(data=df_temp, mapping=aes(x = value, y = y, colour = person),size=4) +
+    scale_x_continuous(breaks = seq(0,100,10)) + 
+    coord_cartesian(xlim=c(0,100), ylim=c(-1, 1)) + 
+    geom_text(data=df_temp, mapping=aes(x=value, y=y2, label=person), color="black") +
+    theme_void() +
+    geom_segment(aes(x = 0, y = 0, xend = 100, yend = 0), color="BLACK", size=3) +
+    geom_line(data = df_ticks, mapping=aes(x = x_tick, y=y_tick, group=type), size=1.8) + 
+    geom_text(data=df_ticks[df_ticks$y_tick > 0, ], mapping = aes(x=x_tick, y=y_tick + TICK_HEIGHT/2, label=x_tick)) + 
+    theme(plot.title = element_text(hjust = 0.5), legend.position = "none") +
+    geom_text(data=df_labels, aes(x=x, y=y, label=labels), angle=90) + 
+    geom_text(data=df_title, aes(x=x, y=y, label=text), size=7)
+  
+  ggsave(paste0(OUT_DIR, "mbti_", MY_CAT, ".pdf"), g1, width = 7, height = 5, units = "in", limitsize = FALSE)
+  return(g1)
+})
+temp1
 
+library(cowplot)
+plot_grid(plotlist=temp1, nrow=5)
 ```
 
+```{r}
+Y_HEIGHT <- 0.5
+OUT_DIR <- "C:/docs/mike/"
+df00 <- fread("C:/docs/mike/mbti.tsv") %>% as.data.frame()
+df01 <- df00[!grepl("vote_", df00$person), ]
+df02 <- df00[grepl("vote_", df00$person), ]
 
+df01$type <- "self"
+df02$type <- "vote"
+df02$person <- df02$person %>% str_remove("vote_") %>% str_to_title()
+df03 <- rbind(df01, df02)
+
+df04 <- lapply(seq_down(df03), function(x){
+  df_rval <- lapply(2:11, function(y){
+    data.frame(person = df03[x, 1],
+               category = colnames(df03)[y],
+               value = df03[x, y],
+               type  = df03[x, 12]) %>% return()
+  }) %>% do.call(rbind, .) %>% as.data.frame() %>%  return()
+}) %>% do.call(rbind, .) %>% as.data.frame()
+df04$y <- ifelse(df04$type=="self", Y_HEIGHT, -Y_HEIGHT)
+
+getSteps <- function(VALUES, STEP_SIZE=0.24, TOUCH_DISTANCE=10){
+  N_VALUES <- length(VALUES)
+  STEPS <- rep(0, N_VALUES)
+  FLIP <- 1
+  for(i in seq(2, N_VALUES)){
+    if((VALUES[i]-VALUES[i-1]) < TOUCH_DISTANCE){
+      if(i > 2){
+        if((abs(VALUES[i-1]-VALUES[i-2]) < TOUCH_DISTANCE) & (abs(VALUES[i]-VALUES[i-2]) >= TOUCH_DISTANCE)){
+          FLIP <- FLIP * -1
+        } else {
+          FLIP <- 1
+        } 
+      }
+      STEPS[i] <- STEPS[i-1] + STEP_SIZE * FLIP
+    }
+  }
+  return(STEPS)
+}
+
+df04$y2 <- df04$y + ifelse(df04$type=="self", STEP_SIZE+0.1, -STEP_SIZE-0.1)
+
+
+TICK_HEIGHT <- 0.2
+N_TICKS <- 10
+df_ticks <- data.frame(x_tick = seq(0,100,N_TICKS) %>% rep(each=2),
+                       y_tick = rep(c(TICK_HEIGHT/1.5, -TICK_HEIGHT), times=N_TICKS+1),
+                       type = paste0("tick_", seq(0,100,N_TICKS) %>% rep(each=2)))
+
+df_labels <- data.frame(x=c(-2,-2),
+                        y=1.5*c(Y_HEIGHT,-Y_HEIGHT),
+                        labels=c("SELF", "VOTE"))
+
+df_pairs <- data.frame(cat2 = c("Extraverted", "Intuitive", "Thinking", "Judging", "Assertive"),
+                       cat1 = c("Introverted", "Observant", "Feeling", "Prospecting", "Turbulent"))
+temp1 <- lapply(u(df_pairs$cat1), function(MY_CAT){
+  df_temp <- df04[df04$category==MY_CAT, ]
+  df_temp <- df_temp[order(df_temp$value, decreasing = FALSE), ]
+  df_temp$y2[df_temp$type=="self"] <- df_temp$y2[df_temp$type=="self"] + getSteps(VALUES=df_temp$value [df_temp$type=="self"])
+  df_temp$y2[df_temp$type=="vote"] <- df_temp$y2[df_temp$type=="vote"] - getSteps(VALUES=df_temp$value [df_temp$type=="vote"])
+  
+  df_title <- data.frame(x=c(15,85), y=2.7*c(Y_HEIGHT,Y_HEIGHT),
+                         text=c(df_pairs$cat2[df_pairs$cat1==MY_CAT], MY_CAT))
+  
+  g1 <- ggplot() + 
+    geom_line(data=df_temp, mapping=aes(x = value, y = y, colour = person), size=2) + 
+    geom_point(data=df_temp, mapping=aes(x = value, y = y, colour = person),size=4) +
+    scale_x_continuous(breaks = seq(0,100,10)) + 
+    coord_cartesian(xlim=c(0,100), ylim=3*c(-Y_HEIGHT, Y_HEIGHT)) + 
+    geom_text(data=df_temp, mapping=aes(x=value, y=y2, label=person), color="black") +
+    scale_color_manual(values=c("#F8766D", "#B79F00", "#00BFC4", "#619CFF", "#F564E3", "#00BA38")) + 
+    theme_void() +
+    geom_segment(aes(x = 0, y = 0, xend = 100, yend = 0), color="BLACK", size=3) +
+    geom_line(data = df_ticks, mapping=aes(x = x_tick, y=y_tick, group=type), size=1.8) + 
+    geom_text(data=df_ticks[df_ticks$y_tick > 0, ], mapping = aes(x=x_tick, y=y_tick + TICK_HEIGHT/1.5, label=x_tick)) + 
+    theme(plot.title = element_text(hjust = 0.5), legend.position = "none") +
+    geom_text(data=df_labels, aes(x=x, y=y, label=labels), angle=90) + 
+    geom_text(data=df_title, aes(x=x, y=y, label=text), size=7) +
+    theme(panel.background = element_rect(fill = 'WHITE'))
+  
+  return(g1)
+})
+
+
+g2 <- plot_grid(plotlist=temp1, nrow=5)
+# ggsave(paste0(OUT_DIR, "mbti_noblets", ".png"), g2, width = 7, height = 12, units = "in", limitsize = FALSE, dpi = 600,)
+g2
+```
+
+```{r}
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+gg_color_hue(6)
+```
+scale_color_manual(values=c("BLACK", "PURPLE4", "FIREBRICK4", "BLACK", "BLACK", "FORESTGREEN")) + 
 
 
 
