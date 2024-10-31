@@ -1,6 +1,12 @@
 # snakemake --forceall --rulegraph | dot -Tpdf > dag.pdf
 #  chmod a-w -R
 
+
+# reusing flagger cromwell singularity config
+module load cromwell/85
+java -jar -Dconfig.file=/net/eichler/vol28/software/pipelines/flagger-0.3.3/config/local.conf  $( which cromwell.jar ) run mywdl.wdl --inputs mywdlparams.json
+
+
 # Module organization
  /net/eichler/vol26/7200/software/modules-sw
  /net/eichler/vol26/7200/software/modules-repo/CentOS7

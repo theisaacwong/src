@@ -151,7 +151,7 @@ g1
 ```{r}
 library(plyr)
 library(jsonlite)
-OUT_DIR <- "C:/Users/iwong1/Documents/mike/my_spotify_data_3/"
+OUT_DIR <- "C:/Users/iwong1/Documents/mike/my_spotify_data_4/"
 TOP_N_ARTIST <- 4
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
@@ -168,7 +168,7 @@ my_rev <- function(my_seq){
   return(temp1)
 }
 
-files <- list.files("C:/docs/mike/my_spotify_data_3/Spotify Extended Streaming History/", pattern = "Audio.*json", full.names = TRUE)
+files <- list.files("C:/docs/mike/my_spotify_data_4/Spotify Extended Streaming History/", pattern = "Audio.*json", full.names = TRUE)
 df0 <- lapply(files, function(x){read_json(x)}) %>% do.call(c, .)
 df1 <- do.call(rbind, df0) %>% as.data.frame()
 df2 <- df0 %>% lapply(function(x){data.frame(as.list(unlist(x)), stringsAsFactors = FALSE)})

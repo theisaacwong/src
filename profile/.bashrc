@@ -146,7 +146,7 @@ powerReader() { column -t -s$'\t' "$@" | less -S; }
 pr() { column -t -s$'\t' "$@" | less -S; }
 
 alias tea="date; Rscript --vanilla /docs/src/R/tea.R "
-alias coffee="date; Rscript --vanilla /docs/src/R/tea.R coffee peets "
+alias coffee="date; Rscript --vanilla /docs/src/R/tea.R coffee green mountain black granite "
 alias R="R --no-save "
 
 # https://linuxgazette.net/109/marinov.html
