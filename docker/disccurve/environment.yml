@@ -1,0 +1,15 @@
+name: disc-curve
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - samtools
+  - numpy
+  - pandas
+  - matplotlib
+  - scipy
+  - pysam
+  - pybedtools
+  - gzip
+prefix: /opt/conda/envs/disc-curve
