@@ -1305,6 +1305,10 @@ ggsave("C:/docs/autism/coverage/coverage_batch_02.pdf", g1, width = 15, height =
 
 
 ```{r}
+CURR_GENOME <- "hg38"
+DF_EXCLUDE <- fread("C:/docs/autism/coverage/exclude_regions_chrX.tsv.txt") %>% as.data.frame()
+DF_EXCLUDE <- DF_EXCLUDE[DF_EXCLUDE$genome == CURR_GENOME, ]
+
 files <- list.files("C:/docs/autism/coverage/results_hg38/", recursive = TRUE, full.names = TRUE, pattern = ".tsv")
 CHR_ORDER <- c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22", "chrX", "chrY")
 COLNAMES <- c("chr", "start", "end", "n_features", "n_bases", "length", "percent")
@@ -1315,6 +1319,16 @@ df00 <- lapply(files, function(x){
   
   temp_by_chr <- lapply(df_temp$chr %>% u, function(x){
     temp_chr <- df_temp[df_temp$chr == x, ]
+    if(x == "chrX"){
+      to_remove <- lapply(seq_down(DF_EXCLUDE), function(y){
+         BOOL_START <- temp_chr$start <= DF_EXCLUDE$end[y]   
+         BOOL_END <- temp_chr$end >= DF_EXCLUDE$start[y]
+         BOOL_OL <- BOOL_START & BOOL_END
+         return(which(BOOL_OL))
+      }) %>% unlist %>% u
+      print(to_remove)
+      temp_chr <- temp_chr[-to_remove, ]
+    }
     pass_percent <- temp_chr$percent >= 0.95
     pass_bins <- temp_chr$n_features <= 3
     data.frame(chr = x,
@@ -1336,7 +1350,7 @@ df00$family <- df00$sample %>% str_extract("^.....(?=_)")
 TARGET_FAMILIES <- read.table("C:/docs/autism/coverage/batch_1_families_main.tsv")
 df00 <- df00[df00$family %in% TARGET_FAMILIES$V1, ]
 
-write.table(df00, "C:/docs/autism/coverage/hg38_coverage_ggplot.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df00, "C:/docs/autism/coverage/hg38_coverage_ggplot2.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 sampleToChr <- HashMap$new()
 temp1 <- lapply(seq_down(df00), function(x){
   curr_sample <- df00$sample[x]
@@ -1354,7 +1368,7 @@ df_print <- lapply(sampleToChr$keySet(), function(curr_sample){
   names(rval)[1] <- "sample"
   return(rval)
 }) %>% do.call(rbind, .) %>% as.data.frame()
-write.table(df_print, "C:/docs/autism/coverage/hg38_coverage_main.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df_print, "C:/docs/autism/coverage/hg38_coverage_main2.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 
 my_samples <- read.table("C:/docs/autism/coverage/temp.txt")
 my_samples$sample <- my_samples$V1 %>% str_remove("hap.")
@@ -1382,12 +1396,16 @@ g2 <- ggplot(df02) +
   ggtitle("Haplotype Assembly hg38 Coverage by Chromosome") + 
   coord_cartesian(ylim=c(0,1), xlim=c(1,24)) + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) ; g2
-ggsave("C:/docs/autism/coverage/coverage_hg38_window.pdf", g2, width = 15, height = 7, units = "in")
+ggsave("C:/docs/autism/coverage/coverage_hg38_window2.pdf", g2, width = 15, height = 7, units = "in")
 ```
 
 
 
 ```{r}
+CURR_GENOME <- "t2t"
+DF_EXCLUDE <- fread("C:/docs/autism/coverage/exclude_regions_chrX.tsv.txt") %>% as.data.frame()
+DF_EXCLUDE <- DF_EXCLUDE[DF_EXCLUDE$genome == CURR_GENOME, ]
+
 files <- list.files("C:/docs/autism/coverage/results_T2T_window/", recursive = TRUE, full.names = TRUE, pattern = ".tsv")
 CHR_ORDER <- c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22", "chrX", "chrY")
 COLNAMES <- c("chr", "start", "end", "n_features", "n_bases", "length", "percent")
@@ -1398,6 +1416,16 @@ df00 <- lapply(files, function(x){
   
   temp_by_chr <- lapply(df_temp$chr %>% u, function(x){
     temp_chr <- df_temp[df_temp$chr == x, ]
+    if(x == "chrX"){
+      to_remove <- lapply(seq_down(DF_EXCLUDE), function(y){
+        BOOL_START <- temp_chr$start <= DF_EXCLUDE$end[y]   
+        BOOL_END <- temp_chr$end >= DF_EXCLUDE$start[y]
+        BOOL_OL <- BOOL_START & BOOL_END
+        return(which(BOOL_OL))
+      }) %>% unlist %>% u
+      print(to_remove)
+      temp_chr <- temp_chr[-to_remove, ]
+    }
     pass_percent <- temp_chr$percent >= 0.95
     pass_bins <- temp_chr$n_features <= 3
     data.frame(chr = x,
@@ -1420,7 +1448,7 @@ df00$family <- df00$sample %>% str_extract("^.....(?=_)")
 TARGET_FAMILIES <- read.table("C:/docs/autism/coverage/batch_1_families_main.tsv")
 df00 <- df00[df00$family %in% TARGET_FAMILIES$V1, ]
 
-write.table(df00, "C:/docs/autism/coverage/T2T_coverage_ggplot.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df00, "C:/docs/autism/coverage/T2T_coverage_ggplot2.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 sampleToChr <- HashMap$new()
 temp1 <- lapply(seq_down(df00), function(x){
   curr_sample <- df00$sample[x]
@@ -1438,7 +1466,7 @@ df_print <- lapply(sampleToChr$keySet(), function(curr_sample){
   names(rval)[1] <- "sample"
   return(rval)
 }) %>% do.call(rbind, .) %>% as.data.frame()
-write.table(df_print, "C:/docs/autism/coverage/T2T_coverage_main.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df_print, "C:/docs/autism/coverage/T2T_coverage_main2.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 
 my_samples <- read.table("C:/docs/autism/coverage/temp.txt")
 my_samples$sample <- my_samples$V1 %>% str_remove("hap.")
@@ -1468,8 +1496,36 @@ g2 <- ggplot(df02) +
   coord_cartesian(ylim=c(0,1),xlim=c(1,24)) + 
   ggtitle("Haplotype Assembly T2T Coverage by Chromosome") + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) ; g2
-ggsave("C:/docs/autism/coverage/coverage_T2T_window.pdf", g2, width = 15, height = 7, units = "in")
+ggsave("C:/docs/autism/coverage/coverage_T2T_window2.pdf", g2, width = 15, height = 7, units = "in")
 ```
+
+```{r}
+files <- list.files("C:/docs/autism/coverage/results_T2T_window/", recursive = TRUE, full.names = TRUE, pattern = ".tsv")
+COLNAMES <- c("chr", "start", "end", "n_features", "n_bases", "length", "percent")
+  
+df00 <- lapply(files, function(x){
+  df_temp <- fread(x) %>% as.data.frame()
+  colnames(df_temp) <- COLNAMES
+  
+  df_temp <- df_temp[df_temp$chr == "chrX", ]
+  rval <- ifelse((df_temp$percent >= 0.95) & (df_temp$n_features <= 3), 1, 0)
+  return(rval)
+}) %>% do.call(rbind, .) %>% as.data.frame() 
+
+df_temp1 <- fread(files[1]) %>% as.data.frame()
+colnames(df_temp1) <- COLNAMES
+df_temp1 <- df_temp1[df_temp1$chr == "chrX", ]
+
+colnames(df00) <- paste0(df_temp1$chr, ":", df_temp1$start, "-", df_temp1$end)
+
+my_sums <- colSums(df00[, -c(1)])
+  
+which(my_sums < 200)
+
+```
+
+
+
 
 
 
