@@ -692,6 +692,102 @@ for(YEAR in MY_YEAR){
 }
 ```
 
+heatmap
+x is month, y is day time
+```{r}
+N_BINS <- 24
+
+MY_YEAR <- df3$year %>% u
+MY_YEAR <- MY_YEAR[MY_YEAR != "2020"]
+
+for(YEAR in MY_YEAR){
+  df00 <- df3[grepl(paste0("^", YEAR), df3$ts), ]
+  df00$POSIX_TIME <- as.POSIXct(df00$ts, format="%Y-%m-%dT%H:%M:%OSZ", tz="UTC")
+  df00$PST <- df00$POSIX_TIME %>% format(tz="US/Pacific" ,usetz=TRUE)
+  df00$timestamp_key <- df00$PST %>% str_extract("(?<=[:space:])[:digit:]{2}:[:digit:]{2}(?=:)")
+  df00$minute_increment <- floor( df00$ms_played / 60000)
+  
+  timestamps <- expand.grid(0:59, 0:23)
+  timestamps$Var1 <- sprintf("%02d", timestamps$Var1)
+  timestamps$Var2 <- sprintf("%02d", timestamps$Var2)
+  timestamps$key <- paste0(timestamps$Var2, ":", timestamps$Var1)
+  timestamps$y_time <- seq_down(timestamps)
+  
+  monthToTimeStamps <- HashMap$new()
+  for(month in u(timestamps$Var2)){
+    monthToTimeStamps$put(month, HashMap$new())
+    for(key in timestamps$key){
+      monthToTimeStamps$get(month)$put(key, 0)
+    }  
+  }
+
+  # get counts per month per timestamp
+  for(i in seq_down(df00)){
+    my_month <- df00$month[i]
+    my_key <- df00$timestamp_key[i]
+    monthToTimeStamps$get(my_month)$put(my_key, monthToTimeStamps$get(my_month)$get(my_key) + 1)
+    my_len <- df00$minute_increment[i]
+    if(my_len > 0){
+      for(k in seq(1, my_len)){
+        next_key <- timestamps$key[((which(timestamps$key==my_key) + k) %% nrow(timestamps)) + 1]
+        monthToTimeStamps$get(my_month)$put(next_key, monthToTimeStamps$get(my_month)$get(next_key) + 1)
+      }
+    }
+  }
+  
+  # convert back to DF
+  df_heat <- expand.grid(0:59, 0:23, seq(1, lu(df00$month)))
+  df_heat$y_time <- rep(seq(1, max(timestamps$y_time)), lu(df00$month))
+  df_heat$Var1 <- sprintf("%02d", df_heat$Var1)
+  df_heat$Var2 <- sprintf("%02d", df_heat$Var2)
+  df_heat$key <- paste0(df_heat$Var2, ":", df_heat$Var1)
+  df_heat$month <- sprintf("%02d", df_heat$Var3)
+  
+  df_heat$count <- lapply(seq_down(df_heat), function(i){
+    curr_month <- df_heat$month[i]
+    curr_key <- df_heat$key[i]
+     monthToTimeStamps$get(curr_month)$get(curr_key)
+  }) %>% unlist
+  df_heat$scaled_count <- (df_heat$count-min(df_heat$count))/(max(df_heat$count)-min(df_heat$count))
+  
+  bin_width <- nrow(timestamps)/N_BINS
+  df_heat$small_bin <- rep(rep(seq(1, N_BINS), each=bin_width), lu(df_heat$month))
+  df_heat$small_bin_key <- paste0(df_heat$month, "_", df_heat$small_bin)
+  df_heat$bin_count <- lapply(seq_down(df_heat), function(i){
+    sum(df_heat$count[df_heat$small_bin_key==df_heat$small_bin_key[i]])
+  }) %>% unlist
+  df_heat$scaled_count_bin <- (df_heat$bin_count-min(df_heat$bin_count))/(max(df_heat$bin_count)-min(df_heat$bin_count))
+  df_heat$scaled_count_bin_by_month <- lapply(seq_down(df_heat), function(i){
+    curr_month <- df_heat$month[i]
+    min_val <- min(df_heat$bin_count[df_heat$month==curr_month])
+    max_val <- max(df_heat$bin_count[df_heat$month==curr_month])
+    curr_bin_val <- df_heat$bin_count[i]
+    rval <- (curr_bin_val-min_val)/(max_val-min_val)
+    return(rval)
+  }) %>% unlist
+  
+  g1 <- ggplot(df_heat, aes(x=Var3, y=y_time, fill=scaled_count_bin)) + 
+    geom_tile() + 
+    scale_y_continuous(breaks = seq(from=1, to=1500, by=60), labels = c("12AM", paste0(1:11, "AM"), "12PM", paste0(1:11, "PM"), "12AM")) + 
+    scale_x_continuous(breaks = df_heat$Var3  %>% u, labels = month.name[df_heat$Var3 %>% u]) +
+    theme(axis.title.y=element_blank(), 
+          axis.title.x = element_blank(),
+          legend.position="none") +
+    ggtitle(paste0("Listening Activity Heatmap, ", YEAR, ". scaled by year")) 
+  
+  g2 <- ggplot(df_heat, aes(x=Var3, y=y_time, fill=scaled_count_bin_by_month)) + 
+    geom_tile() + 
+    scale_y_continuous(breaks = seq(from=1, to=1500, by=60), labels = c("12AM", paste0(1:11, "AM"), "12PM", paste0(1:11, "PM"), "12AM")) + 
+    scale_x_continuous(breaks = df_heat$Var3  %>% u, labels = month.name[df_heat$Var3 %>% u]) +
+    theme(axis.title.y=element_blank(), 
+          axis.title.x = element_blank(),
+          legend.position="none") +
+    ggtitle(paste0("Listening Activity Heatmap, ", YEAR, ". scaled by month")) #+ scale_fill_gradient(low = "darkblue", high = "lightskyblue1")
+    
+    # plot(g1)
+    plot(g2)
+}
+```
 
 
 
