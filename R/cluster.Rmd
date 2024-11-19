@@ -1,0 +1,25 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-11-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{sh}
+ls -lh | awk9 | xargs -I {} sh -c "echo -n '{}\t'; df -h {} | grep -v Filesystem" | sed 's/[[:blank:]]+/\t/g' 
+```
+
+df0$V2 %>% str_replace_all("\\s+", "\t")
+
+df0$V2 %>% str_replace_all("\\s+", "\t")
+
+```{r}
+df0 <- fread("C:/docs/cluster/cluster_info.tsv", header=FALSE) %>% as.data.frame()
+```
+

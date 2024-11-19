@@ -1503,6 +1503,10 @@ ggsave("C:/docs/autism/coverage/coverage_T2T_window2.pdf", g2, width = 15, heigh
 files <- list.files("C:/docs/autism/coverage/results_T2T_window/", recursive = TRUE, full.names = TRUE, pattern = ".tsv")
 COLNAMES <- c("chr", "start", "end", "n_features", "n_bases", "length", "percent")
   
+df_temp1 <- fread(files[1]) %>% as.data.frame()
+colnames(df_temp1) <- COLNAMES
+df_temp1 <- df_temp1[df_temp1$chr == "chrX", ]
+
 df00 <- lapply(files, function(x){
   df_temp <- fread(x) %>% as.data.frame()
   colnames(df_temp) <- COLNAMES
@@ -1511,16 +1515,75 @@ df00 <- lapply(files, function(x){
   rval <- ifelse((df_temp$percent >= 0.95) & (df_temp$n_features <= 3), 1, 0)
   return(rval)
 }) %>% do.call(rbind, .) %>% as.data.frame() 
-
-df_temp1 <- fread(files[1]) %>% as.data.frame()
-colnames(df_temp1) <- COLNAMES
-df_temp1 <- df_temp1[df_temp1$chr == "chrX", ]
-
 colnames(df00) <- paste0(df_temp1$chr, ":", df_temp1$start, "-", df_temp1$end)
+df00$sample <- files %>% bname %>% str_remove(".tsv$")
+my_sums_all <- colSums(df00[, -which(colnames(df00)=="sample")])
+df_all <- my_sums_all %>% as.data.frame()
+colnames(df_all) <- "all"
+df_all$coord <- rownames(df_all)
 
-my_sums <- colSums(df00[, -c(1)])
+df01 <- lapply(files, function(x){
+  df_temp <- fread(x) %>% as.data.frame()
+  colnames(df_temp) <- COLNAMES
   
-which(my_sums < 200)
+  df_temp <- df_temp[df_temp$chr == "chrX", ]
+  rval <- ifelse(df_temp$percent >= 0.95, 1, 0)
+  return(rval)
+}) %>% do.call(rbind, .) %>% as.data.frame() 
+colnames(df01) <- paste0(df_temp1$chr, ":", df_temp1$start, "-", df_temp1$end)
+df01$sample <- files %>% bname %>% str_remove(".tsv$")
+my_sums_percent <- colSums(df01[, -which(colnames(df01)=="sample")])
+df_percent <- my_sums_percent %>% as.data.frame()
+colnames(df_percent) <- "percent"
+df_percent$coord <- rownames(df_percent)
+
+df02 <- lapply(files, function(x){
+  df_temp <- fread(x) %>% as.data.frame()
+  colnames(df_temp) <- COLNAMES
+  
+  df_temp <- df_temp[df_temp$chr == "chrX", ]
+  rval <- ifelse(df_temp$n_features <= 3, 1, 0)
+  return(rval)
+}) %>% do.call(rbind, .) %>% as.data.frame() 
+colnames(df02) <- paste0(df_temp1$chr, ":", df_temp1$start, "-", df_temp1$end)
+df02$sample <- files %>% bname %>% str_remove(".tsv$")
+my_sums_contigs <- colSums(df02[, -which(colnames(df02)=="sample")])
+df_contigs <- my_sums_contigs %>% as.data.frame()
+colnames(df_contigs) <- "contigs"
+df_contigs$coord <- rownames(df_contigs)
+
+
+df03 <- lapply(files, function(x){
+  df_temp <- fread(x) %>% as.data.frame()
+  colnames(df_temp) <- COLNAMES
+  
+  df_temp <- df_temp[df_temp$chr == "chrX", ]
+  rval <- df_temp$percent
+  return(rval)
+}) %>% do.call(rbind, .) %>% as.data.frame() 
+colnames(df03) <- paste0(df_temp1$chr, ":", df_temp1$start, "-", df_temp1$end)
+df03[df03 >=0.95] <- NA
+df03$sample <- files %>% bname %>% str_remove(".tsv$")
+my_sums_percent_mean <- colMeans(df03[, -which(colnames(df03)=="sample")], na.rm = TRUE)
+df_percent_mean <- my_sums_percent_mean %>% as.data.frame()
+colnames(df_percent_mean) <- "percent_mean"
+df_percent_mean$coord <- rownames(df_percent_mean)
+
+
+df_final <- merge(df_all, merge(df_contigs, df_percent, by = "coord"), by="coord")
+df_final$coord_end <- df_final$coord %>% str_extract("(?<=-).*") %>% as.numeric()
+df_final <- df_final[order(df_final$coord_end, decreasing = FALSE), ]
+df_final$coord_end <- NULL
+
+df_final_0 <- merge(df_final, df_percent_mean, by="coord", all.x = TRUE, all.y = TRUE)
+
+df_final <- df_final_0
+
+df_final$coord_end <- df_final$coord %>% str_extract("(?<=-).*") %>% as.numeric()
+df_final <- df_final[order(df_final$coord_end, decreasing = FALSE), ]
+df_final$coord_end <- NULL
+write.table(df_final, "C:/docs/autism/coverage/chr_x_bins_coord_sorted.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df_final[order(df_final$all, df_final$coord, decreasing = FALSE), ], "C:/docs/autism/coverage/chr_x_bins_count_sorted.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 
 ```
 
