@@ -1,0 +1,83 @@
+---
+title: "movies"
+output: html_document
+date: "2024-11-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+df0 <- read_sheet("https://docs.google.com/spreadsheets/d/10MP7ZlpWGjUl_0Zgq3LQQmMcQ130aD9Q0xG-INU6pko/edit?gid=0#gid=0", sheet="movies") %>% as.data.frame()
+df0[is.na(df0)] <- ""
+
+df00 <- lapply(df0, function(x){str_to_title(x)}) %>% as.data.frame()
+all_movies <- lapply(df00, function(x){x}) %>% unlist %>% srt %>% as.data.frame()
+all_movies$x <- all_movies$x %>% as.character() %>% str_trim()
+all_movies <- all_movies[all_movies$x!="", ]
+all_movies$letters <- lapply(all_movies$x, function(x){
+  paste(sort(unlist(strsplit(x, ""))), collapse = "")
+}) %>% unlist
+
+
+#print(all_movies[order(all_movies$letters), ])
+#print(all_movies[order(all_movies$letters %>% u, decreasing = TRUE), ])
+
+
+df1 <- matrix("", nrow=lu(all_movies$x), ncol=1+ncol(df00)) %>% as.data.frame()
+colnames(df1) <- c("Movie", colnames(df00))
+df1$Movie <- all_movies$x
+
+df2 <- lapply(colnames(df00), function(noblet){
+  ifelse(all_movies$x %in% df00[, noblet], "yes", ""  )
+}) %>% do.call(cbind, .) %>% as.data.frame()
+colnames(df2) <- colnames(df00)
+df2 <- cbind(all_movies$x, df2) %>% as.data.frame()
+colnames(df2)[1] <- "Movie"
+df2$Total <- all_movies$Freq
+
+# write_sheet(data=df2, ss="https://docs.google.com/spreadsheets/d/10MP7ZlpWGjUl_0Zgq3LQQmMcQ130aD9Q0xG-INU6pko", sheet="rankings")
+
+df3 <- read_sheet("https://docs.google.com/spreadsheets/d/10MP7ZlpWGjUl_0Zgq3LQQmMcQ130aD9Q0xG-INU6pko/edit?gid=0#gid=0", sheet="rankings") %>% as.data.frame()
+df3[is.na(df3)] <- ""
+
+df_publish <- matrix("", nrow=lu(c(all_movies$x, df3$Movie %>% str_to_title())), ncol=1+ncol(df00)) %>% as.data.frame()
+colnames(df_publish) <- c("Movie", colnames(df00))
+df_publish$Movie <- u(c(all_movies$x, df3$Movie %>% str_to_title()))
+for(noblet in colnames(df00)){
+  for(movie in df_publish$Movie){
+    
+    if(movie %in% df2$Movie){
+      if(str_to_lower(df2[df2$Movie==movie, which(colnames(df2)==noblet)]) == "yes"){
+        df_publish[which(df_publish$Movie==movie), which(colnames(df_publish)==noblet)] <- "yes"
+      }
+    }
+    
+    if(movie %in% df3$Movie){
+      if(str_to_lower(df3[df3$Movie==movie, which(colnames(df3)==noblet)]) == "yes"){
+        df_publish[which(df_publish$Movie==movie), which(colnames(df_publish)==noblet)] <- "yes"
+      }
+    }
+  }
+}
+df_publish$Freq <- lapply(seq_down(df_publish), function(x){
+  sum(df_publish[x, -1] == "yes")
+}) %>% unlist
+df_publish <- df_publish[order(df_publish$Freq, decreasing = TRUE), ]
+
+write_sheet(data=df_publish, ss="https://docs.google.com/spreadsheets/d/10MP7ZlpWGjUl_0Zgq3LQQmMcQ130aD9Q0xG-INU6pko", sheet="DONT_EDIT_THIS_PAGE")
+
+```
+
+```{r}
+
+
+
+
+
+
+```
+
