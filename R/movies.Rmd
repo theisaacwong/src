@@ -53,12 +53,15 @@ for(noblet in colnames(df00)){
     if(movie %in% df2$Movie){
       if(str_to_lower(df2[df2$Movie==movie, which(colnames(df2)==noblet)]) == "yes"){
         df_publish[which(df_publish$Movie==movie), which(colnames(df_publish)==noblet)] <- "yes"
+        next
       }
     }
     
     if(movie %in% df3$Movie){
       if(str_to_lower(df3[df3$Movie==movie, which(colnames(df3)==noblet)]) == "yes"){
         df_publish[which(df_publish$Movie==movie), which(colnames(df_publish)==noblet)] <- "yes"
+      } else {
+        df_publish[which(df_publish$Movie==movie), which(colnames(df_publish)==noblet)] <- df3[df3$Movie==movie, which(colnames(df3)==noblet)]
       }
     }
   }
@@ -74,7 +77,7 @@ write_sheet(data=df_publish, ss="https://docs.google.com/spreadsheets/d/10MP7Zlp
 
 ```{r}
 
-
+write.table(df_publish, "C:/docs/mbti/movies.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 
 
 
