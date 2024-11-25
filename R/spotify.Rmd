@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(jsonlite)
 
-files <- list.files("C:/docs/mike/my_spotify_data_4//Spotify Extended Streaming History/", pattern = "json", full.names = TRUE)
+files <- list.files("C:/docs/mike/my_spotify_data_5/Spotify Extended Streaming History/", pattern = "json", full.names = TRUE)
 
 df0 <- lapply(files, function(x){read_json(x)}) %>% do.call(c, .)
 df1 <- do.call(rbind, df0) %>% as.data.frame()
@@ -83,7 +83,7 @@ dft$artist <- lapply(dft$track, function(x){names(srt(trackToArtist$get(x)))[1]}
 ```{r}
 library(jsonlite)
 
-files <- list.files("C:/docs/mike/my_spotify_data_4//Spotify Extended Streaming History/", pattern = "json", full.names = TRUE)
+files <- list.files("C:/docs/mike/my_spotify_data_5/Spotify Extended Streaming History/", pattern = "json", full.names = TRUE)
 
 df0 <- lapply(files, function(x){read_json(x)}) %>% do.call(c, .)
 df1 <- do.call(rbind, df0) %>% as.data.frame()
@@ -151,7 +151,7 @@ g1
 ```{r}
 library(plyr)
 library(jsonlite)
-OUT_DIR <- "C:/Users/iwong1/Documents/mike/my_spotify_data_4/"
+OUT_DIR <- "C:/Users/iwong1/Documents/mike/my_spotify_data_5/"
 TOP_N_ARTIST <- 4
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
@@ -168,7 +168,7 @@ my_rev <- function(my_seq){
   return(temp1)
 }
 
-files <- list.files("C:/docs/mike/my_spotify_data_4/Spotify Extended Streaming History/", pattern = "Audio.*json", full.names = TRUE)
+files <- list.files("C:/docs/mike/my_spotify_data_5/Spotify Extended Streaming History/", pattern = "Audio.*json", full.names = TRUE)
 df0 <- lapply(files, function(x){read_json(x)}) %>% do.call(c, .)
 df1 <- do.call(rbind, df0) %>% as.data.frame()
 df2 <- df0 %>% lapply(function(x){data.frame(as.list(unlist(x)), stringsAsFactors = FALSE)})
@@ -629,6 +629,7 @@ list_by_track <- lapply(df_filtered$spotify_track_uri %>% u, function(trackid){
 
 usual listening time, by minute resolution
 ```{r}
+library(wesanderson)
 MY_YEAR <- df3$year %>% u
 
 for(YEAR in MY_YEAR){
@@ -687,9 +688,91 @@ for(YEAR in MY_YEAR){
     theme(axis.text.y=element_blank(), 
           axis.ticks.y=element_blank()) +
     ggtitle(paste0("Average Daily Listening Activity, ", YEAR)) 
-  plot(g1)
+  # plot(g1)
   plot(g2)
+  ggsave(paste0(OUT_DIR, "average_daily_listening_activity_", YEAR, ".pdf"), g2, width = 10, height = 8, units = "in", limitsize = FALSE)
 }
+```
+
+
+
+usual listening time, by second resolution
+```{r}
+MY_YEAR <- df3$year %>% u
+
+my_plots <- vector("list", length = lu(MY_YEAR))
+names(my_plots) <- MY_YEAR
+
+for(YEAR in MY_YEAR){
+  print(YEAR)
+  df00 <- df3[grepl(paste0("^", YEAR), df3$ts), ]
+  df00$POSIX_TIME <- as.POSIXct(df00$ts, format="%Y-%m-%dT%H:%M:%OSZ", tz="UTC")
+  df00$PST <- df00$POSIX_TIME %>% format(tz="US/Pacific" ,usetz=TRUE)
+  df00$timestamp_key <- df00$PST %>% str_extract("(?<=[:space:])[:digit:]{2}:[:digit:]{2}:[:digit:]{2}(?=[:space:])")
+  df00$second_increment <- floor( df00$ms_played / 1000)
+  # df00$stop_time <- df00$PST + floor(df00$ms_played/1000)
+  
+  timestamps <- expand.grid(0:59, 0:59, 0:23)
+  timestamps$Var1 <- sprintf("%02d", timestamps$Var1)
+  timestamps$Var2 <- sprintf("%02d", timestamps$Var2)
+  timestamps$Var3 <- sprintf("%02d", timestamps$Var3)
+  timestamps$key <- paste0(timestamps$Var3, ":", timestamps$Var2, ":", timestamps$Var1)
+  
+  timeToCount <- HashMap$new()
+  for(key in timestamps$key){
+    timeToCount$put(key, 0)
+  }
+  
+  timestamp_key_to_index <- HashMap$new()
+  for(i in seq_down(timestamps)){
+    timestamp_key_to_index$put(timestamps$key[i], i)
+  }
+  
+  timestamp_index_to_key <- HashMap$new()
+  for(i in seq_down(timestamps)){
+    timestamp_index_to_key$put(as.character(i), timestamps$key[i])
+  }
+
+  N_TIMESTAMPS <- nrow(timestamps)
+  t1 <- Sys.time()
+  for(i in seq_down(df00)){
+    my_key <- df00$timestamp_key[i]
+    timeToCount$put(my_key, timeToCount$get(my_key) + 1)
+    my_len <- df00$second_increment[i]
+    if(my_len > 0){
+      for(k in seq(1, my_len)){
+        next_key <- timestamp_index_to_key$get(as.character(
+          ((timestamp_key_to_index$get(my_key) + k) %% N_TIMESTAMPS) + 1 
+        ))
+        timeToCount$put(next_key, timeToCount$get(next_key) + 1)
+      }
+    }
+  }
+  print(Sys.time() - t1)
+  
+  timestamps$count <- lapply(timestamps$key, function(key){
+    timeToCount$get(key)
+  }) %>% unlist
+  timestamps$x <- seq_down(timestamps)
+  
+  g1 <- ggplot(timestamps, aes(x=x, y=count)) + 
+    geom_jitter(alpha=0.05, color=wes_palette("Darjeeling2")[2], width = 0, height = 0.5) +
+    scale_x_continuous(breaks = seq(from=1, to=90000, by=3600), labels = c("12AM", paste0(1:11, "AM"), "12PM", paste0(1:11, "PM"), "12AM")) +
+    ggtitle(paste0("Average Daily Listening Activity, ", YEAR)) + 
+    theme(axis.text.y=element_blank(), 
+          axis.ticks.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x = element_blank())
+  plot(g1)
+  my_plots[[YEAR]] <- g1
+}
+
+
+
+for(YEAR in MY_YEAR){
+   ggsave(paste0(OUT_DIR, "average_listening_activity_", YEAR, ".pdf"), my_plots[[YEAR]], width = 16, height = 8, units = "in", limitsize = FALSE)
+}
+
 ```
 
 heatmap
@@ -786,7 +869,18 @@ for(YEAR in MY_YEAR){
     
     # plot(g1)
     plot(g2)
+    
+    ggsave(paste0(OUT_DIR, "heatmap_listening_activity_", YEAR, ".pdf"), g2, width = 11, height = 9, units = "in", limitsize = FALSE)
 }
+```
+
+
+basic stats: 
+  unique artists 
+  unique songs
+  
+```{r}
+
 ```
 
 

@@ -54,3 +54,16 @@ df4 <- data.frame(`membership:sample_3-7-8_set_id`  = "locityper_batch_01",
 write(df4, "C:/docs/aou/memb_first_batch.memb")
 ```
 
+
+```{r}
+df0 <- fread("C:/docs/aou/hifi-sample-t2t.tsv") %>% as.data.frame()
+N_GRPS <- 3
+
+df_memb <- data.frame(`membership:hifi-sample-t2t_set_id` = paste0("curve_callable_", rep(1:N_GRPS, nrow(df0))[seq_down(df0)]),
+                      `hifi-sample-t2t` = df0$`entity:hifi-sample-t2t_id`,
+                      check.names=FALSE)
+
+write.table(df_memb, "C:/docs/aou/memb_curve_callable.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+```
+

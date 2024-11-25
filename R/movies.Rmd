@@ -71,16 +71,12 @@ df_publish$Freq <- lapply(seq_down(df_publish), function(x){
 }) %>% unlist
 df_publish <- df_publish[order(df_publish$Freq, decreasing = TRUE), ]
 
-write_sheet(data=df_publish, ss="https://docs.google.com/spreadsheets/d/10MP7ZlpWGjUl_0Zgq3LQQmMcQ130aD9Q0xG-INU6pko", sheet="DONT_EDIT_THIS_PAGE")
-
+write_sheet(data=df_publish, ss="https://docs.google.com/spreadsheets/d/10MP7ZlpWGjUl_0Zgq3LQQmMcQ130aD9Q0xG-INU6pko", sheet="rankings")
+write.table(df_publish, "C:/docs/mike/movies.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
 
 ```{r}
-
-write.table(df_publish, "C:/docs/mbti/movies.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
-
-
-
+write.table(df_publish, "C:/docs/mike/movies.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 
 ```
 
