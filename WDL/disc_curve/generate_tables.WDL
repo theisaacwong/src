@@ -3,14 +3,16 @@ version 1.0
 workflow discovery_curve {
 
     input {
-        String docker = "iqwong/disccurve:0.1"
-
+        String docker
         Array[File] input_h1_files
         Array[File] input_h2_files
         File sv_vcf
         File sample_file
         File sample_order
+        File reference_index
+        File python_script
 
+        String name
 
         String n_cpu = 4
         String mem_gb = 8
@@ -19,18 +21,26 @@ workflow discovery_curve {
 
     call create_tables {
         input:
-            bam_file = input_bams[scatter_index],
-            sample_id = input_samples[scatter_index],
-            callable_bed = callable_bed,
+            input_h1_files = input_h1_files,
+            input_h2_files = input_h2_files,
+            sv_vcf = sv_vcf,
+            sample_file = sample_file,
+            sample_order = sample_order,
+            reference_index = reference_index,
+            python_script = python_script,
+            name = name,
             docker = docker,
-            samtools_mem_gb = samtools_mem_gb,
-            samtools_n_cpu = samtools_n_cpu
+            mem_gb = mem_gb,
+            n_cpu = n_cpu,
+            disk_size = disk_size
     }
     
     output {
-        Array[File] output_depth_files = create_callable.output_depth_file
-        Array[File] output_h1_files = create_callable.output_h1_file
-        Array[File] output_h2_files = create_callable.output_h2_file
+        File output_bed = create_tables.output_bed
+        File output_tsv = create_tables.output_tsv
+        File output_hap = create_tables.output_hap
+        File output_gts = create_tables.output_gts
+        File output_counts = create_tables.output_counts
     }
 }
 

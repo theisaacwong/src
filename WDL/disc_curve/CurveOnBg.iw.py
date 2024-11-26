@@ -5,10 +5,12 @@
 '''
 
 @author: Jiadong Lin
+@author: Isaac Wong
 
 @contact: jdlin@uw.edu
+@contact: iwong1@uw.edu
 
-@time: 8/15/24
+@time: 11/25/24
 '''
 import json
 import numpy as np
@@ -107,8 +109,8 @@ def complete_collapse_gt(tsv, haps, sample_file, callable_dir, out_gt, fai):
 
     for i, sample in enumerate(sample_order):
 
-        h1 = BedTool(f"{callable_dir}/{sample}/callable_regions_h1_500.bed.gz").sort(g=fai)
-        h2 = BedTool(f"{callable_dir}/{sample}/callable_regions_h2_500.bed.gz").sort(g=fai)
+        h1 = BedTool(f"{callable_dir}/{sample}_callable_regions_h1_500.bed.gz").sort(g=fai)
+        h2 = BedTool(f"{callable_dir}/{sample}_callable_regions_h2_500.bed.gz").sort(g=fai)
 
         out_df_h1_varid = haps.index[haps[f"{sample}_1"] != "."].to_list()
         out_df_h2_varid = haps.index[haps[f"{sample}_2"] != "."].to_list()
