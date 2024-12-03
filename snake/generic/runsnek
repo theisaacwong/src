@@ -25,7 +25,7 @@ snakemake \
     -s ${SNAKEFILE} \
     --use-singularity \
     --singularity-args '--bind /net/:/net/ -C ' \
-    --restart-times 3 \
+    --restart-times 1 \
     --printshellcmds \
     --latency-wait 15 \
     -j "${JOB_COUNT}" \

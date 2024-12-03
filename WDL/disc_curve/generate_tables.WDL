@@ -7,15 +7,18 @@ workflow discovery_curve {
         Array[File] input_h1_files
         Array[File] input_h2_files
         File sv_vcf
+        File sv_vcf_index
         File sample_file
         File sample_order
         File reference_index
         File python_script
+        
 
         String name
 
         String n_cpu = 4
         String mem_gb = 8
+        Int disk_size
     }
 
 
@@ -24,6 +27,7 @@ workflow discovery_curve {
             input_h1_files = input_h1_files,
             input_h2_files = input_h2_files,
             sv_vcf = sv_vcf,
+            sv_vcf_index = sv_vcf_index,
             sample_file = sample_file,
             sample_order = sample_order,
             reference_index = reference_index,
@@ -49,6 +53,7 @@ task create_tables {
         Array[File] input_h1_files
         Array[File] input_h2_files
         File sv_vcf
+        File sv_vcf_index
         File sample_file
         File sample_order
         File reference_index
@@ -75,9 +80,9 @@ task create_tables {
 
         mkdir -p /callable_files/
 
-        find / | grep "_callable_regions_h._500.bed.gz" | xargs -I {} mv {} /callable_files/
+        find /cromwell_root/ | grep "_callable_regions_h._500.bed.gz" | xargs -I {} mv {} /callable_files/
 
-        python ~{python_script} \
+        /opt/conda/envs/audano-curve/bin/python ~{python_script} \
             --vcf ~{sv_vcf} \
             --samplefile ~{sample_file} \
             --bed ~{out_bed} \

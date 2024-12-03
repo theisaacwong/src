@@ -67,3 +67,41 @@ write.table(df_memb, "C:/docs/aou/memb_curve_callable.tsv", sep="\t", col.names 
 
 ```
 
+```{r}
+h1 <- readLines("C:/docs/aou/callable_h1.fofn")
+h2 <- readLines("C:/docs/aou/callable_h2.fofn")
+
+h1_sample <- h1 %>% bname %>% str_remove("")
+
+
+```
+
+
+
+```{r}
+df0 <- fread("C:/docs/aou/create_table/hifi-sample-t2t_set/hifi-sample-t2t_set_entity.tsv") %>% as.data.frame()
+df0 <- df0[grepl("curve_callable_.$", df0$`entity:hifi-sample-t2t_set_id`), ]
+
+df1 <- fread("C:/docs/aou/create_table/hifi-sample-t2t_set/hifi-sample-t2t_set_membership.tsv") %>% as.data.frame()
+
+samples <- df1$`hifi-sample-t2t` %>% u
+
+h1_files <- df0$output_h1_files %>% str_remove_all("\"|\\[|\\]") %>% str_split(",") %>% unlist
+h2_files <- df0$output_h2_files %>% str_remove_all("\"|\\[|\\]") %>% str_split(",") %>% unlist
+
+df_memb <- data.frame(`membership:hifi-sample-t2t_set_id` = "create_table_1", 
+                      `hifi-sample-t2t` = samples,
+                      check.names = FALSE)
+write.table(df_memb, "C:/docs/aou/create_table/df_memb.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+
+df_entity <- data.frame(`entity:hifi-sample-t2t_set_id` = "create_table_1", 
+                        output_h1_files  = paste0("[\"", paste0(h1_files, collapse = "\",\""), "\"]"), 
+                        output_h2_files  = paste0("[\"", paste0(h2_files, collapse = "\",\""), "\"]"), 
+                        check.names = FALSE)
+write.table(df_entity, "C:/docs/aou/create_table/df_ent_new.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+
+write.table(df_memb$`hifi-sample-t2t`, "C:/docs/aou/create_table/samples_all.txt", sep="\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+
+write.table(df_memb$`hifi-sample-t2t`, "C:/docs/aou/create_table/samples_all.txt", sep="\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+```
+

@@ -22,7 +22,7 @@ import pysam
 from pybedtools import BedTool
 import argparse
 
-from helpers.Constants import *
+# from helpers.Constants import *
 
 
 pop_order = ['EAS', 'SAS', 'EUR', 'AMR', 'AFR']
@@ -40,11 +40,12 @@ def collapse_data_table(truvari_vcf, sample_file, out_bed, out_tsv, out_haps):
     :return:
     '''
     sample_list = [line.strip() for line in open(sample_file)]
+    print(sample_list)
     sample_haps = []
     for sample in sample_list:
         sample_haps.append(f'{sample}_1')
         sample_haps.append(f'{sample}_2')
-
+    print(sample_haps)
     var_info = []
     headers = ['#CHROM', 'POS', 'END', 'ID', 'SVTYPE', 'SVLEN', 'DISC_CLASS', 'DISC_FREQ', 'MERGE_SAMPLES', 'MERGE_GT']
     haps_header = ['ID'] + sample_haps
@@ -70,6 +71,9 @@ def collapse_data_table(truvari_vcf, sample_file, out_bed, out_tsv, out_haps):
             this_rec_haps[h1_idx + 1] = h1
             this_rec_haps[h2_idx + 1] = h2
 
+        if(len(merged_samples) == 0):
+            continue
+
         all_haps.append(this_rec_haps)
         disc_class, freq = assign_disc_class(len(merged_samples), len(sample_list))
         this_rec.append(disc_class)
@@ -78,12 +82,10 @@ def collapse_data_table(truvari_vcf, sample_file, out_bed, out_tsv, out_haps):
         this_rec.append(','.join(gts))
         var_info.append(this_rec)
     var_out = pd.DataFrame(var_info, columns=headers)
-    var_out[['#CHROM', 'POS', 'END', 'SVTYPE', 'ID', 'SVLEN']].to_csv(out_bed, sep='\t', index=False,
-                                                                      compression='gzip', header=False)
-    var_out.to_csv(out_tsv, sep='\t', index=False, compression='gzip', header=True)
+    var_out[['#CHROM', 'POS', 'END', 'SVTYPE', 'ID', 'SVLEN']].to_csv(out_bed, sep='\t', index=False, header=False)
+    var_out.to_csv(out_tsv, sep='\t', index=False, header=True)
 
-    pd.DataFrame(all_haps, columns=haps_header).to_csv(out_haps, compression='gzip', sep='\t', index=False,
-                                                       header=True)
+    pd.DataFrame(all_haps, columns=haps_header).to_csv(out_haps, sep='\t', index=False, header=True)
 
 
 def complete_collapse_gt(tsv, haps, sample_file, callable_dir, out_gt, fai):
@@ -149,8 +151,7 @@ def complete_collapse_gt(tsv, haps, sample_file, callable_dir, out_gt, fai):
         new_gts = [f'{h1}|{h2}' for (h1, h2) in gt_list]
         reform_gt.append([var_id] + new_gts)
 
-    pd.DataFrame(reform_gt, columns=out_headers).to_csv(out_gt, compression='gzip', sep='\t', index=False,
-                                                        header=True)
+    pd.DataFrame(reform_gt, columns=out_headers).to_csv(out_gt, sep='\t', index=False, header=True)
 
 
 
@@ -314,7 +315,7 @@ def main():
     parser.add_argument('-s', '--samplefile')
     parser.add_argument('-b', '--bed')
     parser.add_argument('-t', '--tsv')
-    parser.add_argument('-h', '--haps')
+    parser.add_argument('-a', '--haps')
     parser.add_argument('-d', '--dir')
     parser.add_argument('-g', '--gt')
     parser.add_argument('-f', '--fai')
