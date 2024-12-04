@@ -102,6 +102,6 @@ write.table(df_entity, "C:/docs/aou/create_table/df_ent_new.tsv", sep="\t", col.
 
 write.table(df_memb$`hifi-sample-t2t`, "C:/docs/aou/create_table/samples_all.txt", sep="\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
 
-write.table(df_memb$`hifi-sample-t2t`, "C:/docs/aou/create_table/samples_all.txt", sep="\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+write.table(df_memb$`hifi-sample-t2t`, "C:/docs/aou/create_table/samples_all.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
 ```
 
