@@ -1626,3 +1626,130 @@ write.table(df_man, "C:/docs/autism/asm_mig.man", col.names = TRUE, row.names = 
 
 ```
 
+```{r}
+df0 <- fread("C:/docs/autism/rett_alns.fofn", header=FALSE) %>% as.data.frame()
+df0$sample <- df0$V1 %>% bname %>% str_remove(".all.sorted.bam")
+df0 <- df0[order(df0$V1), ]
+df0$ref <- df0$V1 %>% lapply(function(x){
+  unlist(str_split(x, "/"))[12]
+}) %>% unlist
+df0$dest_dir <- paste0("/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/", df0$sample, "/alignments/PacBio_HiFi/", df0$ref)
+df0$final_bam <- paste0(df0$dest_dir, "/alignment.bam")
+df0$final_bai <- paste0(df0$dest_dir, "/alignment.bam.bai")
+
+script_dir <- paste0("mkdir -p ", df0$dest_dir)
+script_cp_bam <- paste0("cp ", df0$V1, " ", df0$final_bam)
+script_cp_bai <- paste0("cp ", df0$V1, ".bai ",  df0$final_bai)
+script_remove_bam <- paste0("rm -rf ", df0$V1)
+script_remove_bai <- paste0("rm -rf ", df0$V1, ".bai")
+script_link_bam <- paste0("ln -s ", df0$final_bam, " ", df0$V1)
+script_link_bai <- paste0("ln -s ", df0$final_bai, " ", df0$V1, ".bai")
+
+
+final_script <- c("#!/bin/bash\nset -euxo pipefail", script_dir, script_cp_bam, script_cp_bai, script_remove_bam, script_remove_bai, script_link_bam, script_link_bai)
+write.table(final_script, "C:/docs/autism/migrate_rett_samples.sh", sep="\t", col.names = FALSE, row.names = FALSE, quote=FALSE)
+```
+
+/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/11414_mo/alignments/PacBio_HiFi/GRCh38
+
+
+```{r}
+df0 <- fread("C:/docs/autism/autism_samples.txt") %>% as.data.frame()
+df0$i <- seq_along(df0)
+df0 <- df0[grepl("_", df0$SP_ID), ]
+df1 <- fread("C:/docs/autism/files.txt3", header=FALSE) %>% as.data.frame()
+colnames(df1) <- "path"
+
+df1$sample <- df1$path %>% lapply(function(x){
+  temp1 <- str_split(x, "/") %>% unlist
+  return(temp1[9])
+}) %>% unlist
+
+df1$hap <- ifelse(grepl("hap1", df1$path), "HAP1", ifelse(grepl("hap2", df1$path), "HAP2", "NONE"))
+df1 <- df1[df1$hap != "NONE", ]
+df1 <- df1[df1$sample %in% df0$SP_ID, ]
+df1 <- df1[!grepl("p_ctg", df1$path), ]
+
+
+
+df2 <- data.frame(SAMPLE = df0$SP_ID, 
+                  HAP1 = lapply(df0$SP_ID, function(x){
+                    temp1 <- df1$path[df1$sample == x & df1$hap == "HAP1"]
+                    if(length(temp1)==1){
+                      return(temp1)
+                    } else {
+                      return("toomany")
+                    }
+                  }) %>% unlist, 
+                  HAP2 = lapply(df0$SP_ID, function(x){
+                    temp1 <- df1$path[df1$sample == x & df1$hap == "HAP2"]
+                    if(length(temp1)==1){
+                      return(temp1)
+                    } else {
+                      return("toomany")
+                    }
+                  }) %>% unlist)
+
+
+write.table(df2[df2$HAP1 != "toomany", ], "C:/docs/autism/asm_qc_lra_manifest.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+df3 <- df2[!grepl("_fa", df2$SAMPLE), ]
+
+
+
+```
+
+
+```{r}
+dfr <- fread("C:/docs/autism/files.rettlike.asmqc.txt", header=FALSE) %>% as.data.frame()
+dfr$sample <- dfr$V1 %>% bname %>% str_remove("_hap..fasta")
+dfr$hap <- ifelse(grepl("hap1", dfr$V1), "HAP1", ifelse(grepl("hap2", dfr$V1), "HAP2", "NONE"))
+
+df0 <- dfr
+df0 <- df0[order(df0$sample), ]
+df0$dest_dir <- paste0("/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/", df0$sample, "/assemblies/hifiasm/0.16.1")
+df0$final_fasta <- paste0(df0$dest_dir, "/", bname(df0$V1))
+df0$final_fai <- paste0(df0$final_fasta, ".fai")
+
+script_dir <- paste0("mkdir -p ", df0$dest_dir)
+script_cp_fasta <- paste0("cp ", df0$V1, " ", df0$final_fasta)
+script_cp_fai <- paste0("cp ", df0$V1, ".fai ",  df0$final_fai)
+script_remove_fasta <- paste0("rm -rf ", df0$V1)
+script_remove_fai <- paste0("rm -rf ", df0$V1, ".fai")
+script_link_fasta <- paste0("ln -s ", df0$final_fasta, " ", df0$V1)
+script_link_fai <- paste0("ln -s ", df0$final_fai, " ", df0$V1, ".fai")
+
+
+final_script <- c("#!/bin/bash\nset -euxo pipefail", script_dir, script_cp_fasta, script_cp_fai, script_remove_fasta, script_remove_fai, script_link_fasta, script_link_fai)
+write.table(final_script, "C:/docs/autism/migrate_rett_asm_samples.sh", sep="\t", col.names = FALSE, row.names = FALSE, quote=FALSE)
+
+
+
+rett_samples <- dfr$sample %>% u %>% sort
+df_r <- data.frame(SAMPLE = rett_samples, 
+                  HAP1 = lapply(rett_samples, function(x){
+                    temp1 <- dfr$V1[dfr$sample == x & dfr$hap == "HAP1"]
+                    return(temp1[1])
+                  }) %>% unlist, 
+                  HAP2 = lapply(rett_samples, function(x){
+                    temp1 <- dfr$V1[dfr$sample == x & dfr$hap == "HAP2"]
+                    return(temp1[1])
+                  }) %>% unlist)
+
+df_r$new_hap1 <- paste0("/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/", df_r$SAMPLE, "/assemblies/hifiasm/0.16.1/", bname(df_r$HAP1))
+df_r$new_hap2 <- paste0("/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/", df_r$SAMPLE, "/assemblies/hifiasm/0.16.1/", bname(df_r$HAP2))
+
+
+write.table(df_r[, c(1,4,5)], "C:/docs/autism/rett_asms_lra.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
+
+
+```{r}
+df00 <- fread("C:/docs/autism/fa_asms.txt", header=FALSE) %>% as.data.frame()
+df00$sample <- df00$V1 %>% lapply(function(x){
+  temp1 <- str_split(x, "/") %>% unlist
+  return(temp1[11])
+}) %>% unlist 
+```
+

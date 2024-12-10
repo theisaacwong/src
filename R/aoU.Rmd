@@ -105,3 +105,71 @@ write.table(df_memb$`hifi-sample-t2t`, "C:/docs/aou/create_table/samples_all.txt
 write.table(df_memb$`hifi-sample-t2t`, "C:/docs/aou/create_table/samples_all.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
 ```
 
+
+
+```{r}
+df0 <- fread("C:/docs/aou/extra_samples.txt", header = FALSE) %>% as.data.frame()
+df1 <- fread("C:/docs/aou/extra_samples_paths.txt", header = FALSE) %>% as.data.frame()
+
+df1$sample <- df1$V1 %>% lapply(function(x){
+  temp1 <- str_split(x, "/") %>% unlist
+  return(temp1[9])
+}) %>% unlist
+
+df1 <- df1[df1$sample %in% df0$V1, ]
+colnames(df1)  <- c("path", "sample")
+df1_extra <- data.frame(path = c("/net/eichler/vol28/projects/long_read_archive/nobackups/pop/NA19240/alignments/PacBio_HiFi/CHM13_v2.0/GM19240.minimap2.bam", "/net/eichler/vol28/projects/long_read_archive/nobackups/pop/HG002/alignments/PacBio_HiFi/CHM13_v2.0/NA24385.minimap2.bam"), 
+                        sample = c("NA19240", "HG002"))
+
+df2 <- rbind(df1, df1_extra)
+
+json_samples <- paste0("[\"", paste0(df2$sample, collapse = "\",\""), "\"]")
+json_bams <- paste0("[\"", paste0(df2$path, collapse = "\",\""), "\"]")
+
+script <- "{\n"
+script <- c(script, "  \"discovery_curve.samtools_n_cpu\": \"4\",\n")
+script <- c(script, "\"discovery_curve.callable_bed\": \"/net/eichler/vol28/home/iwong1/nobackups/disc_curve/test_03/collapsed.bed.gz\",\n")
+script <- c(script, "\"discovery_curve.docker\": \"iwongbroadinstitute/disccurve:0.2\",\n")
+script <- c(script, "\"discovery_curve.samtools_mem_gb\": \"8\",\n")
+script <- c(script, "\"discovery_curve.sample_file\": \"/net/eichler/vol28/home/iwong1/nobackups/disc_curve/test_03/empty.txt\",\n")
+script <- c(script, "\"discovery_curve.truvari_vcf\": \"/net/eichler/vol28/home/iwong1/nobackups/disc_curve/test_03/empty.txt\",\n")
+script <- c(script, paste0("\"discovery_curve.input_samples\": ", json_samples, ",\n"))
+script <- c(script, paste0("\"discovery_curve.input_bams\": ", json_bams, "\n"))
+script <- c(script, "}")
+
+write.table(script, "C:/docs/aou/new_callable.json", sep = " ", col.names = FALSE, row.names = FALSE, quote = FALSE)
+
+script <- c(script, "")
+
+
+write.table(df2[, c(2,1)], "C:/docs/aou/extra_samples_snakeman.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+```
+/net/eichler/vol28/projects/long_read_archive/nobackups/pop/NA19240/alignments/PacBio_HiFi/CHM13_v2.0/GM19240.minimap2.bam
+/net/eichler/vol28/projects/long_read_archive/nobackups/pop/HG002/alignments/PacBio_HiFi/CHM13_v2.0/NA24385.minimap2.bam
+
+
+
+```{r}
+df0 <- fread("C:/docs/aou/depths.txt", header = FALSE) %>% as.data.frame()
+df0$sample <- df0$V1 %>% bname %>% str_remove(".depth.txt$") %>% unlist
+
+json_samples <- paste0("[\"", paste0(df0$sample, collapse = "\",\""), "\"]")
+json_bams <- paste0("[\"", paste0(df0$V1, collapse = "\",\""), "\"]")
+
+
+script <- "{\n"
+script <- c(script, "  \"discovery_curve.samtools_n_cpu\": \"4\",\n")
+script <- c(script, "\"discovery_curve.callable_bed\": \"/net/eichler/vol28/home/iwong1/nobackups/disc_curve/test_03/collapsed.bed.gz\",\n")
+script <- c(script, "\"discovery_curve.docker\": \"iwongbroadinstitute/disccurve:0.2\",\n")
+script <- c(script, "\"discovery_curve.samtools_mem_gb\": \"8\",\n")
+script <- c(script, "\"discovery_curve.sample_file\": \"/net/eichler/vol28/home/iwong1/nobackups/disc_curve/test_03/empty.txt\",\n")
+script <- c(script, "\"discovery_curve.truvari_vcf\": \"/net/eichler/vol28/home/iwong1/nobackups/disc_curve/test_03/empty.txt\",\n")
+script <- c(script, paste0("\"discovery_curve.input_samples\": ", json_samples, ",\n"))
+script <- c(script, paste0("\"discovery_curve.input_bams\": ", json_bams, "\n"))
+script <- c(script, "}")
+
+write.table(script, "C:/docs/aou/new_callable_skip_samtools.json", sep = " ", col.names = FALSE, row.names = FALSE, quote = FALSE)
+
+```
+
