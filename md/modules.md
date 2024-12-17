@@ -26,7 +26,7 @@ MODNAME="hicexplorer"
 MODVERSION="3.7.3"
 
 mkdir -p ${MODSW}/${MODNAME}/${MODVERSION}/${ARCHPATH}
-conda create -p ${MODSW}/${MODNAME}/${MODVERSION}/${ARCHPATH} -c bioconda -c conda-forge hicexplorer
+conda create -y -p ${MODSW}/${MODNAME}/${MODVERSION}/${ARCHPATH} -c bioconda -c conda-forge hicexplorer
 ```
 
 

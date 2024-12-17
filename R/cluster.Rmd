@@ -23,3 +23,37 @@ df0$V2 %>% str_replace_all("\\s+", "\t")
 df0 <- fread("C:/docs/cluster/cluster_info.tsv", header=FALSE) %>% as.data.frame()
 ```
 
+
+```{r}
+yaml <- readLines("C:/docs/temp/SQANTI3.conda_env.yml")
+yaml <- yaml %>% str_remove("^[:blank:]+-[:blank:]")
+temp1 <- paste0("\"", paste0(yaml, collapse = "\" \""), "\"")
+cat(temp1)
+
+
+```
+
+
+
+```{r}
+df0 <- data.frame(time = c(0,17,44,68,196,230,247,271,343),
+                  count = c(12,17,26,33,74,86,91,97,120))
+
+x1 <- 0
+y1 <- 12
+
+x2 <- df0$time[nrow(df0)]
+y2 <- df0$count[nrow(df0)]
+
+m <- (y2-y1)/(x2-x1)
+
+b = y2 - (m * x2)
+
+t1 <- ((2*1074 - b)/m)*60
+
+t2 <- as.POSIXct("2024-12-16T11:34:00Z", format="%Y-%m-%dT%H:%M:%OSZ", tz="UTC")
+
+t2+t1
+ggplot(df0, aes(x=time,y=count)) + geom_point() + ggtitle(paste0(t2+t1, " ", round(1/m, 4), " minutes/sample"))
+```
+

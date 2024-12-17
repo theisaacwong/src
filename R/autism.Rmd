@@ -1753,3 +1753,56 @@ df00$sample <- df00$V1 %>% lapply(function(x){
 }) %>% unlist 
 ```
 
+
+
+```{r}
+df00 <- fread("C:/docs/autism/asm_qc_lra_manifest_updated.tsv.txt") %>% as.data.frame()
+df01 <- fread("C:/docs/autism/manifest.autism.aln.GRCh38.tsv") %>% as.data.frame()
+df02 <- fread("C:/docs/autism/manifest.autism.aln.GRCh38_noY.tsv") %>% as.data.frame()
+df03 <- fread("C:/docs/autism/rett-hg38-aln.txt", header=FALSE) %>% as.data.frame()
+df04 <- fread("C:/docs/autism/rett-hg38-noY-aln.txt", header = FALSE) %>% as.data.frame()
+
+df03$sample <- df03$V1 %>% lapply(function(x){
+  unlist(str_split(x, "/"))[9]
+}) %>% unlist
+df04$sample <- df04$V1 %>% lapply(function(x){
+  unlist(str_split(x, "/"))[9]
+}) %>% unlist
+
+
+all_samples <- u(c(df00$SAMPLE, df01$SAMPLE, df02$SAMPLE, df03$sample, df04$sample))
+
+df_final <- data.frame(sample = sort(all_samples))
+df_final$HAP1 <- df_final$sample %>% lapply(function(x){
+  if(x %in% df00$SAMPLE){
+    return(df00$HAP1[df00$SAMPLE == x])
+  } else {
+    return("missing_sequence_files")
+  }
+}) %>% unlist
+df_final$HAP2 <- df_final$sample %>% lapply(function(x){
+  if(x %in% df00$SAMPLE){
+    return(df00$HAP2[df00$SAMPLE == x])
+  } else {
+    return("missing_sequence_files")
+  }
+}) %>% unlist
+df_final$alignment <- df_final$sample %>% lapply(function(x){
+  if(x %in% df02$SAMPLE){
+    df02$BAM[df02$SAMPLE == x]
+  } else if(x %in% df01$SAMPLE){
+    df01$BAM[df01$SAMPLE == x]
+  } else if(x %in% df03$sample){
+    df03$V1[df03$sample == x]
+  } else if(x %in% df04$sample){
+    df04$V1[df04$sample == x]
+  } else {
+    return("ERROR")
+  }
+}) %>% unlist
+
+colnames(df_final) <- c("SAMPLE", "ASM_QC_HAP1",  "ASM_QC_HAP2", "ALIGNMENT")
+write.table(df_final, "C:/docs/autism/manifest.autism.asm.aln.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+```
+

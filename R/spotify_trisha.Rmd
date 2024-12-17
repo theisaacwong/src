@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # get this year's top artists and tracks
 ```{r}
 library(jsonlite)
-OUT_DIR <- "C:/Users/iwong1/Documents/mike/my_spotify_data_5/"
+OUT_DIR <- "C:/Users/iwong1/Documents/mike/my_spotify_data trisha_extended/"
 N_TOP_ARTIST <- 10
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
@@ -26,7 +26,7 @@ my_rev <- function(my_seq){
   }
   return(temp1)
 }
-files <- list.files("C:/docs/mike/my_spotify_data_5/Spotify Extended Streaming History/", pattern = "json", full.names = TRUE)
+files <- list.files("C:/docs/mike/my_spotify_data trisha_extended/Spotify Extended Streaming History/", pattern = "json", full.names = TRUE)
 
 df0 <- lapply(files, function(x){read_json(x)}) %>% do.call(c, .)
 df1 <- do.call(rbind, df0) %>% as.data.frame()
@@ -102,7 +102,7 @@ g1 <- ggplot(dfa[1:N_TOP_ARTIST, ], aes(x=ID, y=time, fill=artist)) +
   ylab("Hours Listened") +
   ggtitle(paste0("Spotify top ", N_TOP_ARTIST, " Artists, 2024")) +
   scale_fill_manual(name = "Artist", values = gg_color_hue(N_TOP_ARTIST) %>% my_rev) + 
-  scale_y_continuous(breaks=seq(0, dfa$time[1]+50, 25))
+  scale_y_continuous(breaks=seq(0, dfa$time[1]+50, 5))
 plot(g1)
 ggsave(paste0(OUT_DIR, "top_artists_2024.pdf"), g1, width = 10, height = 7, units = "in", limitsize = FALSE)
 ```
@@ -125,7 +125,7 @@ ggplot(df_filtered, aes(fill=master_metadata_album_artist_name, y=hour, x = rowI
 ```{r}
 library(jsonlite)
 
-files <- list.files("C:/docs/mike/my_spotify_data_5/Spotify Extended Streaming History/", pattern = "json", full.names = TRUE)
+files <- list.files("C:/docs/mike/my_spotify_data trisha_extended/Spotify Extended Streaming History/", pattern = "json", full.names = TRUE)
 
 df0 <- lapply(files, function(x){read_json(x)}) %>% do.call(c, .)
 df1 <- do.call(rbind, df0) %>% as.data.frame()
@@ -189,25 +189,32 @@ g1 <- ggplot(dfa0[1:N_TOP_ARTIST, ], aes(x=ID, y=time, fill=artist)) +
   ylab("Hours Listened") +
   ggtitle(paste0("Spotify Top ", N_TOP_ARTIST, " Artists, lifetime")) +
   scale_fill_manual(name = "Artist", values = gg_color_hue(N_TOP_ARTIST) %>% my_rev) + 
-  scale_y_continuous(breaks=seq(0, dfa0$time[1]+100, 100))
+  scale_y_continuous(breaks=seq(0, dfa0$time[1]+100, 20))
 plot(g1)
 ggsave(paste0(OUT_DIR, "top_artists_lifetime.pdf"), g1, width = 10, height = 7, units = "in", limitsize = FALSE)
+
+
+dft0$ID <- seq_down(dft0)
+N_TOP_ARTIST <- 10
+g1 <- ggplot(dft0[1:N_TOP_ARTIST, ], aes(x=ID, y=time, fill=track)) + 
+  geom_bar(position="stack", stat="identity") +
+  scale_x_continuous(breaks=1:N_TOP_ARTIST, labels=dft0$track[1:N_TOP_ARTIST]) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), legend.position="none") + 
+  xlab("") + 
+  ylab("Hours Listened") +
+  ggtitle(paste0("Spotify Top ", N_TOP_ARTIST, " Artists, lifetime")) +
+  scale_fill_manual(name = "Artist", values = gg_color_hue(N_TOP_ARTIST) %>% my_rev) + 
+  scale_y_continuous(breaks=seq(0, dft0$time[1]+100, 20))
+plot(g1)
+ggsave(paste0(OUT_DIR, "top_songs_lifetime.pdf"), g1, width = 10, height = 7, units = "in", limitsize = FALSE)
 ```
 
 
-
-```{r}
-dfa_plot <- within(dfa, artist <- factor(artist, levels=names(sort(table(artist), decreasing = TRUE))))
-
-g1 <- ggplot(dfa[1:50, ], aes(y=reorder(artist, time), x=time)) + 
-  geom_bar(stat="identity")
-g1
-```
 # updated DataFrame of raw data
 ```{r}
 library(plyr)
 library(jsonlite)
-OUT_DIR <- "C:/Users/iwong1/Documents/mike/my_spotify_data_5/"
+OUT_DIR <- "C:/Users/iwong1/Documents/mike/my_spotify_data trisha_extended/"
 TOP_N_ARTIST <- 4
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
@@ -224,23 +231,25 @@ my_rev <- function(my_seq){
   return(temp1)
 }
 
-files <- list.files("C:/docs/mike/my_spotify_data_5/Spotify Extended Streaming History/", pattern = "Audio.*json", full.names = TRUE)
+files <- list.files("C:/docs/mike/my_spotify_data trisha_extended/Spotify Extended Streaming History/", pattern = "Audio.*json", full.names = TRUE)
 df0 <- lapply(files, function(x){read_json(x)}) %>% do.call(c, .)
 df1 <- do.call(rbind, df0) %>% as.data.frame()
 df2 <- df0 %>% lapply(function(x){data.frame(as.list(unlist(x)), stringsAsFactors = FALSE)})
 df3 <- rbind.fill(df2)
 df3[is.na(df3)] <- "NA"
 df3 <- df3[df3$master_metadata_album_artist_name != "NA", ]
-df3$year <- df3$ts %>% str_extract("^202.(?=-)")
+df3$year <- df3$ts %>% str_extract("^20..(?=-)")
 df3$month <- df3$ts %>% str_extract("(?<=-)..(?=-)")
 df3$timecode <- paste0(df3$year, df3$month) %>% as.numeric()
 df3$binID <- paste0(df3$timecode, "__", df3$master_metadata_album_artist_name)
 df3$ms_played <- df3$ms_played %>% as.numeric()
+
+write.table(df3, paste0(OUT_DIR, "spotify_extended_history_trisha.tsv"), sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
 
 # Plot top artists by month
 ```{r}
-TOP_N_ARTIST <- 8
+TOP_N_ARTIST <- 3
 df3$binID <- paste0(df3$timecode, "__", df3$master_metadata_album_artist_name)
 df_monthly <- lapply(df3$binID %>% u, function(x){
   df_temp <- df3[df3$binID == x, ]
@@ -274,7 +283,6 @@ df_condensed <- lapply(df_monthly$timecode %>% u, function(x){
 
 
 my_years <- df_condensed$year %>% u %>% as.character()
-my_years <- my_years[my_years!="2020"]
 my_plots <- lapply(my_years, function(this_year){
   df_filtered <- df_condensed
   df_filtered <- df_filtered[df_filtered$year == this_year, ]
@@ -294,15 +302,30 @@ my_plots <- lapply(my_years, function(this_year){
   g1 <- ggplot(df_filtered, aes(fill=master_metadata_album_artist_name, y=hour, x = rowID, label = master_metadata_album_artist_name)) + 
     geom_bar(position="stack", stat="identity") +
     scale_x_continuous(breaks = df_filtered$rowID %>% u, labels = month.name[df_filtered$rowID %>% u]) + 
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), legend.position="none") + 
     geom_text(size = 3, position = position_stack(vjust = 0.5)) +
     xlab("") + 
     ylab("Hours Listened") + 
     ggtitle(paste0("Spotify top ", TOP_N_ARTIST, " artists by month, ", this_year)) + 
     scale_fill_manual(name = "Artist", values = gg_color_hue(df_filtered$master_metadata_album_artist_name %>% lu) %>% my_rev) + 
     scale_y_continuous(breaks=seq(0, max_hours, 25))
-  ggsave(paste0(OUT_DIR, "top_artists_by_month_", this_year, ".pdf"), g1, width = 14, height = 8, units = "in", limitsize = FALSE)
-  return(g1)
+  ggsave(paste0(OUT_DIR, "top_", TOP_N_ARTIST, "_artists_by_month_", this_year, ".pdf"), g1, width = 14, height = 12, units = "in", limitsize = FALSE)
+  # return(g1)
+  
+  df_filtered <- df_filtered[df_filtered$master_metadata_album_artist_name != "Other", ]
+  
+  g2 <- ggplot(df_filtered, aes(fill=master_metadata_album_artist_name, y=hour, x = rowID, label = master_metadata_album_artist_name)) + 
+    geom_bar(position="stack", stat="identity") +
+    scale_x_continuous(breaks = df_filtered$rowID %>% u, labels = month.name[df_filtered$rowID %>% u]) + 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), legend.position="none") + 
+    geom_text(size = 3, position = position_stack(vjust = 0.5)) +
+    xlab("") + 
+    ylab("Hours Listened") + 
+    ggtitle(paste0("Spotify top ", TOP_N_ARTIST, " artists by month, ", this_year)) + 
+    scale_fill_manual(name = "Artist", values = gg_color_hue(df_filtered$master_metadata_album_artist_name %>% lu) %>% my_rev) + 
+    scale_y_continuous(breaks=seq(0, max_hours, 25))
+  ggsave(paste0(OUT_DIR, "top_", TOP_N_ARTIST, "_artists_by_month_", this_year, "_no_other.pdf"), g2, width = 14, height = 12, units = "in", limitsize = FALSE)
+  return(c(g1, g2))
 })
 my_plots
 
@@ -310,7 +333,7 @@ my_plots
 
 do top 5 artists per year
 ```{r}
-TOP_N_ARTIST <- 10
+TOP_N_ARTIST <- 5
 df3$binID <- paste0(df3$year, "__", df3$master_metadata_album_artist_name)
 df_yearly <- lapply(df3$binID %>% u, function(x){
   df_temp <- df3[df3$binID == x, ]
@@ -333,7 +356,6 @@ df_condensed <- lapply(df_yearly$year %>% u, function(x){
 
 
 df_filtered <- df_condensed
-df_filtered <- df_filtered[df_filtered$year != "2020", ]
 max_hours <- lapply(df_filtered$year %>% u, function(x){sum(df_filtered$hour[df_filtered$year==x])}) %>% unlist %>% max
 df_filtered$total_a_time <- lapply(df_filtered$master_metadata_album_artist_name, function(x){df_filtered$hour[df_filtered$master_metadata_album_artist_name==x] %>% sum}) %>% unlist
 df_filtered$master_metadata_album_artist_name <- reorder(df_filtered$master_metadata_album_artist_name, df_filtered$total_a_time, decreasing = FALSE)
@@ -347,8 +369,9 @@ g1 <- ggplot(df_filtered, aes(fill=master_metadata_album_artist_name, y=hour, x 
   ylab("Hours Listened") + 
   ggtitle(paste0("Spotify top ", TOP_N_ARTIST, " artists by year")) +
   scale_fill_manual(name = "Artist", values = gg_color_hue(df_filtered$master_metadata_album_artist_name %>% lu) %>% my_rev) + 
-  scale_y_continuous(breaks=seq(0, max_hours + 200, 100))
-ggsave(paste0(OUT_DIR, "top_artists_by_year.pdf"), g1, width = 10, height = 10, units = "in", limitsize = FALSE)
+  scale_y_continuous(breaks=seq(0, max_hours + 200, 20)) +
+  theme(legend.position="none") 
+ggsave(paste0(OUT_DIR, "top_", TOP_N_ARTIST, "_artists_by_year.pdf"), g1, width = 16, height = 14, units = "in", limitsize = FALSE)
 g1
 ```
 
@@ -360,46 +383,20 @@ df_byyear <- lapply(df3$year %>% u, function(year){
   data.frame(year = year, 
              time_hours = sum(df_temp$minute)/1440) %>% return()
 }) %>% do.call(rbind, .)
-ggplot(df_byyear, aes(x=year, y=time_hours, group=1)) + 
+g1 <- ggplot(df_byyear, aes(x=year, y=time_hours, group=1)) + 
   geom_line() + 
   geom_point() + 
   ylab("Time (days)") + 
   xlab("Year") + 
   ggtitle("Total time by Year") + 
-  scale_y_continuous(breaks=seq(0,120,10))
-```
-
-# total listening time by month
-```{r}
-my_times <- df3$ms_played %>% as.numeric()
-yearToMonthToTime <- HashMap$new()
-temp1 <- lapply(seq_down(df3), function(x){
-  curr_year  <- df3$year[x]  %>% paste0("y", .)
-  curr_month <- df3$month[x] %>% paste0("m", .)
-  curr_time <- my_times[x]
-  curr_time <- df3$ms_played[x]
-  if(!yearToMonthToTime$containsKey(curr_year)){yearToMonthToTime$put(curr_year, HashMap$new())}
-  if(!yearToMonthToTime$get(curr_year)$containsKey(curr_month)){
-    yearToMonthToTime$get(curr_year)$put(curr_month, 0)
-  }
-  
-   yearToMonthToTime$get(curr_year)$put(
-     curr_month, 
-     curr_time +  yearToMonthToTime$get(curr_year)$get(curr_month))
-})
-
-
-df_yearly_monthly <- lapply(yearToMonthToTime$keySet, function(curr_year){
-  curr_months <- yearToMonthToTime$get(curr_year)
-  
-  
-  
-}) %>% do.call(rbind, .)
+  scale_y_continuous(breaks=seq(0,120,5))
+plot(g1)
+ggsave(paste0(OUT_DIR, "total_listening_time_by_year.pdf"), g1, width = 10, height = 6, units = "in", limitsize = FALSE)
 ```
 
 
 ```{r}
-TOP_N_ARTIST <- 12
+TOP_N_ARTIST <- 5
 df3$binID <- paste0(df3$timecode, "__", df3$master_metadata_album_album_name)
 df_monthly <- lapply(df3$binID %>% u, function(x){
   df_temp <- df3[df3$binID == x, ]
@@ -424,7 +421,6 @@ df_condensed <- lapply(df_monthly$timecode %>% u, function(x){
 
 
 my_years <- df_condensed$year %>% u %>% as.character()
-my_years <- my_years[my_years!="2020"]
 my_plots <- lapply(my_years, function(this_year){
   df_filtered <- df_condensed
   df_filtered <- df_filtered[df_filtered$year == this_year, ]
@@ -452,7 +448,7 @@ my_plots <- lapply(my_years, function(this_year){
     scale_fill_manual(name = "Artist", values = gg_color_hue(df_filtered$master_metadata_album_album_name %>% lu) %>% my_rev) + 
     scale_y_continuous(breaks=seq(0, max_hours, 5)) + 
     theme(legend.position="none")
-  ggsave(paste0(OUT_DIR, "top_albums_by_month_", this_year, ".pdf"), g1, width = 22, height = 10, units = "in", limitsize = FALSE)
+  ggsave(paste0(OUT_DIR, "top_", TOP_N_ARTIST, "_albums_by_month_", this_year, ".pdf"), g1, width = 22, height = 10, units = "in", limitsize = FALSE)
   return(g1)
 })
 my_plots
@@ -478,7 +474,6 @@ df_condensed <- df_monthly
 
 
 my_years <- df_condensed$year %>% u %>% as.character()
-my_years <- my_years[my_years!="2020"]
 my_plots <- lapply(my_years, function(this_year){
   df_filtered <- df_condensed
   df_filtered <- df_filtered[df_filtered$year == this_year, ]
@@ -549,7 +544,6 @@ df_condensed <- lapply(df_monthly$timecode %>% u, function(x){
 
 
 my_years <- df_condensed$year %>% u %>% as.character()
-my_years <- my_years[my_years!="2020"]
 my_plots <- lapply(my_years, function(this_year){
   df_filtered <- df_condensed
   df_filtered <- df_filtered[df_filtered$year == this_year, ]
@@ -577,7 +571,7 @@ my_plots <- lapply(my_years, function(this_year){
     scale_fill_manual(name = "Artist", values = gg_color_hue(df_filtered$spotify_track_uri %>% lu) %>% my_rev) + 
     scale_y_continuous(breaks=seq(0, max_hours+5, 2)) +
     theme(legend.position="none")
-   ggsave(paste0(OUT_DIR, "top_songs_by_month_", this_year, ".pdf"), g1, width = 14, height = 12, units = "in", limitsize = FALSE)
+   ggsave(paste0(OUT_DIR, "top_", TOP_N_ARTIST, "_songs_by_month_", this_year, ".pdf"), g1, width = 14, height = 12, units = "in", limitsize = FALSE)
   return(g1)
 })
 
@@ -629,7 +623,6 @@ df_condensed <- lapply(df_monthly$year %>% u, function(x){
   df_temp1 <- df_temp1[order(df_temp1$hour, decreasing = TRUE), ]
   return(df_temp1)
 }) %>% do.call(rbind, .)
-df_condensed <- df_condensed[df_condensed$year != "2020", ]
 
 df_filtered <- df_condensed
 df_filtered <- df_filtered[order(df_filtered$timecode, decreasing = FALSE), ]
@@ -654,31 +647,10 @@ g1 <- ggplot(df_filtered, aes(fill=spotify_track_uri , y=hour, x = year, label =
   scale_fill_manual(name = "Artist", values = gg_color_hue(df_filtered$spotify_track_uri %>% lu) %>% my_rev) + 
   scale_y_continuous(breaks=seq(0, max_hours+5, 25)) +
   theme(legend.position="none")
-ggsave(paste0(OUT_DIR, "top_songs_by_year.pdf"), g1, width = 10, height = 8, units = "in", limitsize = FALSE)
+ggsave(paste0(OUT_DIR, "top_", TOP_N_ARTIST, "_songs_by_year.pdf"), g1, width = 16, height = 12, units = "in", limitsize = FALSE)
 g1
 ```
 
-quick stats
-top artists/songs of this year
-```{r}
-df_filtered <- df3[df3$year != "2020", ]
-
-list_by_track <- lapply(df_filtered$spotify_track_uri %>% u, function(trackid){
-  df_temp <- df_filtered[df_filtered$spotify_track_uri == trackid, ]
-  track_time <- median(df_temp$ts)
-  sum_time <- sum(df_temp$ts)
-  
-  rval <- data.frame(master_metadata_track_name = df_temp$master_metadata_track_name[1], 
-                     master_metadata_album_artist_name = df_temp$master_metadata_album_album_name[1], 
-                     master_metadata_album_artist_name - df_temp$master_metadata_album_artist_name[1], 
-                     ms_played = sum_time, 
-                     n_plays = sum_time / track_time)
-  
-  
-  
-  
-})
-```
 
 "US/Pacific" 
 
@@ -837,7 +809,6 @@ x is month, y is day time
 N_BINS <- 24
 
 MY_YEAR <- df3$year %>% u
-MY_YEAR <- MY_YEAR[MY_YEAR != "2020"]
 
 for(YEAR in MY_YEAR){
   df00 <- df3[grepl(paste0("^", YEAR), df3$ts), ]
@@ -923,10 +894,10 @@ for(YEAR in MY_YEAR){
           legend.position="none") +
     ggtitle(paste0("Listening Activity Heatmap, ", YEAR, ". scaled by month")) #+ scale_fill_gradient(low = "darkblue", high = "lightskyblue1")
     
-    # plot(g1)
+    plot(g1)
     plot(g2)
     
-    # ggsave(paste0(OUT_DIR, "heatmap_listening_activity_", YEAR, ".pdf"), g2, width = 11, height = 9, units = "in", limitsize = FALSE)
+    ggsave(paste0(OUT_DIR, "heatmap_listening_activity_", YEAR, ".pdf"), g2, width = 11, height = 9, units = "in", limitsize = FALSE)
 }
 ```
 
@@ -937,7 +908,6 @@ x is month, y is day time
 N_BINS <- 24
 
 MY_YEAR <- df3$year %>% u
-MY_YEAR <- MY_YEAR[MY_YEAR != "2020"]
 
 weekday_labels <- c("Sunday", "Monday", "Tuesday",  "Wednesday", "Thursday", "Friday", "Saturday")
 
