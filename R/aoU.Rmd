@@ -173,3 +173,48 @@ write.table(script, "C:/docs/aou/new_callable_skip_samtools.json", sep = " ", co
 
 ```
 
+```{r}
+files7 <- list.files("C:/docs/aou/counts_rd7/", pattern="counts$", full.names = TRUE)
+df7 <- lapply(files7, function(x){
+  df_temp <- fread(x) %>% as.data.frame()
+  rval <- data.frame(sample = df_temp$SAMPLE_ORDER,
+                     poly_7 = df_temp$POLY, 
+                     chr = x %>% str_extract("(?<=subset.).*(?=_out.counts)"))
+  return(rval)
+}) %>% do.call(rbind, .)
+
+files3 <- list.files("C:/docs/aou/counts_rd3/", pattern="counts$", full.names = TRUE)
+df3 <- lapply(files3, function(x){
+  df_temp <- fread(x) %>% as.data.frame()
+  rval <- data.frame(sample = df_temp$SAMPLE_ORDER,
+                     poly_3 = df_temp$POLY, 
+                     chr = x %>% str_extract("(?<=subset.).*(?=_out.counts)"))
+  return(rval)
+}) %>% do.call(rbind, .)
+
+df00 <- lapply(seq_down(df7), function(x){
+  data.frame(sample = df7$sample[x],
+             chr = df7$chr[x],
+             poly_7 = df7$poly_7[x],
+             poly_3 = df3$poly_3[df3$sample==df7$sample[x] & df3$chr==df7$chr[x]])
+}) %>% do.call(rbind, .)
+
+temp1 <- table(df00$poly_7 == df00$poly_3)
+temp1
+
+df00$diffs <- df00$poly_3 - df00$poly_7
+
+ggplot(df00, aes(x=diffs)) + geom_histogram() + 
+  scale_x_continuous(breaks=0:15) + 
+  xlab("N polymorphic difference: 3 vs 7 depth")
+  
+
+```
+
+
+
+```{r}
+df_temp1 <- fread("C:/docs/aou/counts_rd3/subset.chr1_out.counts") %>% as.data.frame()
+df_temp2 <- fread("C:/docs/aou/counts_rd7/subset.chr1_out.counts") %>% as.data.frame()
+```
+

@@ -1,5 +1,6 @@
 # snakemake --forceall --rulegraph | dot -Tpdf > dag.pdf
 #  chmod a-w -R
+#  aws s3 sync s3://garrisonlab/t2t-primates/wfmash-v0.13.0/conservation/approach2_with_cds_all_chroms_together/chm13_1/scores/ . --no-sign-request
 
 
 # reusing flagger cromwell singularity config

@@ -1303,7 +1303,6 @@ ggsave("C:/docs/autism/coverage/coverage_batch_02.pdf", g1, width = 15, height =
 ```
 
 
-
 ```{r}
 CURR_GENOME <- "hg38"
 DF_EXCLUDE <- fread("C:/docs/autism/coverage/exclude_regions_chrX.tsv.txt") %>% as.data.frame()
@@ -1321,12 +1320,11 @@ df00 <- lapply(files, function(x){
     temp_chr <- df_temp[df_temp$chr == x, ]
     if(x == "chrX"){
       to_remove <- lapply(seq_down(DF_EXCLUDE), function(y){
-         BOOL_START <- temp_chr$start <= DF_EXCLUDE$end[y]   
-         BOOL_END <- temp_chr$end >= DF_EXCLUDE$start[y]
-         BOOL_OL <- BOOL_START & BOOL_END
-         return(which(BOOL_OL))
+        BOOL_START <- temp_chr$start <= DF_EXCLUDE$end[y]   
+        BOOL_END <- temp_chr$end >= DF_EXCLUDE$start[y]
+        BOOL_OL <- BOOL_START & BOOL_END
+        return(which(BOOL_OL))
       }) %>% unlist %>% u
-      print(to_remove)
       temp_chr <- temp_chr[-to_remove, ]
     }
     pass_percent <- temp_chr$percent >= 0.95
@@ -1340,17 +1338,20 @@ df00 <- lapply(files, function(x){
 }) %>% do.call(rbind, .)
 df00$sample <- df00$SOURCE %>% bname %>% str_remove(".tsv")
 df00$HAP <- df00$sample %>% str_extract("hap.")
-df00$role <- df00$sample %>% str_extract("(?<=_)..(?=_)")
+df00$role <- ifelse(grepl("^H", df00$sample), "p1", df00$sample %>% str_extract("(?<=_)..(?=_)"))
 df00$SOURCE <- NULL
 df00 <- df00[!grepl("_|M", df00$chr), ]
 df00$position <- ifelse(grepl("chrX", df00$chr), 23, ifelse(grepl("chrY", df00$chr), 24, str_remove(df00$chr, "chr"))) %>% as.numeric()
 df00$Role <- ifelse(grepl("p", df00$role), "proband", "sibling")
+df00 <- df00[!df00$role %in% c("fa", "mo"), ]
 
-df00$family <- df00$sample %>% str_extract("^.....(?=_)")
+df00$family <- ifelse(grepl("^H", df00$sample), 
+                      df00$sample %>% str_remove("_hap."), 
+                      df00$sample %>% str_extract("^.....(?=_)")) 
 TARGET_FAMILIES <- read.table("C:/docs/autism/coverage/batch_1_families_main.tsv")
 df00 <- df00[df00$family %in% TARGET_FAMILIES$V1, ]
 
-write.table(df00, "C:/docs/autism/coverage/hg38_coverage_ggplot2.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df00, "C:/docs/autism/coverage/hg38_coverage_ggplot_20241231.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 sampleToChr <- HashMap$new()
 temp1 <- lapply(seq_down(df00), function(x){
   curr_sample <- df00$sample[x]
@@ -1368,21 +1369,26 @@ df_print <- lapply(sampleToChr$keySet(), function(curr_sample){
   names(rval)[1] <- "sample"
   return(rval)
 }) %>% do.call(rbind, .) %>% as.data.frame()
-write.table(df_print, "C:/docs/autism/coverage/hg38_coverage_main2.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df_print, "C:/docs/autism/coverage/hg38_coverage_main_20241231.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 
 my_samples <- read.table("C:/docs/autism/coverage/temp.txt")
 my_samples$sample <- my_samples$V1 %>% str_remove("hap.")
 
 df01 <- df00[str_remove(df00$sample, "_hap.") %in% my_samples$sample, ]
 
+
 df_sex <- fread("C:/docs/autism/coverage/sex_labels.txt") %>% as.data.frame()
 df01$sex <- lapply(df01$sample %>% str_remove("_hap."), function(x){
   df_sex$Sex[df_sex$SP_ID==x]
 }) %>% unlist
+
 df01_main <- df01[!grepl("X|Y", df01$chr), ]
 df01_x <- df01[grepl("X", df01$chr) & !(df01$sex=="M"  & grepl("hap1", df01$sample)) , ]
 df01_y <- df01[grepl("Y", df01$chr) & df01$sex=="M" & grepl("hap1", df01$sample), ]
 df02 <- rbind(df01_main, rbind(df01_x, df01_y))
+
+df_save <- df02
+# df02 <- df02[!grepl("^H", df02$sample), ]
 
 # df02 <- df01
 df02$chr <- as.factor(df02$chr)
@@ -1393,10 +1399,112 @@ g2 <- ggplot(df02) +
   scale_x_continuous(breaks=1:24, labels = CHR_ORDER) + 
   ylab("Percent Contig Coverage") + 
   xlab("Chromosome") +
+  coord_cartesian(ylim=c(0,1),xlim=c(1,24)) + 
   ggtitle("Haplotype Assembly hg38 Coverage by Chromosome") + 
-  coord_cartesian(ylim=c(0,1), xlim=c(1,24)) + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) ; g2
-ggsave("C:/docs/autism/coverage/coverage_hg38_window2.pdf", g2, width = 15, height = 7, units = "in")
+ggsave("C:/docs/autism/coverage/coverage_hg38_window_20241231.pdf", g2, width = 15, height = 7, units = "in")
+```
+
+```{r}
+CURR_GENOME <- "t2t"
+DF_EXCLUDE <- fread("C:/docs/autism/coverage/exclude_regions_chrX.tsv.txt") %>% as.data.frame()
+DF_EXCLUDE <- DF_EXCLUDE[DF_EXCLUDE$genome == CURR_GENOME, ]
+
+files <- list.files("C:/docs/autism/coverage/results_T2T_window/", recursive = TRUE, full.names = TRUE, pattern = ".tsv")
+CHR_ORDER <- c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22", "chrX", "chrY")
+COLNAMES <- c("chr", "start", "end", "n_features", "n_bases", "length", "percent")
+
+df00 <- lapply(files, function(x){
+  df_temp <- fread(x) %>% as.data.frame()
+  colnames(df_temp) <- COLNAMES
+  
+  temp_by_chr <- lapply(df_temp$chr %>% u, function(x){
+    temp_chr <- df_temp[df_temp$chr == x, ]
+    if(x == "chrX"){
+      to_remove <- lapply(seq_down(DF_EXCLUDE), function(y){
+        BOOL_START <- temp_chr$start <= DF_EXCLUDE$end[y]   
+        BOOL_END <- temp_chr$end >= DF_EXCLUDE$start[y]
+        BOOL_OL <- BOOL_START & BOOL_END
+        return(which(BOOL_OL))
+      }) %>% unlist %>% u
+      temp_chr <- temp_chr[-to_remove, ]
+    }
+    pass_percent <- temp_chr$percent >= 0.95
+    pass_bins <- temp_chr$n_features <= 3
+    data.frame(chr = x,
+               coverage = sum(pass_percent & pass_bins)/nrow(temp_chr))
+  }) %>% do.call(rbind, .)
+  
+  temp_by_chr$SOURCE <- x
+  return(temp_by_chr)
+}) %>% do.call(rbind, .)
+df00$sample <- df00$SOURCE %>% bname %>% str_remove(".tsv")
+df00$HAP <- df00$sample %>% str_extract("hap.")
+df00$role <- ifelse(grepl("^H", df00$sample), "p1", df00$sample %>% str_extract("(?<=_)..(?=_)"))
+df00$SOURCE <- NULL
+df00 <- df00[!grepl("_|M", df00$chr), ]
+df00$position <- ifelse(grepl("chrX", df00$chr), 23, ifelse(grepl("chrY", df00$chr), 24, str_remove(df00$chr, "chr"))) %>% as.numeric()
+df00$Role <- ifelse(grepl("p", df00$role), "proband", "sibling")
+df00 <- df00[!df00$role %in% c("fa", "mo"), ]
+
+df00$family <- ifelse(grepl("^H", df00$sample), 
+                      df00$sample %>% str_remove("_hap."), 
+                      df00$sample %>% str_extract("^.....(?=_)")) 
+TARGET_FAMILIES <- read.table("C:/docs/autism/coverage/batch_1_families_main.tsv")
+df00 <- df00[df00$family %in% TARGET_FAMILIES$V1, ]
+
+write.table(df00, "C:/docs/autism/coverage/T2T_coverage_ggplot_20241231.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+sampleToChr <- HashMap$new()
+temp1 <- lapply(seq_down(df00), function(x){
+  curr_sample <- df00$sample[x]
+  if(sampleToChr$containsKey(curr_sample)==FALSE){sampleToChr$put(curr_sample, HashMap$new())}
+  curr_chr <- df00$chr[x]
+  curr_cov <- df00$coverage[x]
+  sampleToChr$get(curr_sample)$put(curr_chr, curr_cov)
+})
+df_print <- lapply(sampleToChr$keySet(), function(curr_sample){
+  curr_row <- lapply(CHR_ORDER, function(curr_chr){
+    sampleToChr$get(curr_sample)$get(curr_chr)
+  }) %>% unlist
+  names(curr_row) <- CHR_ORDER
+  rval <- c(curr_sample, curr_row)
+  names(rval)[1] <- "sample"
+  return(rval)
+}) %>% do.call(rbind, .) %>% as.data.frame()
+write.table(df_print, "C:/docs/autism/coverage/T2T_coverage_main_20241231.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+my_samples <- read.table("C:/docs/autism/coverage/temp.txt")
+my_samples$sample <- my_samples$V1 %>% str_remove("hap.")
+
+df01 <- df00[str_remove(df00$sample, "_hap.") %in% my_samples$sample, ]
+
+
+df_sex <- fread("C:/docs/autism/coverage/sex_labels.txt") %>% as.data.frame()
+df01$sex <- lapply(df01$sample %>% str_remove("_hap."), function(x){
+  df_sex$Sex[df_sex$SP_ID==x]
+}) %>% unlist
+
+df01_main <- df01[!grepl("X|Y", df01$chr), ]
+df01_x <- df01[grepl("X", df01$chr) & !(df01$sex=="M"  & grepl("hap1", df01$sample)) , ]
+df01_y <- df01[grepl("Y", df01$chr) & df01$sex=="M" & grepl("hap1", df01$sample), ]
+df02 <- rbind(df01_main, rbind(df01_x, df01_y))
+
+df_save <- df02
+# df02 <- df02[!grepl("^H", df02$sample), ]
+
+# df02 <- df01
+df02$chr <- as.factor(df02$chr)
+g2 <- ggplot(df02) +
+  geom_boxplot(aes(x=position, y = coverage, group=chr), alpha = 0.5, outlier.shape = NA) +
+  geom_jitter(aes(x = position, y = coverage, colour = Role, shape = HAP), width = 0.25, height = 0.003, alpha=0.8) +
+  scale_y_continuous(breaks=seq(0,1,.2), labels = seq(0,100,20)) + 
+  scale_x_continuous(breaks=1:24, labels = CHR_ORDER) + 
+  ylab("Percent Contig Coverage") + 
+  xlab("Chromosome") +
+  coord_cartesian(ylim=c(0,1),xlim=c(1,24)) + 
+  ggtitle("Haplotype Assembly T2T Coverage by Chromosome") + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) ; g2
+ggsave("C:/docs/autism/coverage/coverage_T2T_window_20241231.pdf", g2, width = 15, height = 7, units = "in")
 ```
 
 
@@ -1442,13 +1550,13 @@ df00$SOURCE <- NULL
 df00 <- df00[!grepl("_|M", df00$chr), ]
 df00$position <- ifelse(grepl("chrX", df00$chr), 23, ifelse(grepl("chrY", df00$chr), 24, str_remove(df00$chr, "chr"))) %>% as.numeric()
 df00$Role <- ifelse(grepl("p", df00$role), "proband", "sibling")
-# df00 <- df00[!df00$role %in% c("fa", "mo"), ]
+df00 <- df00[!df00$role %in% c("fa", "mo"), ]
 
 df00$family <- df00$sample %>% str_extract("^.....(?=_)")
 TARGET_FAMILIES <- read.table("C:/docs/autism/coverage/batch_1_families_main.tsv")
 df00 <- df00[df00$family %in% TARGET_FAMILIES$V1, ]
 
-write.table(df00, "C:/docs/autism/coverage/T2T_coverage_ggplot2.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df00, "C:/docs/autism/coverage/T2T_coverage_ggplot3.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 sampleToChr <- HashMap$new()
 temp1 <- lapply(seq_down(df00), function(x){
   curr_sample <- df00$sample[x]
@@ -1466,7 +1574,7 @@ df_print <- lapply(sampleToChr$keySet(), function(curr_sample){
   names(rval)[1] <- "sample"
   return(rval)
 }) %>% do.call(rbind, .) %>% as.data.frame()
-write.table(df_print, "C:/docs/autism/coverage/T2T_coverage_main2.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df_print, "C:/docs/autism/coverage/T2T_coverage_main3.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 
 my_samples <- read.table("C:/docs/autism/coverage/temp.txt")
 my_samples$sample <- my_samples$V1 %>% str_remove("hap.")
@@ -1496,7 +1604,7 @@ g2 <- ggplot(df02) +
   coord_cartesian(ylim=c(0,1),xlim=c(1,24)) + 
   ggtitle("Haplotype Assembly T2T Coverage by Chromosome") + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) ; g2
-ggsave("C:/docs/autism/coverage/coverage_T2T_window2.pdf", g2, width = 15, height = 7, units = "in")
+ggsave("C:/docs/autism/coverage/coverage_T2T_window3.pdf", g2, width = 15, height = 7, units = "in")
 ```
 
 ```{r}
@@ -1806,3 +1914,298 @@ write.table(df_final, "C:/docs/autism/manifest.autism.asm.aln.tsv", sep="\t", co
 
 ```
 
+
+```{r}
+CURR_GENOME <- "t2t"
+DF_EXCLUDE <- fread("C:/docs/autism/coverage/exclude_regions_chrX.tsv.txt") %>% as.data.frame()
+DF_EXCLUDE <- DF_EXCLUDE[DF_EXCLUDE$genome == CURR_GENOME, ]
+
+files <- list.files("C:/docs/autism/coverage/results_t2t_exclude//", recursive = TRUE, full.names = TRUE, pattern = ".tsv")
+CHR_ORDER <- c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22", "chrX", "chrY")
+COLNAMES <- c("chr", "start", "end", "n_features", "n_bases", "length", "percent")
+
+df00 <- lapply(files, function(x){
+  df_temp <- fread(x) %>% as.data.frame()
+  colnames(df_temp) <- COLNAMES
+  
+  temp_by_chr <- lapply(df_temp$chr %>% u, function(x){
+    temp_chr <- df_temp[df_temp$chr == x, ]
+    # if(x == "chrX"){
+    #   to_remove <- lapply(seq_down(DF_EXCLUDE), function(y){
+    #     BOOL_START <- temp_chr$start <= DF_EXCLUDE$end[y]   
+    #     BOOL_END <- temp_chr$end >= DF_EXCLUDE$start[y]
+    #     BOOL_OL <- BOOL_START & BOOL_END
+    #     return(which(BOOL_OL))
+    #   }) %>% unlist %>% u
+    #   # print(to_remove)
+    #   temp_chr <- temp_chr[-to_remove, ]
+    # }
+    pass_percent <- temp_chr$percent >= 0.95
+    pass_bins <- temp_chr$n_features <= 3
+    data.frame(chr = x,
+               coverage = sum(pass_percent & pass_bins)/nrow(temp_chr))
+  }) %>% do.call(rbind, .)
+  
+  temp_by_chr$SOURCE <- x
+  return(temp_by_chr)
+}) %>% do.call(rbind, .)
+df00$sample <- df00$SOURCE %>% bname %>% str_remove(".tsv")
+df00$HAP <- df00$sample %>% str_extract("hap.")
+df00$role <- df00$sample %>% str_extract("(?<=_)..(?=_)")
+df00$SOURCE <- NULL
+df00 <- df00[!grepl("_|M", df00$chr), ]
+df00$position <- ifelse(grepl("chrX", df00$chr), 23, ifelse(grepl("chrY", df00$chr), 24, str_remove(df00$chr, "chr"))) %>% as.numeric()
+df00$Role <- ifelse(grepl("p", df00$role), "proband", "sibling")
+df00 <- df00[!df00$role %in% c("fa", "mo"), ]
+
+df00$family <- df00$sample %>% str_extract("^.....(?=_)")
+TARGET_FAMILIES <- read.table("C:/docs/autism/coverage/batch_1_families_main.tsv")
+df00 <- df00[df00$family %in% TARGET_FAMILIES$V1, ]
+
+write.table(df00, "C:/docs/autism/coverage/T2T_coverage_ggplot_exclude.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+sampleToChr <- HashMap$new()
+temp1 <- lapply(seq_down(df00), function(x){
+  curr_sample <- df00$sample[x]
+  if(sampleToChr$containsKey(curr_sample)==FALSE){sampleToChr$put(curr_sample, HashMap$new())}
+  curr_chr <- df00$chr[x]
+  curr_cov <- df00$coverage[x]
+  sampleToChr$get(curr_sample)$put(curr_chr, curr_cov)
+})
+df_print <- lapply(sampleToChr$keySet(), function(curr_sample){
+  curr_row <- lapply(CHR_ORDER, function(curr_chr){
+    sampleToChr$get(curr_sample)$get(curr_chr)
+  }) %>% unlist
+  names(curr_row) <- CHR_ORDER
+  rval <- c(curr_sample, curr_row)
+  names(rval)[1] <- "sample"
+  return(rval)
+}) %>% do.call(rbind, .) %>% as.data.frame()
+write.table(df_print, "C:/docs/autism/coverage/T2T_coverage_main_exclude.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+my_samples <- read.table("C:/docs/autism/coverage/temp.txt")
+my_samples$sample <- my_samples$V1 %>% str_remove("hap.")
+
+df01 <- df00[str_remove(df00$sample, "_hap.") %in% my_samples$sample, ]
+
+
+df_sex <- fread("C:/docs/autism/coverage/sex_labels.txt") %>% as.data.frame()
+df01$sex <- lapply(df01$sample %>% str_remove("_hap."), function(x){
+  df_sex$Sex[df_sex$SP_ID==x]
+}) %>% unlist
+
+df01_main <- df01[!grepl("X|Y", df01$chr), ]
+df01_x <- df01[grepl("X", df01$chr) & !(df01$sex=="M"  & grepl("hap1", df01$sample)) , ]
+df01_y <- df01[grepl("Y", df01$chr) & df01$sex=="M" & grepl("hap1", df01$sample), ]
+df02 <- rbind(df01_main, rbind(df01_x, df01_y))
+
+# df02 <- df01
+df02$chr <- as.factor(df02$chr)
+g2 <- ggplot(df02) +
+  geom_boxplot(aes(x=position, y = coverage, group=chr), alpha = 0.5, outlier.shape = NA) +
+  geom_jitter(aes(x = position, y = coverage, colour = Role, shape = HAP), width = 0.25, height = 0.003, alpha=0.8) +
+  scale_y_continuous(breaks=seq(0,1,.2), labels = seq(0,100,20)) + 
+  scale_x_continuous(breaks=1:24, labels = CHR_ORDER) + 
+  ylab("Percent Contig Coverage") + 
+  xlab("Chromosome") +
+  coord_cartesian(ylim=c(0,1),xlim=c(1,24)) + 
+  ggtitle("Haplotype Assembly T2T Coverage by Chromosome") + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) ; g2
+ggsave("C:/docs/autism/coverage/coverage_T2T_window_exclude.pdf", g2, width = 15, height = 7, units = "in")
+```
+
+
+```{r}
+CURR_GENOME <- "hg38"
+DF_EXCLUDE <- fread("C:/docs/autism/coverage/exclude_regions_chrX.tsv.txt") %>% as.data.frame()
+DF_EXCLUDE <- DF_EXCLUDE[DF_EXCLUDE$genome == CURR_GENOME, ]
+
+files <- list.files("C:/docs/autism/coverage/results_hg38_exclude/", recursive = TRUE, full.names = TRUE, pattern = ".tsv")
+CHR_ORDER <- c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22", "chrX", "chrY")
+COLNAMES <- c("chr", "start", "end", "n_features", "n_bases", "length", "percent")
+
+df00 <- lapply(files, function(x){
+  df_temp <- fread(x) %>% as.data.frame()
+  colnames(df_temp) <- COLNAMES
+  
+  temp_by_chr <- lapply(df_temp$chr %>% u, function(x){
+    temp_chr <- df_temp[df_temp$chr == x, ]
+    # if(x == "chrX"){
+    #   to_remove <- lapply(seq_down(DF_EXCLUDE), function(y){
+    #     BOOL_START <- temp_chr$start <= DF_EXCLUDE$end[y]   
+    #     BOOL_END <- temp_chr$end >= DF_EXCLUDE$start[y]
+    #     BOOL_OL <- BOOL_START & BOOL_END
+    #     return(which(BOOL_OL))
+    #   }) %>% unlist %>% u
+    #   print(to_remove)
+    #   temp_chr <- temp_chr[-to_remove, ]
+    # }
+    pass_percent <- temp_chr$percent >= 0.95
+    pass_bins <- temp_chr$n_features <= 3
+    data.frame(chr = x,
+               coverage = sum(pass_percent & pass_bins)/nrow(temp_chr))
+  }) %>% do.call(rbind, .)
+  
+  temp_by_chr$SOURCE <- x
+  return(temp_by_chr)
+}) %>% do.call(rbind, .)
+df00$sample <- df00$SOURCE %>% bname %>% str_remove(".tsv")
+df00$HAP <- df00$sample %>% str_extract("hap.")
+df00$role <- df00$sample %>% str_extract("(?<=_)..(?=_)")
+df00$SOURCE <- NULL
+df00 <- df00[!grepl("_|M", df00$chr), ]
+df00$position <- ifelse(grepl("chrX", df00$chr), 23, ifelse(grepl("chrY", df00$chr), 24, str_remove(df00$chr, "chr"))) %>% as.numeric()
+df00$Role <- ifelse(grepl("p", df00$role), "proband", "sibling")
+df00 <- df00[!df00$role %in% c("fa", "mo"), ]
+
+df00$family <- df00$sample %>% str_extract("^.....(?=_)")
+TARGET_FAMILIES <- read.table("C:/docs/autism/coverage/batch_1_families_main.tsv")
+df00 <- df00[df00$family %in% TARGET_FAMILIES$V1, ]
+
+write.table(df00, "C:/docs/autism/coverage/hg38_coverage_ggplot_exclude.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+sampleToChr <- HashMap$new()
+temp1 <- lapply(seq_down(df00), function(x){
+  curr_sample <- df00$sample[x]
+  if(sampleToChr$containsKey(curr_sample)==FALSE){sampleToChr$put(curr_sample, HashMap$new())}
+  curr_chr <- df00$chr[x]
+  curr_cov <- df00$coverage[x]
+  sampleToChr$get(curr_sample)$put(curr_chr, curr_cov)
+})
+df_print <- lapply(sampleToChr$keySet(), function(curr_sample){
+  curr_row <- lapply(CHR_ORDER, function(curr_chr){
+    sampleToChr$get(curr_sample)$get(curr_chr)
+  }) %>% unlist
+  names(curr_row) <- CHR_ORDER
+  rval <- c(curr_sample, curr_row)
+  names(rval)[1] <- "sample"
+  return(rval)
+}) %>% do.call(rbind, .) %>% as.data.frame()
+write.table(df_print, "C:/docs/autism/coverage/hg38_coverage_main_exclude.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+my_samples <- read.table("C:/docs/autism/coverage/temp.txt")
+my_samples$sample <- my_samples$V1 %>% str_remove("hap.")
+
+df01 <- df00[str_remove(df00$sample, "_hap.") %in% my_samples$sample, ]
+
+
+df_sex <- fread("C:/docs/autism/coverage/sex_labels.txt") %>% as.data.frame()
+df01$sex <- lapply(df01$sample %>% str_remove("_hap."), function(x){
+  df_sex$Sex[df_sex$SP_ID==x]
+}) %>% unlist
+
+df01_main <- df01[!grepl("X|Y", df01$chr), ]
+df01_x <- df01[grepl("X", df01$chr) & !(df01$sex=="M"  & grepl("hap1", df01$sample)) , ]
+df01_y <- df01[grepl("Y", df01$chr) & df01$sex=="M" & grepl("hap1", df01$sample), ]
+df02 <- rbind(df01_main, rbind(df01_x, df01_y))
+
+# df02 <- df01
+df02$chr <- as.factor(df02$chr)
+g2 <- ggplot(df02) +
+  geom_boxplot(aes(x=position, y = coverage, group=chr), alpha = 0.5, outlier.shape = NA) +
+  geom_jitter(aes(x = position, y = coverage, colour = Role, shape = HAP), width = 0.25, height = 0.003, alpha=0.8) +
+  scale_y_continuous(breaks=seq(0,1,.2), labels = seq(0,100,20)) + 
+  scale_x_continuous(breaks=1:24, labels = CHR_ORDER) + 
+  ylab("Percent Contig Coverage") + 
+  xlab("Chromosome") +
+  coord_cartesian(ylim=c(0,1),xlim=c(1,24)) + 
+  ggtitle("Haplotype Assembly HG38 Coverage by Chromosome") + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) ; g2
+ggsave("C:/docs/autism/coverage/coverage_hg38_window_exclude.pdf", g2, width = 15, height = 7, units = "in")
+```
+
+```{r}
+CURR_GENOME <- "hg38"
+DF_EXCLUDE <- fread("C:/docs/autism/coverage/exclude_regions_chrX.tsv.txt") %>% as.data.frame()
+DF_EXCLUDE <- DF_EXCLUDE[DF_EXCLUDE$genome == CURR_GENOME, ]
+
+files <- list.files("C:/docs/autism/coverage/results_hg38_exclude/", recursive = TRUE, full.names = TRUE, pattern = ".tsv")
+CHR_ORDER <- c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22", "chrX", "chrY")
+COLNAMES <- c("chr", "start", "end", "n_features", "n_bases", "length", "percent")
+
+df00 <- lapply(files, function(x){
+  df_temp <- fread(x) %>% as.data.frame()
+  colnames(df_temp) <- COLNAMES
+  
+  temp_by_chr <- lapply(df_temp$chr %>% u, function(x){
+    temp_chr <- df_temp[df_temp$chr == x, ]
+    # if(x == "chrX"){
+    #   to_remove <- lapply(seq_down(DF_EXCLUDE), function(y){
+    #     BOOL_START <- temp_chr$start <= DF_EXCLUDE$end[y]   
+    #     BOOL_END <- temp_chr$end >= DF_EXCLUDE$start[y]
+    #     BOOL_OL <- BOOL_START & BOOL_END
+    #     return(which(BOOL_OL))
+    #   }) %>% unlist %>% u
+    #   print(to_remove)
+    #   temp_chr <- temp_chr[-to_remove, ]
+    # }
+    pass_percent <- temp_chr$percent >= 0.95
+    pass_bins <- temp_chr$n_features <= 3
+    data.frame(chr = x,
+               coverage = sum(pass_percent & pass_bins)/nrow(temp_chr))
+  }) %>% do.call(rbind, .)
+  
+  temp_by_chr$SOURCE <- x
+  return(temp_by_chr)
+}) %>% do.call(rbind, .)
+df00$sample <- df00$SOURCE %>% bname %>% str_remove(".tsv")
+df00$HAP <- df00$sample %>% str_extract("hap.")
+df00$role <- df00$sample %>% str_extract("(?<=_)..(?=_)")
+df00$SOURCE <- NULL
+df00 <- df00[!grepl("_|M", df00$chr), ]
+df00$position <- ifelse(grepl("chrX", df00$chr), 23, ifelse(grepl("chrY", df00$chr), 24, str_remove(df00$chr, "chr"))) %>% as.numeric()
+df00$Role <- ifelse(grepl("p", df00$role), "proband", "sibling")
+df00 <- df00[!df00$role %in% c("fa", "mo"), ]
+
+df00$family <- df00$sample %>% str_extract("^.....(?=_)")
+TARGET_FAMILIES <- read.table("C:/docs/autism/coverage/batch_1_families_main.tsv")
+df00 <- df00[df00$family %in% TARGET_FAMILIES$V1, ]
+
+write.table(df00, "C:/docs/autism/coverage/hg38_coverage_ggplot_exclude.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+sampleToChr <- HashMap$new()
+temp1 <- lapply(seq_down(df00), function(x){
+  curr_sample <- df00$sample[x]
+  if(sampleToChr$containsKey(curr_sample)==FALSE){sampleToChr$put(curr_sample, HashMap$new())}
+  curr_chr <- df00$chr[x]
+  curr_cov <- df00$coverage[x]
+  sampleToChr$get(curr_sample)$put(curr_chr, curr_cov)
+})
+df_print <- lapply(sampleToChr$keySet(), function(curr_sample){
+  curr_row <- lapply(CHR_ORDER, function(curr_chr){
+    sampleToChr$get(curr_sample)$get(curr_chr)
+  }) %>% unlist
+  names(curr_row) <- CHR_ORDER
+  rval <- c(curr_sample, curr_row)
+  names(rval)[1] <- "sample"
+  return(rval)
+}) %>% do.call(rbind, .) %>% as.data.frame()
+write.table(df_print, "C:/docs/autism/coverage/hg38_coverage_main_exclude.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+my_samples <- read.table("C:/docs/autism/coverage/temp.txt")
+my_samples$sample <- my_samples$V1 %>% str_remove("hap.")
+
+df01 <- df00[str_remove(df00$sample, "_hap.") %in% my_samples$sample, ]
+
+
+df_sex <- fread("C:/docs/autism/coverage/sex_labels.txt") %>% as.data.frame()
+df01$sex <- lapply(df01$sample %>% str_remove("_hap."), function(x){
+  df_sex$Sex[df_sex$SP_ID==x]
+}) %>% unlist
+
+df01_main <- df01[!grepl("X|Y", df01$chr), ]
+df01_x <- df01[grepl("X", df01$chr) & !(df01$sex=="M"  & grepl("hap1", df01$sample)) , ]
+df01_y <- df01[grepl("Y", df01$chr) & df01$sex=="M" & grepl("hap1", df01$sample), ]
+df02 <- rbind(df01_main, rbind(df01_x, df01_y))
+
+# df02 <- df01
+df02$chr <- as.factor(df02$chr)
+g2 <- ggplot(df02) +
+  geom_boxplot(aes(x=position, y = coverage, group=chr), alpha = 0.5, outlier.shape = NA) +
+  geom_jitter(aes(x = position, y = coverage, colour = Role, shape = HAP), width = 0.25, height = 0.003, alpha=0.8) +
+  scale_y_continuous(breaks=seq(0,1,.2), labels = seq(0,100,20)) + 
+  scale_x_continuous(breaks=1:24, labels = CHR_ORDER) + 
+  ylab("Percent Contig Coverage") + 
+  xlab("Chromosome") +
+  coord_cartesian(ylim=c(0,1),xlim=c(1,24)) + 
+  ggtitle("Haplotype Assembly HG38 Coverage by Chromosome") + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) ; g2
+ggsave("C:/docs/autism/coverage/coverage_hg38_window_exclude.pdf", g2, width = 15, height = 7, units = "in")
+```

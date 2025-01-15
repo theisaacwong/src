@@ -29,7 +29,7 @@ ggplot(df1, aes(x = dt_full, y = dt_day)) +
   ggtitle("daily Lipton time")
 
 ggplot(df1, aes(x = dt_day)) + 
-  geom_histogram(fill=wes_palette("BottleRocket1")[5], bins = 25) + 
+  geom_histogram(fill=wes_palette("BottleRocket1")[5], bins = 30) + 
   coord_cartesian(xlim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
   scale_x_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",4), rep(" PM", 5)))) + 
   ylab("") + 
@@ -49,7 +49,7 @@ ggplot(df1, aes(x = dt_full, y = dt_day)) +
   ggtitle("daily time")
 
 ggplot(df1, aes(x=dt_day)) + 
-  geom_histogram(fill=wes_palette("Cavalcanti1")[4], bins = 22) +
+  geom_histogram(fill=wes_palette("Cavalcanti1")[4], bins = 35) +
   scale_x_continuous(breaks = as.POSIXct(8:18 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(8:12,1:6), c(rep(" AM",5), rep(" PM", 6))))
 ```
 

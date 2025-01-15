@@ -36,11 +36,14 @@ cat(temp1)
 
 
 ```{r}
-df0 <- data.frame(time = c(0,17,44,68,196,230,247,271,343),
-                  count = c(12,17,26,33,74,86,91,97,120))
+df0 <- data.frame(time = c(0,17,44,68,196,230,247,271,343,1400,1680),
+                  count = c(12,17,26,33,74,86,91,97,120,412,309))
 
-x1 <- 0
-y1 <- 12
+df0 <- data.frame(time = c(0,1745,1773,2769,4218,4332,5643,5906),
+                  count = c(6,309,315,517,722,738,901,946))
+
+x1 <- df0$time[1]
+y1 <- df0$count[1]
 
 x2 <- df0$time[nrow(df0)]
 y2 <- df0$count[nrow(df0)]
@@ -49,11 +52,19 @@ m <- (y2-y1)/(x2-x1)
 
 b = y2 - (m * x2)
 
-t1 <- ((2*1074 - b)/m)*60
+t1 <- ((1074 - b)/m)*60
 
 t2 <- as.POSIXct("2024-12-16T11:34:00Z", format="%Y-%m-%dT%H:%M:%OSZ", tz="UTC")
 
 t2+t1
 ggplot(df0, aes(x=time,y=count)) + geom_point() + ggtitle(paste0(t2+t1, " ", round(1/m, 4), " minutes/sample"))
+```
+
+```{r}
+mylines <- readLines("C:/docs/aou/create_table/chr_subsets.txt")
+df0 <- mylines %>% str_replace_all("[:space:]+", " ") %>% str_split(" ") %>% do.call(rbind, .) %>% as.data.frame()
+df0 <- df0[grepl("subset", df0$V9), ]
+df0$type <- df0$V9 %>% str_remove("subset.chr[:digit:]*.")
+
 ```
 

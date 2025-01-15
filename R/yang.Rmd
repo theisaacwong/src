@@ -1,0 +1,33 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-12-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+df0 <- fread("C:/docs/temp/ct_ccdg_asd_sib.txt") %>% as.data.frame()
+
+df0$p.value <- lapply(seq_down(df0), function(i){
+  suppressWarnings(
+    t <- chisq.test(matrix(as.vector(t(df0[i, 4:7])), ncol = 2), correct = F)
+  )
+  return(t$p.value)
+}) %>% unlist
+
+# fisher's exact tests.
+df0$Fisher.p.value <- mclapply(1:nrow(df0), function(i){
+  suppressWarnings(
+    t <- fisher.test(matrix(as.vector(t(df0[i, 5:8])), ncol = 2), alternative = "two.side")
+  )
+  return(t$p.value)
+}, mc.cores = 30) %>% unlist
+
+df0$Fisher.p.BH <- p.adjust(df0$Fisher.p.value, method = "BH", n = 722)
+
+```
+
