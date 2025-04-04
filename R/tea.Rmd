@@ -37,8 +37,30 @@ ggplot(df1, aes(x = dt_day)) +
 ```
 
 
+Lipton time
 ```{r}
-df1 <- df0[df0$tea != "lipton", ]
+df1 <- df0[grepl("coffee", df0$tea), ]
+
+ggplot(df1, aes(x = dt_full, y = dt_day)) + 
+  geom_point() + 
+  coord_cartesian(ylim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
+  scale_y_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",4), rep(" PM", 5)))) + 
+  ylab("") + 
+  geom_smooth(method='lm') +
+  ggtitle("daily coffee time")
+
+ggplot(df1, aes(x = dt_day)) + 
+  geom_histogram(fill=wes_palette("BottleRocket1")[5], bins = 30) + 
+  coord_cartesian(xlim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
+  scale_x_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",4), rep(" PM", 5)))) + 
+  ylab("") + 
+  ggtitle("daily coffee time")
+```
+
+
+```{r}
+df1 <- df0[(df0$tea != "lipton") & (grepl("coffee", df0$tea) == FALSE), ]
+# df1 <- df0[df0$tea != "lipton", ]
 
 ggplot(df1, aes(x = dt_full, y = dt_day)) + 
   geom_point() + 

@@ -1,0 +1,344 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-03-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{bash}
+ls -lh /net/eichler/vol28/projects | awk '{print "/net/eichler/vol28/projects/"$9}' | xargs -I {} sh -c "echo -n {}' '; df -h {} | grep -v File" | awk '{print $1 "\t" $3 "\t"$4 "\t" $5 "\t" $6}' > ~/nobackups/tmp/dfh.tsv
+```
+
+
+```{r}
+library(scatterpie)
+df0 <- fread("C:/docs/lab_meeting_presentation_2/dfh.tsv", header=FALSE) %>% as.data.frame()
+df0$V1 <- df0$V1 %>% str_remove("/net/eichler/vol28/projects/")
+df0$V1[1] <- "Total"
+
+colnames(df0) <- c("project", "quota", "free", "percent_filled")
+
+
+
+
+
+```
+
+check to see if a given folder is more than 75% of it's super folder then don't list the super folder?
+
+
+
+qsub commands
+```{r=bash}
+qlogin -l h=e264
+qsub -l h=e218
+cat my_nodes.txt | xargs -I {} sh -c "qsub -l h={} hello.sh; sleep 2 "
+
+```
+
+
+df00 <- df3[grepl(paste0("^", YEAR), df3$ts), ]
+  df00$POSIX_TIME <- as.POSIXct(df00$ts, format="%Y-%m-%dT%H:%M:%OSZ", tz="UTC")
+  df00$PST <- df00$POSIX_TIME %>% format(tz="US/Pacific" ,usetz=TRUE)
+  df00$timestamp_key <- df00$PST %>% str_extract("(?<=[:space:])[:digit:]{2}:[:digit:]{2}(?=:)")
+  df00$minute_increment <- floor( df00$ms_played / 60000)
+
+```{r}
+files <- list.files("C:/docs/benchmark/illumina/", recursive = TRUE, full.names = TRUE, pattern="log")
+
+df00 <- lapply(files, function(x){
+  temp_file <- readLines(x)
+  if(length(temp_file) != 4){return()}
+  if(!grepl("Mar", temp_file[4])){return()}
+  rval <- data.frame(hostname = temp_file[1] %>% str_remove(".grid.gs.washington.edu"),
+                     start = temp_file[2] %>% str_extract("(Mar|Apr)[[:space:]]+[0-9]+ ..:..:..") %>%  as.POSIXct(format="%b %d %H:%M:%OS"),
+                     end = temp_file[4]   %>% str_extract("(Mar|Apr)[[:space:]]+[0-9]+ ..:..:..") %>%  as.POSIXct(format="%b %d %H:%M:%OS"),
+                     src=x,
+                     stringsAsFactors = FALSE)
+  rval$diff <- as.numeric(rval$end - rval$start,units="secs")
+  return(rval)
+}) %>% do.call(rbind, .)
+df00$src <- NULL
+
+my_order <- c(paste0("e", c(217:226, 227:245, 246:247, 248:260, paste0("00", 1:9), paste0("0", 10:16), paste0("0", 17:22))), "lynx", "ocelot", "liger")
+my_order[grepl("e[a-z].", my_order)] <- my_order[grepl("e[a-z].", my_order)] %>% str_remove("^e")
+my_age <- c(rep("2012", length(217:226)), 
+            rep("2015", length(227:245)), 
+            rep("2016", length(246:247)), 
+            rep("2018", length(248:260)), 
+            rep("2023", length(paste0("00", 1:9))), 
+            rep("2023", length(paste0("0", 10:16))), 
+            rep("2025", length(paste0("0", 17:22))), 
+            "lynx (2011)",
+            "ocelot (2019)",
+            "liger (2021)")
+df_block <- data.frame(order = my_order, 
+                       age = my_age, 
+                       stringsAsFactors = FALSE)
+
+df01 <- lapply(my_order, function(x){
+  if(x %in% df00$hostname == FALSE){return()}
+  temp_df <- df00[df00$hostname == x, ]
+  corrected_values <- temp_df$diff * 100
+  rval <- data.frame(hostname = temp_df$hostname[1], 
+                     mean = mean(corrected_values), 
+                     sd = sd(corrected_values) * 4, 
+                     n = nrow(temp_df),
+                     age = df_block$age[df_block$order == temp_df$hostname[1]],
+                     stringsAsFactors = FALSE)
+}) %>% do.call(rbind, .)
+df01$ID <- seq_down(df01)
+
+my_ys <- c(seq(0,60000, 3600), seq(72000, 93600, 3600))
+
+g1 <- ggplot(df01) + 
+  geom_bar( aes(x=ID, y=mean, fill=age), stat="identity", alpha=0.7) +
+  geom_errorbar( aes(x=ID, ymin=mean-sd, ymax=mean+sd), width=0.4, colour="orange", alpha=0.9, linewidth=1.3) + 
+  scale_x_continuous(breaks = df01$ID, labels = df01$hostname) +
+  scale_y_continuous(breaks = my_ys, labels = my_ys/3600) + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  xlab("hostname") + 
+  ylab("time (hours)") + 
+  ggtitle("time to align 30X Illumina to hg38")
+g1
+```
+
+
+
+```{r}
+files <- list.files("C:/docs/benchmark/hifi/results2/", recursive = TRUE, full.names = TRUE, pattern="log")
+
+df00 <- lapply(files, function(x){
+  temp_file <- readLines(x)
+  if(length(temp_file) != 4){return()}
+  rval <- data.frame(hostname = temp_file[1] %>% str_remove(".grid.gs.washington.edu"),
+                     start = temp_file[2] %>% str_extract("(Mar|Apr)[[:space:]]+[0-9]+ ..:..:..") %>%  as.POSIXct(format="%b %d %H:%M:%OS"),
+                     end = temp_file[4]   %>% str_extract("(Mar|Apr)[[:space:]]+[0-9]+ ..:..:..") %>%  as.POSIXct(format="%b %d %H:%M:%OS"),
+                     src=x,
+                     stringsAsFactors = FALSE)
+  rval$diff <- as.numeric(rval$end - rval$start,units="secs")
+  return(rval)
+}) %>% do.call(rbind, .)
+df00$src <- NULL
+
+my_order <- c(paste0("e", c(217:226, 227:245, 246:247, 248:260, paste0("00", 1:9), paste0("0", 10:16), paste0("0", 17:22))), "lynx", "ocelot", "liger")
+my_order[grepl("e[a-z].", my_order)] <- my_order[grepl("e[a-z].", my_order)] %>% str_remove("^e")
+my_age <- c(rep("2012", length(217:226)), 
+            rep("2015", length(227:245)), 
+            rep("2016", length(246:247)), 
+            rep("2018", length(248:260)), 
+            rep("2023", length(paste0("00", 1:9))), 
+            rep("2023", length(paste0("0", 10:16))), 
+            rep("2025", length(paste0("0", 17:22))), 
+            "lynx (2011)",
+            "ocelot (2019)",
+            "liger (2021)")
+df_block <- data.frame(order = my_order, 
+                       age = my_age, 
+                       stringsAsFactors = FALSE)
+
+df01 <- lapply(my_order, function(x){
+  if(x %in% df00$hostname == FALSE){return()}
+  temp_df <- df00[df00$hostname == x, ]
+  corrected_values <- temp_df$diff * 1.25
+  rval <- data.frame(hostname = temp_df$hostname[1], 
+                     mean = mean(corrected_values), 
+                     sd = sd(corrected_values)*4, 
+                     n = nrow(temp_df),
+                     age = df_block$age[df_block$order == temp_df$hostname[1]],
+                     stringsAsFactors = FALSE)
+}) %>% do.call(rbind, .)
+temp_df <- data.frame(hostname=c("lynx", "ocelot", "liger"),
+                      mean = 3600 * (2 + c(3.4, 3.51, 3.2)),
+                      sd = 3600 * c(1.4, 1.5, 1.3), 
+                      n = 5,
+                      age = c("lynx (2011)", "ocelot (2019)", "liger (2021)"))
+df01 <- rbind(df01, temp_df)
+df01$ID <- seq_down(df01)
+
+my_ys <- c(seq(0,60000, 3600), seq(72000, 93600, 3600))
+
+g2 <- ggplot(df01) + 
+  geom_bar( aes(x=ID, y=mean, fill=age), stat="identity", alpha=0.7) +
+  geom_errorbar( aes(x=ID, ymin=mean-sd, ymax=mean+sd), width=0.4, colour="orange", alpha=0.9, linewidth=1.3) + 
+  scale_x_continuous(breaks = df01$ID, labels = df01$hostname) +
+  scale_y_continuous(breaks = my_ys, labels = my_ys/3600) + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  xlab("hostname") + 
+  ylab("time (hours)") + 
+  ggtitle("time to align 30X HiFi to T2T")
+g2 
+```
+
+
+```{r}
+files <- list.files("C:/docs/benchmark/pbsv/", recursive = TRUE, full.names = TRUE, pattern="log")
+
+df00 <- lapply(files, function(file){
+  temp_file <- readLines(file) %>% str_split(";") %>% lapply(str_trim) %>% do.call(rbind, .) %>% as.data.frame()
+  colnames(temp_file) <- c("hostname", "rule", "time", "status")
+  temp_collapsed <- lapply(temp_file$rule %>% u, function(x){
+    temp_rule <- temp_file[temp_file$rule == x, ]
+    if(nrow(temp_rule) == 1){return()}
+    if(sum(temp_rule$status == "finish") != 1){print(file); return()}
+    if(sum(temp_rule$status == "start") != 1){print(file)}
+    end = temp_rule$time[temp_rule$status=="finish"] %>% str_extract("(Mar|Apr)[[:space:]]+[0-9]+ ..:..:..") %>%  as.POSIXct(format="%b %d %H:%M:%OS")
+    starts = temp_rule$time[temp_rule$status=="start"] %>% str_extract("(Mar|Apr)[[:space:]]+[0-9]+ ..:..:..") %>%  as.POSIXct(format="%b %d %H:%M:%OS")
+    diff <- as.numeric(end - starts,units="secs") %>% min
+    rval <- data.frame(hostname = temp_rule$hostname[1] %>% str_remove(".grid.gs.washington.edu"),
+               rule = temp_rule$rule[1], 
+               diff = diff,
+               src = file,
+               stringsAsFactors = FALSE)
+    return(rval)
+  }) %>% do.call(rbind, .)
+  return(temp_collapsed)
+  
+}) %>% do.call(rbind, .)
+df00$src <- NULL
+
+my_order <- c(paste0("e", c(217:226, 227:245, 246:247, 248:260, paste0("00", 1:9), paste0("0", 10:16), paste0("0", 17:22))))
+my_order[grepl("e[a-z].", my_order)] <- my_order[grepl("e[a-z].", my_order)] %>% str_remove("^e")
+my_age <- c(rep("2012", length(217:226)), 
+            rep("2015", length(227:245)), 
+            rep("2016", length(246:247)), 
+            rep("2018", length(248:260)), 
+            rep("2023", length(paste0("00", 1:9))), 
+            rep("2023", length(paste0("0", 10:16))), 
+            rep("2025", length(paste0("0", 17:22))))
+df_block <- data.frame(order = my_order, 
+                       age = my_age, 
+                       stringsAsFactors = FALSE)
+
+
+my_legend_order <- c("pbsv discover --tandem-repeats", "pbsv call DUP", "pbsv call DEL,INS,INV", "pbsv call BND")
+df01 <- lapply(my_order, function(hostname){
+  if(hostname %in% df00$hostname == FALSE){return()}
+  
+  temp_rules <- df00$rule[df00$hostname == hostname] %>% u
+  collapsed_rval <- lapply(temp_rules, function(rule){
+    temp_df <- df00[df00$hostname == hostname & df00$rule == rule, ]
+    corrected_values <- temp_df$diff * 1
+    rval <- data.frame(hostname = hostname, 
+                       rule = rule,
+                       mean = mean(corrected_values), 
+                       sd = sd(corrected_values), 
+                       n = nrow(temp_df),
+                       age = df_block$age[df_block$order == temp_df$hostname[1]],
+                       ID = which(my_order == hostname),
+                       stringsAsFactors = FALSE)
+    return(rval)
+  }) %>% do.call(rbind, .)
+  collapsed_rval <- collapsed_rval[order(match(collapsed_rval$rule, my_legend_order)), ]
+  collapsed_rval$cummean <- collapsed_rval$mean %>% cumsum
+  
+  return(collapsed_rval)
+}) %>% do.call(rbind, .)
+
+df01$mID <- lapply(df01$hostname, function(x){
+  which(u(df01$hostname) == x)
+}) %>% unlist
+
+my_ys <- c(seq(0,60000, 3600), seq(72000, 93600, 3600))
+
+df_block2 <- df_block[df_block$order %in% df01$hostname, ]
+df_vlines <- data.frame(hostname = df_block2$age %>% u, 
+                        x_val = (df_block2$age %>% table %>% cumsum %>% unname) + 0.5, 
+                        y_val = 2*3600)
+df_vlines$x_lab <- lapply(seq_down(df_vlines), function(x){
+  if(x == 1){
+    a <- 0
+  } else{
+    a = df_vlines$x_val[x-1]
+  }
+  b = df_vlines$x_val[x]
+  return((a+b)/2)
+}) %>% unlist
+
+df01[is.na(df01)] <- 1
+
+g3 <- ggplot(df01) + 
+  geom_bar( aes(x=mID, y=mean, fill=rule), stat="identity", alpha=0.7) +
+  geom_errorbar( aes(x=mID, ymin=cummean-sd, ymax=cummean+sd), width=0.4, colour="orange", alpha=0.9, linewidth=1.3) + 
+  scale_x_continuous(breaks = df01$mID, labels = df01$hostname) +
+  scale_y_continuous(breaks = my_ys, labels = my_ys/3600) + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  xlab("hostname") + 
+  ylab("time (hours)") + 
+  geom_vline(data = df_vlines, aes(xintercept = x_val), linetype="dotted") + 
+  geom_text(data=df_vlines, aes(label=hostname, x=x_lab, y=y_val), fontface = "bold") +
+  ggtitle("time to run PBSV")
+g3 
+```
+
+239 e001.grid.gs.washington.edu pbsv discover --tandem-repeats  1192 C:/docs/benchmark/pbsv/results2/f2923/log.txt
+240 e221.grid.gs.washington.edu                  pbsv call BND    97 C:/docs/benchmark/pbsv/results2/f2923/log.txt
+
+ls -lh ../results | awk '{print $9}' | xargs -I {} mkdir -p {}
+find ../results | grep log.txt | awk -F "/" '{print "cp " $0 " " $3 "/" $4 }' | /bin/bash
+
+
+cut ../manifest.tsv -f1 | grep ^f | xargs -I {} mkdir -p {}
+
+
+output_log="results/{sample}/log.txt",
+
+set -eux; mkdir -p results/{wildcards.sample}; touch {output.output_log}
+echo $(hostname) "; pbsv discover --tandem-repeats; " $(date) "; start" >> {output.output_log}
+
+
+```{r}
+files <- list.files("C:/docs/lab_meeting_presentation_2/curve/n40/", full.names = TRUE)
+df0 <- data.frame(sample = files %>% bname %>% str_remove("_hap..n50.stats") %>% u)
+df0$hap1_n50 <- df0$sample %>% lapply(function(x){
+  temp1 <- readLines(files[grepl(paste0(x, "_hap1"), files)])
+  temp1[grepl("N50", temp1)] %>% str_extract("(?<=N50 \\(Mbp\\):).*") %>% str_trim()
+}) %>% unlist
+df0$hap2_n50 <- df0$sample %>% lapply(function(x){
+  temp1 <- readLines(files[grepl(paste0(x, "_hap2"), files)])
+  temp1[grepl("N50", temp1)] %>% str_extract("(?<=N50 \\(Mbp\\):).*") %>% str_trim()
+}) %>% unlist
+
+df1 <- fread("C:/docs/lab_meeting_presentation_2/curve/n40/qv_values.tsv") %>% as.data.frame()
+colnames(df1) <- c("sample", "hap1_qv", "hap2_qv")
+
+df2 <- merge(df0, df1, all=TRUE)
+df2$hap1_n50[1:3] <- c(45.63, 44.74, 42.11)
+df2$hap2_n50[1:3] <- c(46.21, 43.54, 43.43)
+
+
+df3 <- fread("C:/docs/lab_meeting_presentation_2/curve/n40/summary_n50.tsv") %>% as.data.frame()
+df3 <- df3[, c("sample", "n50_hap1", "n50_hap2")]
+colnames(df3) <- c("sample", "hap1_n50", "hap2_n50")
+df4 <- fread("C:/docs/lab_meeting_presentation_2/curve/n40/summary_qv.tsv") %>% as.data.frame()
+df4 <- df4[, c("sample", "qv_hap1", "qv_hap2")]
+colnames(df4) <- c("sample", "hap1_qv", "hap2_qv")
+df5 <- merge(df3, df4)
+df6 <- rbind(df2, df5)
+
+df6$family <- df6$sample %>% str_remove("_.*")
+df6$family[grepl("-", df6$sample)] <- "Rett like"
+
+df6$hap1_n50 <- as.numeric(df6$hap1_n50)
+df6$hap2_n50 <- as.numeric(df6$hap2_n50)
+
+g1 <- ggplot(df6, aes(x=hap1_n50, y=hap1_qv)) + 
+  geom_point(aes(color=family )) + 
+  ggtitle("Hap1 HiFi Assembly") + 
+  xlab("Contig N50 (Mbp)") + 
+  ylab("Quality Value (Merqury)") +
+  scale_x_continuous(breaks=seq(0,100,10), labels =seq(0,100,10))
+g1
+
+g2 <- ggplot(df6, aes(x=hap2_n50, y=hap2_qv)) + 
+  geom_point(aes(color=family )) + 
+  ggtitle("Hap2 HiFi Assembly") + 
+  xlab("Contig N50 (Mbp)") + 
+  ylab("Quality Value (Merqury)")+
+  scale_x_continuous(breaks=seq(0,100,10), labels =seq(0,100,10))
+g2
+```
+
