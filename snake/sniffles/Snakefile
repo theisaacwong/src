@@ -111,8 +111,7 @@ rule sniffles:
         hrs=24,
     singularity:
         f"docker://eichlerlab/sniffles:{SNIFFLES_VERSION}",
-    shell:
-        """
+    shell: """
         mkdir -p results/{wildcards.sample}/sniffles/{wildcards.sniffles_ver}/
         sniffles -i {input.bam} --tandem-repeats {ANNOTATIONS_TR} --threads {threads} --reference {REF} -v {output.vcf}
         """
@@ -128,8 +127,7 @@ rule cutesv:
         hrs=24,
     singularity:
         f"docker://eichlerlab/cutesv:{CUTESV_VERSION}",
-    shell:
-        """
+    shell:        """
         mkdir -p results/{wildcards.sample}/cutesv/{wildcards.cutesv_ver}/
         cuteSV --threads {threads} {input.bam} {REF} {output.vcf} results/{wildcards.sample}/cutesv/{wildcards.cutesv_ver}/
         """
@@ -146,8 +144,7 @@ rule pbsv_svsig:
     resources:
         mem=lambda wildcards, attempt: attempt * 16,
         hrs=24,
-    shell:
-        """
+    shell:        """
         mkdir -p results/{wildcards.sample}/pbsv/{wildcards.pbsv_ver}/
         pbsv discover --tandem-repeats {input.trf} {input.bam} {output.svsig}
         """
@@ -165,8 +162,7 @@ rule pbsv_call:
     resources:
         mem=lambda wildcards, attempt: attempt * 32,
         hrs=24,
-    shell:
-        """
+    shell:        """
         pbsv call -j {threads} --ccs --types {params.vcf_out} {REF} {input.svsig} {output.vcf}
         """
 
@@ -184,8 +180,7 @@ rule compress:
         hrs=24,
     singularity:
         "docker://eichlerlab/binf-basics:0.1",
-    shell:
-        """
+    shell:        """
         echo "results/{wildcards.sample}/{wildcards.software}/{wildcards.version}/{wildcards.sample}.{wildcards.tag}.vcf.gz"
         echo "results/{wildcards.sample}/{wildcards.software}/{wildcards.version}/{wildcards.sample}.{wildcards.tag}.vcf.gz.tbi"
         bgzip -@ {threads} {input.vcf}

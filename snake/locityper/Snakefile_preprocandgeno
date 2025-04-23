@@ -1,0 +1,186 @@
+# cp /net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/5ac_5b_publication/locityper_LoO3/mei-test/runlocal .
+# cp /net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/5ac_5b_publication/locityper_LoO3/mei-test/runsnake .
+# apptainer shell --bind /net/:/net/ /net/eichler/vol26/7200/software/containers/locityper/0.10.9-2/locityper_0.10.9-2.sif
+# jellyfish count --canonical --lower-count 2 --out-counter-len 2 --mer-len 25 --threads 8 --size 3G --output counts.jf /net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v1.1/chm13_v1.1_plus38Y_masked.fasta
+#locityper add -d db -r /net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v1.1/chm13_v1.1_plus38Y_masked.fasta -j counts.jf -l MUC5AC chr11:1227366-1274380 all_muc5ac_seqs.fa
+# ./runsnake 20 --config manifest=manifest_279genomes.tab -p 2>&1 | tee -a preproc_and_geno.log
+# ./runlocal 20 --config manifest=manifest_279genomes.tab -p 2>&1 | tee -a preproc_and_geno.log
+
+##snakemake for rustybam output, 94 HPRC haplotypes & region of 4 airway mucins
+import pandas as pd
+
+configfile: "config.yaml"
+
+manifest_path = config.get(
+    "MANIFEST",
+    "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/5ac_5b_publication/locityper_manymore/plusflank/manifest_279genomes.tab",
+)
+
+weights_path = config.get(
+    "WEIGHTS",
+    "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/5ac_5b_publication/locityper_manymore/plusflank/weights.fofn",
+)
+
+df = pd.read_csv(
+    manifest_path,
+    sep="\t",
+    header=0,
+    index_col="genome",
+)
+
+df_weights = pd.read_csv(
+    weights_path,
+    sep="\t",
+    index_col="WEIGHT",
+)
+
+def get_weight(wildcards):
+    return df_weights.at[wildcards.weight, "FILE"]
+
+LOCITYPER_VERSION = config.get("LOCITYPER_VERSION", "0.19.1")
+
+# locityper_container = config.get("DOCKER" "/net/eichler/vol28/home/plendere/nobackups/apptainer/locityper-v0.16.11.sif")
+reference_path = config.get("REF", "/net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v2.0/T2T-CHM13v2.fasta")
+muc5ac_path = config.get("MUC5AC", "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/5ac_5b_publication/locityper_manymore/plusflank/all_muc5ac_seqs.fa")
+
+mucin_dict = {
+    "MUC5AC": muc5ac_path,
+}
+
+mucin_interval_dict = {
+    "MUC5AC": "chr11:1227366-1274380",
+}
+
+wildcard_constraints:
+    sample="|".join(df.index),
+    weight="|".join(df_weights.index),
+
+###for rule subset_mucins
+def findCram(wildcards):
+    return df.at[wildcards.sample, "cram"]
+
+def get_mucin(wildcards):
+    return mucin_dict[wildcards.mucin]
+
+
+
+rule all:
+    input:
+        expand(
+           "results/{sample}/analysis/{weight}/loci/MUC5AC/success",
+            sample=df.index,
+            weight=df_weights.index,
+            mucin=["MUC5AC"],
+        ),
+        expand("results/{sample}/success.txt", sample=df.index),
+
+
+# container: locityper_container
+
+
+####beginning of stepwise rules
+
+rule convert:
+    input:
+        cram=findCram,
+    output:
+        flag = temp(touch("{sample}.reads"))
+    singularity:
+        f"docker://eichlerlab/locityper:{LOCITYPER_VERSION}"
+    threads: 4
+    resources:
+        mem=12,
+        hrs=48,
+    shell:
+        """
+        echo {resources.tmpdir}
+        echo test
+        samtools collate -@ {threads} -u -O {input.cram} | samtools fastq -@ {threads} -1 {resources.tmpdir}/ILLUMINA_{wildcards.sample}_1.fastq -2 {resources.tmpdir}/ILLUMINA_{wildcards.sample}_2.fastq -0 /dev/null -s /dev/null -n
+        """
+
+rule preproc:
+    input:
+        mucin_added=expand(
+            "results/{sample}/db/loci/{mucin}/success", 
+            sample=df.index,
+            mucin=["MUC5AC"],
+        ),
+        reads_flag=rules.convert.output.flag,
+        ref2=reference_path,
+    output:
+        out_reads="results/{sample}/analysis/preproc/success",
+    singularity:
+        f"docker://eichlerlab/locityper:{LOCITYPER_VERSION}"
+    threads: 4
+    resources:
+        mem=lambda wildcards, attempt: attempt * 4,
+        hrs=24,
+    shell:        """
+        set -euxo pipefail
+
+        locityper preproc \
+            -i {resources.tmpdir}/ILLUMINA_{wildcards.sample}_1.fastq {resources.tmpdir}/ILLUMINA_{wildcards.sample}_2.fastq \
+            -j counts.jf \
+            -@ {threads} \
+            --technology illumina \
+            -r {input.ref2} \
+            -o results/{wildcards.sample}/preproc;       
+        """
+
+rule genotype:
+    input:
+        preproc="results/{sample}/analysis/preproc/success",
+        curr_weight=get_weight,
+    output:
+        out_succ="results/{sample}/analysis/{weight}/loci/MUC5AC/success",
+    singularity:
+        f"docker://eichlerlab/locityper:{LOCITYPER_VERSION}"
+    threads: 4
+    resources:
+        mem=lambda wildcards, attempt: attempt * 4,
+        hrs=24,
+    shell:        """
+        set -euxo pipefail
+
+        locityper genotype \
+            -i {resources.tmpdir}/ILLUMINA_{wildcards.sample}_1.fastq {resources.tmpdir}/ILLUMINA_{wildcards.sample}_2.fastq \
+            -d results/{wildcards.sample}/db \
+            -p results/{wildcards.sample}/preproc \
+            -@ {threads} \
+            --reg-weights {input.curr_weight} \
+            --debug 2 \
+            -o results/{wildcards.sample}/analysis/{wildcards.weight};
+
+        rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/aln.bam
+        rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/windows.bed.gz
+        rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/weighted_reads.csv.gz
+        rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/read_kmers.csv.gz
+        rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/reads.csv.gz
+        rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/read_pairs.csv.gz
+        rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/filter.csv.gz
+        rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/sol.csv.gz
+        rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/depth.csv.gz
+        rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/alns.csv.gz
+        """
+
+rule rm_fasta:
+    input:
+        expand(
+           "results/{sample}/analysis/{weight}/loci/MUC5AC/success",
+            sample=df.index,
+            weight=df_weights.index,
+            mucin=["MUC5AC"],
+        ),
+    output:
+        out_succ="results/{sample}/success.txt",
+    threads: 4
+    resources:
+        mem=lambda wildcards, attempt: attempt * 2,
+        hrs=24,
+    shell:        """
+        set -euxo pipefail
+
+        rm {resources.tmpdir}/ILLUMINA_{wildcards.sample}_1.fastq {resources.tmpdir}/ILLUMINA_{wildcards.sample}_2.fastq
+        touch {output.out_succ}
+        """
+
