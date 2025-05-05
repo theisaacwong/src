@@ -1013,7 +1013,7 @@ basic stats:
   unique songs
   
 ```{r}
-
+df0 <- fread("C:/docs/mike/Renpho Health Trisha Ray", sep=",") %>% as.data.frame()
 ```
 
 

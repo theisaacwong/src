@@ -110,8 +110,25 @@ print(g2)
 Issue: memory will be a problem, better to chunk when possible then print chunks to a file
 
 ```{r}
-df0 <- fread("C:/docs/website/project_autism_genome_assembly.tsv") %>% as.data.frame()
-df0$folders <- df0$V1 %>% dirname %>% str_split("/")
+getExtension <- function(file) strsplit(file, ".", fixed=T)[[1]][-1]
+# df0 <- fread("C:/docs/website/project_autism_genome_assembly.tsv") %>% as.data.frame()
+df0 <- fread("C:/docs/website/project_long_read_archive.tsv") %>% as.data.frame()
+# df0$folders <- df0$V1 %>% dirname %>% str_split("/")
+df1 <- df0[df0$V6=="pod5" | df0$V6=="fast5", ]
+
+t1 <- Sys.time()
+df1$size_GB <- lapply(df1$V5, function(x){ # my eyes bleed
+  if(grepl("GB$", x)){
+    return(str_remove(x, " GB") %>% as.numeric)
+  } else if(grepl("MB$", x)){
+    return(as.numeric(str_remove(x, " MB"))/1000)
+  } else if(grepl("TB$", x)){
+    return(as.numeric(str_remove(x, " TB"))*1000)
+  } else {
+    return(0)
+  }
+}) %>% unlist
+print(Sys.time() - t1)
 
 subfolderize <- function(x){
   folders <- x %>% str_split("/") %>% unlist %>% grepv(".", .)
@@ -119,24 +136,34 @@ subfolderize <- function(x){
   return(folders)  
 }
 
-
-
 dirToSize <- HashMap$new()
-
-for(index in seq_down(df0)){
-  dirs <- lapply(seq(1, str_count(temp1, "/")-1), function(x){
-    str_extract(temp1, paste0("(/[^/]+){",x ,"}"))
+for(index in seq_down(df1)){
+  curr_dir <- df1$V1[index]
+  curr_size <- df1$size_GB[index]
+  if(is.na(curr_dir)){next}
+  dirs <- lapply(seq(1, str_count(curr_dir, "/")-1), function(x){
+    str_extract(curr_dir, paste0("(/[^/]+){",x ,"}"))
   }) %>% unlist
   for(dir in dirs){
     if(!dirToSize$containsKey(dir)){
       dirToSize$put(dir, 0)
-    }    
-    
-    
+    } 
+    dirToSize$put(dir, dirToSize$get(dir) + curr_size)
   }
-  
 }
 
+temp1 <- dirToSize$toString() 
+df2 <- data.frame(dir = names(temp1),
+                  size_gb = unlist(temp1))
+df2 <- df2[order(df2$size_gb, decreasing = TRUE), ]
 
 ```
 
+
+
+
+
+
+
+
+TODO: also check nobackups/backups files

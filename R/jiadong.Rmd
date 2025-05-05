@@ -274,3 +274,22 @@ write.table(df5, "C:/docs/jiadong/subset_colors.tsv", sep="\t", col.names = TRUE
 
 ```
 
+
+```{r}
+files <- list.files("C:/docs/autism/manifest_2025_05_02/", full.names = TRUE)
+
+df00 <- lapply(files, function(path){
+  df_temp <- fread(path, header=FALSE) %>% as.data.frame()
+  colnames(df_temp) <- c("SAMPLE", bname(path) %>% str_remove(".tsv$"))
+  return(df_temp)
+})
+df01 <- Reduce(function(x, y) merge(x, y, all=TRUE), df00)
+df01[is.na(df01)] <- ""
+
+main_samples <- c(df00[[1]]$SAMPLE, df00[[2]]$SAMPLE) %>% u
+df02 <- df01[df01$SAMPLE %in% main_samples, ]
+
+
+write.table(df02, "C:/docs/autism/manifest_2025_05_02/autism_SV_manifest_20250502.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+

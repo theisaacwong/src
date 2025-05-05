@@ -510,3 +510,21 @@ g2 <- ggplot(df6, aes(x=hap2_n50, y=hap2_qv)) +
 g2
 ```
 
+
+
+```{r}
+df0 <- readLines("C:/docs/temp/logs.txt")
+sizes <- df0 %>% str_extract("(?<=[:blank:])[0-9\\.]*(T|G)$")
+dates <- df0 %>% str_extract("Apr[[:space:]]+[0-9]+ ..:..:..") %>%  as.POSIXct(format="%b %d %H:%M:%OS")
+sizes_gb <- sizes %>% str_replace("T", "00") %>% str_remove("[\\.G]") %>% as.numeric()
+
+df1 <- data.frame(time = dates, free_space = sizes_gb, stringsAsFactors = FALSE)
+
+g1 <- ggplot(df1, aes(x=time, y=free_space)) + 
+  geom_line() + 
+  ggtitle("Free space available") + 
+  xlab("time") +
+  ylab("Free Space (GB)")
+g1  
+```
+

@@ -4,6 +4,8 @@
 
 -l hostname="e001|e002"
 
+ conda install -p ${MODSW}/${MODNAME}/${MODVERSION}/${ARCHPATH} -y -c bioconda -c conda-forge pandas
+
 # reusing flagger cromwell singularity config
 module load cromwell/85
 java -jar -Dconfig.file=/net/eichler/vol28/software/pipelines/flagger-0.3.3/config/local.conf  $( which cromwell.jar ) run mywdl.wdl --inputs mywdlparams.json

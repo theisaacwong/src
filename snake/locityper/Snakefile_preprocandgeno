@@ -24,9 +24,9 @@ weights_path = config.get(
 df = pd.read_csv(
     manifest_path,
     sep="\t",
-    header=0,
     index_col="genome",
 )
+df.insert(0, "GENOME", df.index)
 
 df_weights = pd.read_csv(
     weights_path,
@@ -39,8 +39,8 @@ def get_weight(wildcards):
 
 LOCITYPER_VERSION = config.get("LOCITYPER_VERSION", "0.19.1")
 
-# locityper_container = config.get("DOCKER" "/net/eichler/vol28/home/plendere/nobackups/apptainer/locityper-v0.16.11.sif")
 reference_path = config.get("REF", "/net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v2.0/T2T-CHM13v2.fasta")
+counts_jf_path = config.get("COUNTS_JF", "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/5ac_5b_publication/locityper_manymore/plusflank/weights_curve/counts.jf")
 muc5ac_path = config.get("MUC5AC", "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/5ac_5b_publication/locityper_manymore/plusflank/all_muc5ac_seqs.fa")
 
 mucin_dict = {
@@ -54,6 +54,7 @@ mucin_interval_dict = {
 wildcard_constraints:
     sample="|".join(df.index),
     weight="|".join(df_weights.index),
+    mucin="MUC5AC",
 
 ###for rule subset_mucins
 def findCram(wildcards):
@@ -62,6 +63,8 @@ def findCram(wildcards):
 def get_mucin(wildcards):
     return mucin_dict[wildcards.mucin]
 
+def get_sample(wildcards):
+    return df.at[wildcards.sample, "GENOME"]
 
 
 rule all:
@@ -75,7 +78,6 @@ rule all:
         expand("results/{sample}/success.txt", sample=df.index),
 
 
-# container: locityper_container
 
 
 ####beginning of stepwise rules
@@ -84,66 +86,88 @@ rule convert:
     input:
         cram=findCram,
     output:
-        flag = temp(touch("{sample}.reads"))
+        fastq1="fastq/{sample}/ILLUMINA_{sample}_1.fastq",
+        fastq2="fastq/{sample}/ILLUMINA_{sample}_2.fastq",
+    priority: 10
     singularity:
-        f"docker://eichlerlab/locityper:{LOCITYPER_VERSION}"
+        "docker://eichlerlab/binf-basics:0.2"
     threads: 4
     resources:
+        load=100,
         mem=12,
         hrs=48,
-    shell:
-        """
-        echo {resources.tmpdir}
-        echo test
-        samtools collate -@ {threads} -u -O {input.cram} | samtools fastq -@ {threads} -1 {resources.tmpdir}/ILLUMINA_{wildcards.sample}_1.fastq -2 {resources.tmpdir}/ILLUMINA_{wildcards.sample}_2.fastq -0 /dev/null -s /dev/null -n
+    shell:        """
+        set -euxo pipefail
+        mkdir -p fastq/{wildcards.sample}
+        rm -rf fastq/{wildcards.sample}/success.txt
+
+        mkdir -p logs/{wildcards.sample}; touch logs/{wildcards.sample}/log.txt
+        echo $(hostname) "; convert {wildcards.sample}; " $(date) "; start" >> logs/{wildcards.sample}/log.txt
+
+        samtools collate -@ {threads} -u -O {input.cram} | samtools fastq -@ {threads} -1 {output.fastq1} -2 {output.fastq2} -0 /dev/null -s /dev/null -n
+
+        echo $(hostname) "; convert {wildcards.sample}; " $(date) "; finish" >> logs/{wildcards.sample}/log.txt
+        touch fastq/{wildcards.sample}/success.txt
         """
 
 rule preproc:
     input:
-        mucin_added=expand(
-            "results/{sample}/db/loci/{mucin}/success", 
-            sample=df.index,
-            mucin=["MUC5AC"],
-        ),
-        reads_flag=rules.convert.output.flag,
+        mucin_added="results/{sample}/db/loci/MUC5AC/success", 
+        fastq1=rules.convert.output.fastq1,
+        fastq2=rules.convert.output.fastq2,
         ref2=reference_path,
+        counts_jf=counts_jf_path,
     output:
-        out_reads="results/{sample}/analysis/preproc/success",
+        out_reads="results/{sample}/preproc/success",
+    priority: 20
     singularity:
         f"docker://eichlerlab/locityper:{LOCITYPER_VERSION}"
     threads: 4
     resources:
+        load=1,
         mem=lambda wildcards, attempt: attempt * 4,
         hrs=24,
     shell:        """
         set -euxo pipefail
 
+        mkdir -p logs/{wildcards.sample}; touch logs/{wildcards.sample}/log.txt
+        echo $(hostname) "; preproc {wildcards.sample}; " $(date) "; start" >> logs/{wildcards.sample}/log.txt
+        
         locityper preproc \
-            -i {resources.tmpdir}/ILLUMINA_{wildcards.sample}_1.fastq {resources.tmpdir}/ILLUMINA_{wildcards.sample}_2.fastq \
-            -j counts.jf \
+            -i {input.fastq1} {input.fastq2} \
+            -j {input.counts_jf} \
             -@ {threads} \
             --technology illumina \
             -r {input.ref2} \
-            -o results/{wildcards.sample}/preproc;       
+            -o results/{wildcards.sample}/preproc;    
+
+        echo $(hostname) "; preproc {wildcards.sample}; " $(date) "; finish" >> logs/{wildcards.sample}/log.txt   
         """
 
 rule genotype:
     input:
-        preproc="results/{sample}/analysis/preproc/success",
+        preproc=rules.preproc.output.out_reads,
         curr_weight=get_weight,
+        fastq1=rules.convert.output.fastq1,
+        fastq2=rules.convert.output.fastq2,
     output:
         out_succ="results/{sample}/analysis/{weight}/loci/MUC5AC/success",
+    priority: 30
     singularity:
         f"docker://eichlerlab/locityper:{LOCITYPER_VERSION}"
     threads: 4
     resources:
+        load=1,
         mem=lambda wildcards, attempt: attempt * 4,
         hrs=24,
     shell:        """
         set -euxo pipefail
 
+        mkdir -p logs/{wildcards.sample}; touch logs/{wildcards.sample}/log.txt
+        echo $(hostname) "; genotype {wildcards.sample}; " $(date) "; start" >> logs/{wildcards.sample}/log.txt
+
         locityper genotype \
-            -i {resources.tmpdir}/ILLUMINA_{wildcards.sample}_1.fastq {resources.tmpdir}/ILLUMINA_{wildcards.sample}_2.fastq \
+            -i {input.fastq1} {input.fastq2} \
             -d results/{wildcards.sample}/db \
             -p results/{wildcards.sample}/preproc \
             -@ {threads} \
@@ -161,26 +185,33 @@ rule genotype:
         rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/sol.csv.gz
         rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/depth.csv.gz
         rm -rf results/{wildcards.sample}/analysis/{wildcards.weight}/loci/MUC5AC/alns.csv.gz
+
+        echo $(hostname) "; genotype {wildcards.sample}; " $(date) "; finish" >> logs/{wildcards.sample}/log.txt
         """
 
 rule rm_fasta:
     input:
         expand(
            "results/{sample}/analysis/{weight}/loci/MUC5AC/success",
-            sample=df.index,
+            sample=get_sample,
             weight=df_weights.index,
-            mucin=["MUC5AC"],
         ),
+        fastq1=rules.convert.output.fastq1,
+        fastq2=rules.convert.output.fastq2,
     output:
         out_succ="results/{sample}/success.txt",
-    threads: 4
+    priority: 40
+    threads: 1
     resources:
+        load=1,
         mem=lambda wildcards, attempt: attempt * 2,
         hrs=24,
     shell:        """
         set -euxo pipefail
 
-        rm {resources.tmpdir}/ILLUMINA_{wildcards.sample}_1.fastq {resources.tmpdir}/ILLUMINA_{wildcards.sample}_2.fastq
+        rm -rf {input.fastq1}
+        rm -rf {input.fastq2}
+        rm -rf fastq/{wildcards.sample}/success.txt
         touch {output.out_succ}
         """
 
