@@ -9,8 +9,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-MAIN_PATH_1 <- "C:/Users/iwong1/Documents/mike/my_spotify_data_14/"
-MAIN_PATH_2 <- "C:/docs/mike/my_spotify_data_14/Spotify Extended Streaming History/"
+MAIN_PATH_1 <- "C:/Users/iwong1/Documents/mike/my_spotify_data_15/"
+MAIN_PATH_2 <- "C:/docs/mike/my_spotify_data_15/Spotify Extended Streaming History/"
 ```
 
 
@@ -431,47 +431,6 @@ my_plots
 
 
 
-# Plot top albums by month
-```{r}
-df3$binID <- paste0(df3$timecode)
-df_monthly <- lapply(df3$binID %>% u, function(x){
-  df_temp <- df3[df3$binID == x, ]
-  rval <- data.frame(year = df_temp$year[1], 
-                     month = df_temp$month[1], 
-                     timecode = df_temp$timecode[1],
-                     binID = df_temp$binID[1],
-                     time_minute = sum(df_temp$ms_played)/60000)
-  return(rval)
-}) %>% do.call(rbind, .)
-df_monthly$hour <- df_monthly$time_minute / 60
-df_condensed <- df_monthly
-
-
-
-my_years <- df_condensed$year %>% u %>% as.character()
-my_years <- my_years[my_years!="2020"]
-my_plots <- lapply(my_years, function(this_year){
-  df_filtered <- df_condensed
-  df_filtered <- df_filtered[df_filtered$year == this_year, ]
-  df_filtered <- df_filtered[order(df_filtered$timecode, decreasing = FALSE), ]
-
-  df_filtered$rowID <- df_filtered$month %>% as.integer()
-  g1 <- ggplot(df_filtered, aes(y=hour, x = rowID)) + 
-    geom_bar(position="stack", stat="identity", fill="royalblue4") +
-    scale_x_continuous(breaks = df_filtered$rowID %>% u, labels = month.name[df_filtered$rowID %>% u]) +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
-    # geom_text(size = 3, position = position_stack(vjust = 0.5)) +
-    xlab("") + 
-    ylab("Hours Listened") + 
-    ggtitle(paste0("Spotify top ", TOP_N_ARTIST, " albums by month, ", this_year)) + 
-    # scale_fill_manual(name = "Artist", values = gg_color_hue(df_filtered$master_metadata_album_album_name %>% lu) %>% my_rev) + 
-    scale_y_continuous(breaks=seq(0, max(df_filtered$hour), 50)) +
-    theme(legend.position="none")
-  ggsave(paste0(OUT_DIR, "listening_time_monthly_total_", this_year, ".pdf"), g1, width = 22, height = 10, units = "in", limitsize = FALSE)
-  return(g1)
-})
-my_plots
-```
 
 # top tracks by month?
 ```{r}

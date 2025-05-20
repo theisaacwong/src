@@ -115,20 +115,18 @@ getExtension <- function(file) strsplit(file, ".", fixed=T)[[1]][-1]
 df0 <- fread("C:/docs/website/project_long_read_archive.tsv") %>% as.data.frame()
 # df0$folders <- df0$V1 %>% dirname %>% str_split("/")
 df1 <- df0[df0$V6=="pod5" | df0$V6=="fast5", ]
+df1$V1 <- df1$V1 %>%  str_remove("^/net/eichler/vol28/projects/long_read_archive")
 
-t1 <- Sys.time()
-df1$size_GB <- lapply(df1$V5, function(x){ # my eyes bleed
-  if(grepl("GB$", x)){
-    return(str_remove(x, " GB") %>% as.numeric)
-  } else if(grepl("MB$", x)){
-    return(as.numeric(str_remove(x, " MB"))/1000)
-  } else if(grepl("TB$", x)){
-    return(as.numeric(str_remove(x, " TB"))*1000)
-  } else {
-    return(0)
-  }
-}) %>% unlist
-print(Sys.time() - t1)
+t2 <- Sys.time()
+bool_gb <- grepl("GB", df1$V5)
+bool_mb <- grepl("MB", df1$V5)
+bool_tb <- grepl("TB", df1$V5)
+df1$size_GB <- 0
+df1$size_GB[bool_gb] <- as.numeric(str_remove(df1$V5[bool_gb], " GB"))
+df1$size_GB[bool_mb] <- as.numeric(str_remove(df1$V5[bool_mb], " MB"))/1000
+df1$size_GB[bool_tb] <- as.numeric(str_remove(df1$V5[bool_tb], " TB"))*1000
+print(Sys.time() - t2)
+
 
 subfolderize <- function(x){
   folders <- x %>% str_split("/") %>% unlist %>% grepv(".", .)
@@ -136,6 +134,9 @@ subfolderize <- function(x){
   return(folders)  
 }
 
+
+
+t3 <- Sys.time()
 dirToSize <- HashMap$new()
 for(index in seq_down(df1)){
   curr_dir <- df1$V1[index]
@@ -151,14 +152,111 @@ for(index in seq_down(df1)){
     dirToSize$put(dir, dirToSize$get(dir) + curr_size)
   }
 }
+print(Sys.time() - t3)
 
 temp1 <- dirToSize$toString() 
 df2 <- data.frame(dir = names(temp1),
                   size_gb = unlist(temp1))
 df2 <- df2[order(df2$size_gb, decreasing = TRUE), ]
+rownames(df2) <- seq_down(df2)
 
+
+# fwrite(df2, "C:/docs/website/project_long_read_archive_dir.tsv", col.names = TRUE, row.names=FALSE, quote=FALSE, sep="\t")
+
+
+t4 <- Sys.time()
+THRESHOLD_FRACTION <- 0.7
+TO_REMOVE_HASH <- HashMap$new()
+for(dir in df2$dir){
+  TO_REMOVE_HASH$put(dir, "FALSE")
+}
+temp1 <- lapply(df2$dir, function(curr_dir){
+  curr_size <- dirToSize$get(curr_dir)
+  dirs <- lapply(seq(1, str_count(curr_dir, "/")), function(x){
+    str_extract(curr_dir, paste0("(/[^/]+){",x ,"}"))
+  }) %>% unlist
+  for(dir in dirs){
+    if(curr_dir!=dir & (curr_size >= THRESHOLD_FRACTION * dirToSize$get(dir))){
+      TO_REMOVE_HASH$put(dir, "TRUE")
+    }
+  }
+})
+print(Sys.time() - t4)
+
+
+temp2 <- TO_REMOVE_HASH$toString() 
+df3 <- data.frame(dir = names(temp2),
+                  toRemove = unlist(temp2) %>% as.logical(), 
+                  stringsAsFactors = FALSE)
+df3 <- df3[order(df3$dir), ]
+rownames(df3) <- seq_down(df3)
+df3$size <- lapply(df3$dir, function(x){dirToSize$get(x)}) %>% unlist
+
+df4 <- df3[df3$toRemove==FALSE, ]
+
+
+df01 <- fread("C:/docs/website/ont_basecall_clinical.tsv") %>% as.data.frame()
+df02 <- fread("C:/docs/website/ont_basecall_pop.tsv") %>% as.data.frame()
+df03 <- fread("C:/docs/website/ont_basecall_nhp.tsv") %>% as.data.frame()
+
+df04 <- rbind(df01, df02, df03)
+
+t5 <- Sys.time()
+dirToTypeIndex <- HashMap$new()
+df04$dir_match <- lapply(seq_down(df04), function(x){
+  curr_sample <- df04$SAMPLE[x]
+  curr_RUNID <- df04$RUN_ID[x]
+  bool_match <- grepl(curr_sample, df2$dir) & grepl(curr_RUNID, df2$dir)
+  rvals <- df2$dir[which(bool_match)]
+  if(any(bool_match)){
+    for(rval in rvals){
+      dirToTypeIndex$put(rval, x)
+    }
+    return(rvals)
+  } else {
+    return("")
+  }
+})
+print(Sys.time() - t5)
+
+df4$SAMPLE <- lapply(df4$dir, function(x){
+  if(dirToTypeIndex$containsKey(x)){
+    df04$SAMPLE[dirToTypeIndex$get(x)]
+  } else {""}
+}) %>% unlist
+
+df4$SEQ_TYPE <- lapply(df4$dir, function(x){
+  if(dirToTypeIndex$containsKey(x)){
+    df04$SEQ_TYPE[dirToTypeIndex$get(x)]
+  } else {""}
+}) %>% unlist
+
+df4$PROFILE <- lapply(df4$dir, function(x){
+  if(dirToTypeIndex$containsKey(x)){
+    df04$PROFILE[dirToTypeIndex$get(x)]
+  } else {""}
+}) %>% unlist
+
+df4$RUN_ID <- lapply(df4$dir, function(x){
+  if(dirToTypeIndex$containsKey(x)){
+    df04$RUN_ID[dirToTypeIndex$get(x)]
+  } else {""}
+}) %>% unlist
+
+df4$toRemove <- NULL
+
+df4 <- df4[order(df4$size, decreasing = TRUE), ]
+# write.table(df4, "C:/docs/website/project_long_read_archive_dir_matched.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
 
+
+
+
+```{r}
+logLines <- readLines("C:/docs/website/df_h_project.logs.txt")
+date_indexes <- !grepl("\t", logLines)
+date_indexes_which <- date_indexes %>% which
+```
 
 
 
