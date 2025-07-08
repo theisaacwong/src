@@ -97,6 +97,14 @@ things that would be fun to keep track of:
 2. avg time between teas
 3. avg time of tea
 
+# plot the lipton times without a cofee in the same day
+# plot the lipton times with a coffee in the same day
+  - split by before or after?
+  
+```{r}
+
+```
+  
 
 
 ```{r}

@@ -445,6 +445,174 @@ g7 <- ggplot(df01) +
 g7 
 ```
 
+
+
+```{r}
+files <- list.files("C:/docs/benchmark/sawfish_hg38/", recursive = TRUE, full.names = TRUE, pattern="log")
+
+df00 <- lapply(files, function(file){
+  temp_file <- readLines(file) %>% str_split(";") %>% lapply(str_trim) %>% do.call(rbind, .) %>% as.data.frame()
+  colnames(temp_file) <- c("hostname", "rule", "time", "status")
+  temp_file$rule <- temp_file$rule %>% str_extract("sawfish (discover|call)")
+  temp_collapsed <- lapply(temp_file$rule %>% u, function(x){
+    temp_rule <- temp_file[temp_file$rule == x, ]
+    if(nrow(temp_rule) == 1){return()}
+    if(x != "bgzip tabix"){
+      if(sum(temp_rule$status == "finish") != 1){print(file); return()}
+      if(sum(temp_rule$status == "start") != 1){print(file)}  
+    }
+    end = temp_rule$time[temp_rule$status=="finish"]   %>% str_extract("(Jul|Apr)[[:space:]]+[0-9]+ ..:..:..") %>%  as.POSIXct(format="%b %d %H:%M:%OS")
+    starts = temp_rule$time[temp_rule$status=="start"] %>% str_extract("(Jul|Apr)[[:space:]]+[0-9]+ ..:..:..") %>%  as.POSIXct(format="%b %d %H:%M:%OS")
+    end <- end[length(end)]
+    diff <- min(as.numeric(end - starts,units="secs"))[1] %>% abs
+    rval <- data.frame(hostname = temp_rule$hostname[1] %>% str_remove(".grid.gs.washington.edu"),
+               rule = temp_rule$rule[1], 
+               diff = diff,
+               src = file,
+               stringsAsFactors = FALSE)
+    return(rval)
+  }) %>% do.call(rbind, .)
+  return(temp_collapsed)
+  
+}) %>% do.call(rbind, .)
+df00$src <- NULL
+
+my_order <- c(paste0("e", c(217:226, 227:245, 246:247, 248:260, paste0("00", 1:9), paste0("0", 10:16), paste0("0", 17:22))))
+my_order[grepl("e[a-z].", my_order)] <- my_order[grepl("e[a-z].", my_order)] %>% str_remove("^e")
+my_age <- c(rep("2012", length(217:226)), 
+            rep("2015", length(227:245)), 
+            rep("2016", length(246:247)), 
+            rep("2018", length(248:260)), 
+            rep("2023", length(paste0("00", 1:9))), 
+            rep("2023", length(paste0("0", 10:16))), 
+            rep("2025", length(paste0("0", 17:22))))
+df_block <- data.frame(order = my_order, 
+                       age = my_age, 
+                       stringsAsFactors = FALSE)
+
+
+my_legend_order <- c("pbsv discover --tandem-repeats", "pbsv call DUP", "pbsv call DEL,INS,INV", "pbsv call BND")
+df01 <- lapply(my_order, function(hostname){
+  if(hostname %in% df00$hostname == FALSE){return()}
+  
+  temp_rules <- df00$rule[df00$hostname == hostname] %>% u
+  collapsed_rval <- lapply(temp_rules, function(rule){
+    temp_df <- df00[df00$hostname == hostname & df00$rule == rule, ]
+    corrected_values <- temp_df$diff * 1
+    rval <- data.frame(hostname = hostname, 
+                       rule = rule,
+                       mean = mean(corrected_values), 
+                       sd = sd(corrected_values), 
+                       n = nrow(temp_df),
+                       age = df_block$age[df_block$order == temp_df$hostname[1]],
+                       ID = which(my_order == hostname),
+                       stringsAsFactors = FALSE)
+    rval$se <- 2.6 * rval$sd / sqrt(rval$n)
+    return(rval)
+  }) %>% do.call(rbind, .)
+  collapsed_rval <- collapsed_rval[order(match(collapsed_rval$rule, my_legend_order)), ]
+  collapsed_rval$cummean <- collapsed_rval$mean %>% cumsum
+  
+  return(collapsed_rval)
+}) %>% do.call(rbind, .)
+
+df01$mID <- lapply(df01$hostname, function(x){
+  which(u(df01$hostname) == x)
+}) %>% unlist
+
+my_ys <- c(seq(0,60000, 3600), seq(72000, 93600, 3600))
+
+df_block2 <- df_block[df_block$order %in% df01$hostname, ]
+df_vlines <- data.frame(hostname = df_block2$age %>% u, 
+                        x_val = (df_block2$age %>% table %>% cumsum %>% unname) + 0.5, 
+                        y_val = 3*3600)
+df_vlines$x_lab <- lapply(seq_down(df_vlines), function(x){
+  if(x == 1){
+    a <- 0
+  } else{
+    a = df_vlines$x_val[x-1]
+  }
+  b = df_vlines$x_val[x]
+  return((a+b)/2)
+}) %>% unlist
+
+df01[is.na(df01)] <- 1
+
+# df01$lab <- paste0(round(df01$mean/3600, 1), "\n", "(",  df01$n, ")")
+df01$lab <- df01$n
+
+g3 <- ggplot(df01) + 
+  geom_bar( aes(x=mID, y=mean, fill=rule), stat="identity", alpha=0.7) +
+  geom_errorbar( aes(x=mID, ymin=cummean-se, ymax=cummean+se), width=0.4, colour="orange", alpha=0.9, linewidth=1.3) + 
+  scale_x_continuous(breaks = df01$mID, labels = df01$hostname) +
+  scale_y_continuous(breaks = my_ys, labels = my_ys/3600) + 
+  geom_text(data=df01, aes(label=lab, x=mID, y=mean), size = 3, position = position_stack(vjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  xlab("hostname") + 
+  ylab("time (hours)") + 
+  geom_vline(data = df_vlines, aes(xintercept = x_val), linetype="dotdash", lwd=2) + 
+  geom_text(data=df_vlines, aes(label=hostname, x=x_lab, y=y_val), fontface = "bold") +
+  ggtitle("time to run sawfish") + 
+  scale_fill_discrete(name = "Rule")
+g3 
+
+g4 <- ggplot(df01) + 
+  geom_bar( aes(x=mID, y=n, fill=rule), stat="identity", alpha=0.7) +
+  scale_x_continuous(breaks = df01$mID, labels = df01$hostname) +
+  # scale_y_continuous(breaks = my_ys, labels = my_ys/3600) + 
+  geom_text(data=df01, aes(label=lab, x=mID, y=n), size = 3, position = position_stack(vjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  xlab("hostname") + 
+  ylab("count") + 
+  geom_vline(data = df_vlines, aes(xintercept = x_val), linetype="dotdash", lwd=2) + 
+  geom_text(data=df_vlines, aes(label=hostname, x=x_lab, y=250), fontface = "bold") +
+  ggtitle("jobs run per node, sawfish") + 
+  scale_fill_discrete(name = "Rule")
+g4
+
+df02 <- df00
+df02$diff_log <- df02$diff %>% log
+df_block2 <- df_block[df_block$order %in% df02$hostname, ]
+df02$mID <- df02$hostname %>% lapply(function(x){which(df_block2$order==x)}) %>% unlist
+df02 <- df02[order(df02$mID), ]
+
+df_vlines <- data.frame(hostname = df_block2$age %>% u, 
+                        x_val = (df_block2$age %>% table %>% cumsum %>% unname) + 0.5, 
+                        y_val = 3*3600)
+df_vlines$x_lab <- lapply(seq_down(df_vlines), function(x){
+  if(x == 1){
+    a <- 0
+  } else{
+    a = df_vlines$x_val[x-1]
+  }
+  b = df_vlines$x_val[x]
+  return((a+b)/2)
+}) %>% unlist
+
+gg_color_hue <- function(n) {hues = seq(15, 375, length = n + 1); hcl(h = hues, l = 65, c = 100)[1:n]}
+my_colors <- gg_color_hue(lu(df01$rule))
+names(my_colors) <- u(df01$rule)
+df02$mycol <- df02$rule %>% lapply(function(x){my_colors[x]}) %>% unlist
+df02$super_group <- paste0(df02$hostname, "__", df02$rule)
+
+my_time_breaks <- c(10, 30, 60, 5*60, 10*60, 30*60, 3600 * (1:4))
+my_labels <- c("10s", "30s", "1m", "5m", "10m", "30m", paste0(1:4, "hr"))
+
+g6 <- ggplot(df02) + 
+  geom_boxplot(data=df02, aes(x=mID, y = diff_log , group=super_group), alpha = 0.5, outlier.shape = NA) +
+  geom_jitter(data=df02, aes(x = mID, y = diff_log, colour = rule), width = 0.25, height = 0.05, alpha=0.8) +
+  scale_x_continuous(breaks = df02$mID %>% u, labels = df02$hostname %>% u) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  xlab("hostname") +
+  geom_vline(data = df_vlines, aes(xintercept = x_val), linetype="dotdash", lwd=2) + 
+  geom_text(data=df_vlines, aes(label=hostname, x=x_lab, y=8.2), fontface = "bold") +
+  ggtitle("sawfish runtime") +
+  guides(colour = guide_legend(override.aes = list(size=10, shape=15))) +
+  scale_y_continuous(breaks = log(my_time_breaks), labels=my_labels) +
+  ylab("runtime")
+g6
+```
+
 ls -lh ../results | awk '{print $9}' | xargs -I {} mkdir -p {}
 find ../results | grep log.txt | awk -F "/" '{print "cp " $0 " " $3 "/" $4 }' | /bin/bash
 

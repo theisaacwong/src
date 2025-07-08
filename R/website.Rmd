@@ -253,15 +253,71 @@ df4 <- df4[order(df4$size, decreasing = TRUE), ]
 
 
 ```{r}
+library(ggrepel)
+t8 <- Sys.time()
 logLines <- readLines("C:/docs/website/df_h_project.logs.txt")
 date_indexes <- !grepl("\t", logLines)
 date_indexes_which <- date_indexes %>% which
+write.table(logLines[!date_indexes], "C:/docs/website/df_h_temp.txt", row.names = FALSE, col.names = FALSE, quote=FALSE, sep=" ")
+# df00 <- logLines[!date_indexes] %>% str_split("\t") %>% do.call(rbind, .) %>% as.data.frame()
+df00 <- fread("C:/docs/website/df_h_temp.txt", header=FALSE) %>% as.data.frame()
+df00$date <- lapply(1:(length(date_indexes_which)), function(x){
+  start <- date_indexes_which[x]+1
+  if(x != length(date_indexes_which)){
+    end <- date_indexes_which[x+1]-1  
+  } else {
+    end <- length(logLines)
+  }
+  date <- logLines[date_indexes_which[x]] %>% as.POSIXct(format="%a %b %d %H:%M:%S") # not perfect
+  rval <- rep(date, length(start:end))
+  return(rval)
+}) %>% unlist
+print(Sys.time() - t8)
+df00$percent <- df00$V5 %>% str_remove("%") %>% as.numeric()
+df00$label <- ifelse(df00$date == max(df00$date), as.character(df00$V1), NA_character_)
+df00$date <- df00$date %>% as.POSIXct(., origin="1970-01-01")
 ```
 
 
 
+```{r}
+g1 <- ggplot(df00, aes(x=date, y=percent, group=V1, color=V1)) + 
+  geom_line() +
+  coord_cartesian(xlim = c(min(df00$date), max(df00$date)+140000), ylim = c(0, 120)) +
+  geom_label_repel(aes(label = label),nudge_x = 140000, hjust = "right" ,na.rm = TRUE, box.padding = 0.3, max.overlaps=200) + 
+  theme(legend.position="none") 
+g1
+ggsave("C:/docs/website/project_size_tracking.pdf", g1, width = 22, height = 30, units = "in", limitsize = FALSE)
+```
+
+
+```{r}
+df00$curr_size_ <- df00$V2 %>% str_remove("T")
+
+df1$size_GB[bool_gb] <- as.numeric(str_remove(df1$V5[bool_gb], " GB"))
+df1$size_GB[bool_mb] <- as.numeric(str_remove(df1$V5[bool_mb], " MB"))/1000
+df1$size_GB[bool_tb] <- as.numeric(str_remove(df1$V5[bool_tb], " TB"))
+
+```
+
+```{r}
+temp1 <- c(100, 90, 80, 70, 70, 200, 90, 90, 90, 100, 75, 360, 90, 100, 200, 75, 105)
+```
+
+
+33233333
+
+# Faster method
+remove all date lines
+str_split entire vector at once
+add in date lines as column, using rep(., each=NNN)
+  - NNN = dynamically calculated values?
+  
+  
 
 
 
 
 TODO: also check nobackups/backups files
+
+

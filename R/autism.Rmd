@@ -2477,5 +2477,263 @@ df1 <- read.table("C:/docs/autism/coverage/temp.txt") %>% as.data.frame()
 df1 <- fread("C:/docs/autism/batch_1_samples.txt") %>% as.data.frame()
 batch_1_samples <- df1$V1 %>% str_remove("hap.") %>% u
 
+write.table(df00, "C:/docs/autism/sawfish_hapdiff/manifest.sawfish.hapdiff.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
 
+```{r}
+df_delly <- fread("C:/docs/autism/manifest_2025_05_23/autism_delly.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_delly$path <- df_delly$path %>% str_replace("^.", "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/delly")
+df_delly$sample <- df_delly$path %>% bname %>% str_remove(".delly.vcf")
+df_delly$reference <- df_delly$path %>% str_extract("T2T-CHM[^/]+")
+df_delly <- df_delly[order(df_delly$reference), ]
+
+df_hapdiff <- fread("C:/docs/autism/manifest_2025_05_23/autism_hapdiff.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_hapdiff <- df_hapdiff[grepl("hapdiff_phased.vcf.gz$"  , df_hapdiff$path), , drop = FALSE]
+df_hapdiff$sample <- df_hapdiff$path %>% str_remove("/hapdiff_phased.vcf.gz") %>% bname
+
+df_pav <- fread("C:/docs/autism/manifest_2025_05_23/autism_pav.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_pav <- df_pav[grepl("shard.*.vcf.gz$", df_pav$path), , drop=FALSE]
+df_pav$path <- df_pav$path %>% str_replace("^.", "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pav_new/CHM13v2.0")
+df_pav$sample <- df_pav$path %>% bname() %>% str_remove(".vcf.gz") %>% str_remove("pav_")
+
+df_pav_noY <- fread("C:/docs/autism/manifest_2025_05_23/autism_SV_manifest_20250502.tsv") %>% as.data.frame()
+df_pav_noY <- df_pav_noY[, c("SAMPLE", "pav_CHM13v2.0_noY")]
+
+
+df_pbsv_bnd <- fread("C:/docs/autism/manifest_2025_05_23/autism_pbsv.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_pbsv_bnd <- df_pbsv_bnd[grepl("_bnd.vcf.gz$", df_pbsv_bnd$path), , drop=FALSE]
+df_pbsv_bnd$path <- df_pbsv_bnd$path %>% str_replace("^.", "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pbsv/CHM13v2.0")
+df_pbsv_bnd$sample <- df_pbsv_bnd$path %>% bname %>% str_extract("(?<=pbsv_).*(?=_bnd.vcf.gz)")
+df_pbsv_bnd$reference <- df_pbsv_bnd$path %>% str_extract("(?<=pbsv/CHM13v2.0/)[^/]+(?=/results)")
+df_pbsv_bnd <- df_pbsv_bnd[order(df_pbsv_bnd$reference), ]
+
+df_pbsv_dup <- fread("C:/docs/autism/manifest_2025_05_23/autism_pbsv.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_pbsv_dup <- df_pbsv_dup[grepl("_dup.vcf.gz$", df_pbsv_dup$path), , drop=FALSE]
+df_pbsv_dup$path <- df_pbsv_dup$path %>% str_replace("^.", "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pbsv/CHM13v2.0")
+df_pbsv_dup$sample <- df_pbsv_dup$path %>% bname %>% str_extract("(?<=pbsv_).*(?=_dup.vcf.gz)")
+df_pbsv_dup$reference <- df_pbsv_dup$path %>% str_extract("(?<=pbsv/CHM13v2.0/)[^/]+(?=/results)")
+df_pbsv_dup <- df_pbsv_dup[order(df_pbsv_dup$reference), ]
+
+df_pbsv_sv <- fread("C:/docs/autism/manifest_2025_05_23/autism_pbsv.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_pbsv_sv <- df_pbsv_sv[grepl("_sv.vcf.gz$", df_pbsv_sv$path), , drop=FALSE]
+df_pbsv_sv$path <- df_pbsv_sv$path %>% str_replace("^.", "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pbsv/CHM13v2.0")
+df_pbsv_sv$sample <- df_pbsv_sv$path %>% bname %>% str_extract("(?<=pbsv_).*(?=_sv.vcf.gz)")
+df_pbsv_sv$reference <- df_pbsv_sv$path %>% str_extract("(?<=pbsv/CHM13v2.0/)[^/]+(?=/results)")
+df_pbsv_sv <- df_pbsv_sv[order(df_pbsv_sv$reference), ]
+
+df_sawfish <- fread("C:/docs/autism/manifest_2025_05_23/autism_sawfish.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_sawfish <- df_sawfish[grepl("genotyped.sv.vcf.gz$", df_sawfish$path), , drop=FALSE]
+df_sawfish$sample <- df_sawfish$path %>% str_extract("(?<=/sawfish/)[^/]+(?=/sawfish_call/)")
+df_temp_sawfish <- fread("C:/docs/autism/manifest_2025_05_23/manifest.sawfish.hapdiff.input.tsv") %>% as.data.frame()
+df_sawfish$reference <- df_sawfish$sample %>% lapply(function(x){df_temp_sawfish$REF[df_temp_sawfish$SAMPLE==x]}) %>% unlist
+df_sawfish <- df_sawfish[order(df_sawfish$reference), ]
+
+df_sniffles <- fread("C:/docs/autism/manifest_2025_05_23/autism_sniffles.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_sniffles <- df_sniffles[grepl(".sniffles.vcf$", df_sniffles$path), , drop=FALSE]
+df_sniffles$path <- df_sniffles$path %>% str_replace("^.", "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/sniffles")
+df_sniffles$sample <- df_sniffles$path %>% bname %>% str_remove(".sniffles.vcf")
+df_sniffles$reference <- df_sniffles$path %>% str_extract("T2T-CHM[^/]+")
+df_sniffles <- df_sniffles[order(df_sniffles$reference), ]
+
+df_temp <- fread("C:/docs/autism/manifest_2025_05_23/manifest.autism.aln.tsv") %>% as.data.frame()
+df_temp2 <- fread("C:/docs/autism/manifest_2025_05_23/manifest.sawfish.hapdiff.input.tsv") %>% as.data.frame()
+
+df00 <- data.frame(SAMPLE = u(c(df_delly$sample, df_hapdiff$sample, df_pav$sample, df_pbsv_bnd$sample, df_sawfish$sample, df_sniffles$sample, df_pav_noY$SAMPLE, df_temp_sawfish$SAMPLE, df_temp$SAMPLE)) %>% sort)
+
+df00$ASM_QC_HAP1 <-lapply(df00$SAMPLE, function(x){if(x %in% df_temp$SAMPLE){df_temp$ASM_QC_HAP1[df_temp$SAMPLE==x][1]}else{""}}) %>% unlist
+df00$ASM_QC_HAP2 <-lapply(df00$SAMPLE, function(x){if(x %in% df_temp$SAMPLE){df_temp$ASM_QC_HAP2[df_temp$SAMPLE==x][1]}else{""}}) %>% unlist
+df00$ALN_HG38 <-lapply(df00$SAMPLE, function(x){if(x %in% df_temp2$SAMPLE){df_temp2$ALIGNMENT_HG38[df_temp2$SAMPLE==x][1]}else{""}}) %>% unlist
+df00$ALN_T2T <-lapply(df00$SAMPLE, function(x){if(x %in% df_temp2$SAMPLE){df_temp2$ALIGNMENT_T2T[df_temp2$SAMPLE==x][1]}else{""}}) %>% unlist
+df00$ALN_T2T_REF <-lapply(df00$SAMPLE, function(x){if(x %in% df_temp2$SAMPLE){df_temp2$REF[df_temp2$SAMPLE==x][1]}else{""}}) %>% unlist
+
+df00$DELLY <- lapply(df00$SAMPLE, function(x){if(x %in% df_delly$sample){tail(df_delly$path[df_delly$sample==x], 1)}else{""}}) %>% unlist
+df00$DELLY_REF <- lapply(df00$SAMPLE, function(x){if(x %in% df_delly$sample){tail(df_delly$reference[df_delly$sample==x], 1)}else{""}}) %>% unlist
+
+df00$HAPDIFF <- lapply(df00$SAMPLE, function(x){if(x %in% df_hapdiff$sample){tail(df_hapdiff$path[df_hapdiff$sample==x], 1)}else{""}}) %>% unlist
+
+df00$PAV_T2T <- lapply(df00$SAMPLE, function(x){if(x %in% df_pav$sample){tail(df_pav$path[df_pav$sample==x], 1)}else{""}}) %>% unlist
+df00$PAV_T2T_NoY <- lapply(df00$SAMPLE, function(x){if(x %in% df_pav_noY$SAMPLE ){tail(df_pav_noY$pav_CHM13v2.0_noY[df_pav_noY$SAMPLE ==x], 1)}else{""}}) %>% unlist
+
+df00$PBSV_BND_T2T <- lapply(df00$SAMPLE, function(x){if(x %in% df_pbsv_bnd$sample){tail(df_pbsv_bnd$path[df_pbsv_bnd$sample==x], 1)}else{""}}) %>% unlist
+df00$PBSV_BND_T2T_REF <- lapply(df00$SAMPLE, function(x){if(x %in% df_pbsv_bnd$sample){tail(df_pbsv_bnd$reference[df_pbsv_bnd$sample==x], 1)}else{""}}) %>% unlist
+
+df00$PBSV_DUP_T2T <- lapply(df00$SAMPLE, function(x){if(x %in% df_pbsv_dup$sample){tail(df_pbsv_dup$path[df_pbsv_dup$sample==x], 1)}else{""}}) %>% unlist
+df00$PBSV_DUP_T2T_REF <- lapply(df00$SAMPLE, function(x){if(x %in% df_pbsv_dup$sample){tail(df_pbsv_dup$reference[df_pbsv_dup$sample==x], 1)}else{""}}) %>% unlist
+
+df00$PBSV_SV_T2T <- lapply(df00$SAMPLE, function(x){if(x %in% df_pbsv_sv$sample){tail(df_pbsv_sv$path[df_pbsv_sv$sample==x], 1)}else{""}}) %>% unlist
+df00$PBSV_SV_T2T_REF <- lapply(df00$SAMPLE, function(x){if(x %in% df_pbsv_sv$sample){tail(df_pbsv_sv$reference[df_pbsv_sv$sample==x], 1)}else{""}}) %>% unlist
+
+df00$SAWFISH <- lapply(df00$SAMPLE, function(x){if(x %in% df_sawfish$sample){tail(df_sawfish$path[df_sawfish$sample==x], 1)}else{""}}) %>% unlist
+df00$SAWFISH_REF <- lapply(df00$SAMPLE, function(x){if(x %in% df_sawfish$sample){tail(df_sawfish$reference[df_sawfish$sample==x], 1)}else{""}}) %>% unlist
+
+df00$SNIFFLES <- lapply(df00$SAMPLE, function(x){if(x %in% df_sniffles$sample){tail(df_sniffles$path[df_sniffles$sample==x], 1)}else{""}}) %>% unlist
+df00$SNIFFLES_REF <- lapply(df00$SAMPLE, function(x){if(x %in% df_sniffles$sample){tail(df_sniffles$reference[df_sniffles$sample==x], 1)}else{""}}) %>% unlist
+
+# write.table(df00, "C:/docs/autism/manifest_2025_05_23/manifest.autism.t2t.2025_05_27.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
+
+```{r}
+df01 <- fread("C:/docs/autism/manifest_2025_05_23/manifest.autism.t2t.2025_05_30.tsv") %>% as.data.frame()
+df01$DELLY[df01$SAMPLE == "11611_fa"] <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/delly/T2T-CHM13v2/results/11611_fa/11611_fa.delly.vcf"
+df01$DELLY[df01$SAMPLE == "13561_fa"] <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/delly/T2T-CHM13v2/results/13561_fa/13561_fa.delly.vcf"
+df01$DELLY_REF[df01$SAMPLE == "11611_fa"] <- "T2T-CHM13v2"
+df01$DELLY_REF[df01$SAMPLE == "13561_fa"] <- "T2T-CHM13v2"
+write.table(df01, "C:/docs/autism/manifest_2025_05_23/manifest.autism.t2t.2025_06_03.tsv", col.names = TRUE, row.names = FALSE, quote=FALSE, sep = "\t")
+```
+
+
+```{r}
+df01 <- fread("C:/docs/autism/manifest_2025_05_23/manifest.autism.t2t.2025_06_03.tsv") %>% as.data.frame()
+df01$PBSV_BND_T2T[df01$SAMPLE=="11611_fa"] <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pbsv/CHM13v2.0/T2T-CHM13v2/results/11611_fa/pbsv_11611_fa_bnd.vcf.gz"
+df01$PBSV_DUP_T2T[df01$SAMPLE=="11611_fa"] <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pbsv/CHM13v2.0/T2T-CHM13v2/results/11611_fa/pbsv_11611_fa_dup.vcf.gz"
+df01$PBSV_SV_T2T[df01$SAMPLE=="11611_fa"] <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pbsv/CHM13v2.0/T2T-CHM13v2/results/11611_fa/pbsv_11611_fa_sv.vcf.gz"
+df01$PBSV_BND_T2T_REF[df01$SAMPLE=="11611_fa"] <- "T2T-CHM13v2"
+df01$PBSV_DUP_T2T_REF[df01$SAMPLE=="11611_fa"] <- "T2T-CHM13v2"
+df01$PBSV_SV_T2T_REF[df01$SAMPLE=="11611_fa"] <- "T2T-CHM13v2"
+
+df01$PBSV_BND_T2T[df01$SAMPLE=="13561_fa"] <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pbsv/CHM13v2.0/T2T-CHM13v2/results/13561_fa/pbsv_13561_fa_bnd.vcf.gz"
+df01$PBSV_DUP_T2T[df01$SAMPLE=="13561_fa"] <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pbsv/CHM13v2.0/T2T-CHM13v2/results/13561_fa/pbsv_13561_fa_dup.vcf.gz"
+df01$PBSV_SV_T2T[df01$SAMPLE=="13561_fa"] <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pbsv/CHM13v2.0/T2T-CHM13v2/results/13561_fa/pbsv_13561_fa_sv.vcf.gz"
+df01$PBSV_BND_T2T_REF[df01$SAMPLE=="13561_fa"] <- "T2T-CHM13v2"
+df01$PBSV_DUP_T2T_REF[df01$SAMPLE=="13561_fa"] <- "T2T-CHM13v2"
+df01$PBSV_SV_T2T_REF[df01$SAMPLE=="13561_fa"] <- "T2T-CHM13v2"
+
+df01$SNIFFLES[df01$SAMPLE=="11611_fa"] <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/sniffles/T2T-CHM13v2/results/11611_fa/sniffles/2.3.2/11611_fa.sniffles.vcf.gz"
+df01$SNIFFLES[df01$SAMPLE=="13561_fa"] <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/sniffles/T2T-CHM13v2/results/13561_fa/sniffles/2.3.2/13561_fa.sniffles.vcf.gz"
+df01$SNIFFLES_REF[df01$SAMPLE=="11611_fa"] <- "T2T-CHM13v2"
+df01$SNIFFLES_REF[df01$SAMPLE=="13561_fa"] <- "T2T-CHM13v2"
+
+write.table(df01, "C:/docs/autism/manifest_2025_05_23/manifest.autism.t2t.2025_06_09.tsv", col.names = TRUE, row.names = FALSE, quote=FALSE, sep = "\t")
+```
+
+```{r}
+df1 <- fread("C:/Users/iwong1/Downloads/manifest.autism.asm.aln (3).tsv") %>% as.data.frame()
+df2 <- fread("C:/Users/iwong1/Downloads/autism_samples_main.tsv.txt", header = FALSE) %>% as.data.frame()
+labs <- fread("C:/docs/autism/coverage/sex_labels.txt") %>% as.data.frame()
+
+df00 <- data.frame(SAMPLE=df1$SAMPLE[df1$SAMPLE %in% df2$V1], 
+                   INPUT = df1$ALIGNMENT[df1$SAMPLE %in% df2$V1], 
+                   BAI = paste0(df1$ALIGNMENT[df1$SAMPLE %in% df2$V1], ".bai"))
+df01 <- df00[df00$SAMPLE %in% labs$SP_ID[labs$Sex=="F"], ]
+# write.table(df00, "C:/docs/autism/manifest_2025_07_02/delly_hg38.manifest.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+# write.table(df01, "C:/docs/autism/manifest_2025_07_02/delly_hg38_noy.manifest.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
+```{r}
+df00 <- df1[df1$SAMPLE %in% df2$V1, ]
+df00$LABEL <- df00$SAMPLE %>% lapply(function(x){labs$Sex[labs$SP_ID==x]}) %>% unlist
+```
+
+
+```{r}
+df_delly_hg38 <- fread("C:/docs/autism/manifest_2025_07_02/delly_hg38.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_delly_hg38$sample <- df_delly_hg38$path %>% bname %>% str_remove(".delly.vcf")
+df_delly_hg38noy <- fread("C:/docs/autism/manifest_2025_07_02/delly_hg38noy.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_delly_hg38noy$sample <- df_delly_hg38noy$path %>% bname %>% str_remove(".delly.vcf")
+
+df_hapdiff <- fread("C:/docs/autism/manifest_2025_05_23/autism_hapdiff.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_hapdiff <- df_hapdiff[grepl("hapdiff_phased.vcf.gz$"  , df_hapdiff$path), , drop = FALSE]
+df_hapdiff$sample <- df_hapdiff$path %>% str_remove("/hapdiff_phased.vcf.gz") %>% bname
+
+df_pbsv_bnd_hg38 <- fread("C:/docs/autism/manifest_2025_07_02/pbsv_hg38.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_pbsv_bnd_hg38 <- df_pbsv_bnd_hg38[grepl("_bnd.vcf.gz$", df_pbsv_bnd_hg38$path), , drop=FALSE]
+df_pbsv_bnd_hg38$sample <- df_pbsv_bnd_hg38$path %>% bname %>% str_extract("(?<=pbsv_).*(?=_bnd.vcf.gz)")
+
+df_pbsv_dup_hg38 <- fread("C:/docs/autism/manifest_2025_07_02/pbsv_hg38.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_pbsv_dup_hg38 <- df_pbsv_dup_hg38[grepl("_dup.vcf.gz$", df_pbsv_dup_hg38$path), , drop=FALSE]
+df_pbsv_dup_hg38$sample <- df_pbsv_dup_hg38$path %>% bname %>% str_extract("(?<=pbsv_).*(?=_dup.vcf.gz)")
+
+df_pbsv_sv_hg38 <- fread("C:/docs/autism/manifest_2025_07_02/pbsv_hg38.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_pbsv_sv_hg38 <- df_pbsv_sv_hg38[grepl("_sv.vcf.gz$", df_pbsv_sv_hg38$path), , drop=FALSE]
+df_pbsv_sv_hg38$sample <- df_pbsv_sv_hg38$path %>% bname %>% str_extract("(?<=pbsv_).*(?=_sv.vcf.gz)")
+
+df_pbsv_bnd_hg38noy <- fread("C:/docs/autism/manifest_2025_07_02/pbsv_hg38noy.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_pbsv_bnd_hg38noy <- df_pbsv_bnd_hg38noy[grepl("_bnd.vcf.gz$", df_pbsv_bnd_hg38noy$path), , drop=FALSE]
+df_pbsv_bnd_hg38noy$sample <- df_pbsv_bnd_hg38noy$path %>% bname %>% str_extract("(?<=pbsv_).*(?=_bnd.vcf.gz)")
+
+df_pbsv_dup_hg38noy <- fread("C:/docs/autism/manifest_2025_07_02/pbsv_hg38noy.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_pbsv_dup_hg38noy <- df_pbsv_dup_hg38noy[grepl("_dup.vcf.gz$", df_pbsv_dup_hg38noy$path), , drop=FALSE]
+df_pbsv_dup_hg38noy$sample <- df_pbsv_dup_hg38noy$path %>% bname %>% str_extract("(?<=pbsv_).*(?=_dup.vcf.gz)")
+
+df_pbsv_sv_hg38noy <- fread("C:/docs/autism/manifest_2025_07_02/pbsv_hg38noy.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_pbsv_sv_hg38noy <- df_pbsv_sv_hg38noy[grepl("_sv.vcf.gz$", df_pbsv_sv_hg38noy$path), , drop=FALSE]
+df_pbsv_sv_hg38noy$sample <- df_pbsv_sv_hg38noy$path %>% bname %>% str_extract("(?<=pbsv_).*(?=_sv.vcf.gz)")
+
+df_sawfish_hg38 <- fread("C:/docs/autism/manifest_2025_07_02/sawfish_hg38.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_sawfish_hg38 <- df_sawfish_hg38[grepl("genotyped.sv.vcf.gz$", df_sawfish_hg38$path), , drop=FALSE]
+df_sawfish_hg38$sample <- df_sawfish_hg38$path %>% str_extract("(?<=/sawfish/)[^/]+(?=/sawfish_call/)")
+
+df_sawfish_hg38noy <- fread("C:/docs/autism/manifest_2025_07_02/sawfish_hg38noy.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_sawfish_hg38noy <- df_sawfish_hg38noy[grepl("genotyped.sv.vcf.gz$", df_sawfish_hg38noy$path), , drop=FALSE]
+df_sawfish_hg38noy$sample <- df_sawfish_hg38noy$path %>% str_extract("(?<=/sawfish/)[^/]+(?=/sawfish_call/)")
+
+df_sniffles_hg38 <- fread("C:/docs/autism/manifest_2025_07_02/sniffles_hg38.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_sniffles_hg38 <- df_sniffles_hg38[grepl(".sniffles.vcf", df_sniffles_hg38$path), , drop=FALSE]
+df_sniffles_hg38$sample <- df_sniffles_hg38$path %>% bname %>% str_remove(".sniffles.vcf.gz")
+
+df_sniffles_hg38noy <- fread("C:/docs/autism/manifest_2025_07_02/sniffles_hg38noy.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_sniffles_hg38noy <- df_sniffles_hg38noy[grepl(".sniffles.vcf", df_sniffles_hg38noy$path), , drop=FALSE]
+df_sniffles_hg38noy$sample <- df_sniffles_hg38noy$path %>% bname %>% str_remove(".sniffles.vcf.gz")
+
+df_pav <- fread("C:/docs/autism/manifest_2025_07_02/pav_hg38.txt", header=FALSE, col.names = "path") %>% as.data.frame()
+df_pav <- df_pav[grepl(".vcf.gz", df_pav$path), , drop=FALSE]
+df_pav$sample <- df_pav$path %>% bname %>% str_remove(".vcf.gz") %>% str_remove("^pav_")
+
+
+df00$DELLY <- lapply(df00$SAMPLE, function(x){
+  if(df00$LABEL[df00$SAMPLE==x] == "F"){
+    if(x %in% df_delly_hg38noy$sample){tail(df_delly_hg38noy$path[df_delly_hg38noy$sample==x], 1)}else{""}
+  } else {
+    if(x %in% df_delly_hg38$sample)   {tail(df_delly_hg38$path[df_delly_hg38$sample==x]      , 1)}else{""}
+  }
+}) %>% unlist
+
+df00$HAPDIFF <- lapply(df00$SAMPLE, function(x){if(x %in% df_hapdiff$sample){tail(df_hapdiff$path[df_hapdiff$sample==x], 1)}else{""}}) %>% unlist
+
+df00$PBSV_BND <- lapply(df00$SAMPLE, function(x){
+  if(df00$LABEL[df00$SAMPLE==x] == "F"){
+    if(x %in% df_pbsv_bnd_hg38noy$sample){tail(df_pbsv_bnd_hg38noy$path[df_pbsv_bnd_hg38noy$sample==x], 1)}else{""}
+  } else {
+    if(x %in% df_pbsv_bnd_hg38$sample)   {tail(df_pbsv_bnd_hg38$path[df_pbsv_bnd_hg38$sample==x]      , 1)}else{""}
+  }
+}) %>% unlist
+
+df00$PBSV_DUP <- lapply(df00$SAMPLE, function(x){
+  if(df00$LABEL[df00$SAMPLE==x] == "F"){
+    if(x %in% df_pbsv_dup_hg38noy$sample){tail(df_pbsv_dup_hg38noy$path[df_pbsv_dup_hg38noy$sample==x], 1)}else{""}
+  } else {
+    if(x %in% df_pbsv_dup_hg38$sample)   {tail(df_pbsv_dup_hg38$path[df_pbsv_dup_hg38$sample==x]      , 1)}else{""}
+  }
+}) %>% unlist
+
+df00$PBSV_SV <- lapply(df00$SAMPLE, function(x){
+  if(df00$LABEL[df00$SAMPLE==x] == "F"){
+    if(x %in% df_pbsv_sv_hg38noy$sample){tail(df_pbsv_sv_hg38noy$path[df_pbsv_sv_hg38noy$sample==x], 1)}else{""}
+  } else {
+    if(x %in% df_pbsv_sv_hg38$sample)   {tail(df_pbsv_sv_hg38$path[df_pbsv_sv_hg38$sample==x]      , 1)}else{""}
+  }
+}) %>% unlist
+
+df00$SAWFISH <- lapply(df00$SAMPLE, function(x){
+  if(df00$LABEL[df00$SAMPLE==x] == "F"){
+    if(x %in% df_sawfish_hg38noy$sample){tail(df_sawfish_hg38noy$path[df_sawfish_hg38noy$sample==x], 1)}else{""}
+  } else {
+    if(x %in% df_sawfish_hg38$sample)   {tail(df_sawfish_hg38$path[df_sawfish_hg38$sample==x]      , 1)}else{""}
+  }
+}) %>% unlist
+
+df00$SNIFFLES <- lapply(df00$SAMPLE, function(x){
+  if(df00$LABEL[df00$SAMPLE==x] == "F"){
+    if(x %in% df_sniffles_hg38noy$sample){tail(df_sniffles_hg38noy$path[df_sniffles_hg38noy$sample==x], 1)}else{""}
+  } else {
+    if(x %in% df_sniffles_hg38$sample)   {tail(df_sniffles_hg38$path[df_sniffles_hg38$sample==x]      , 1)}else{""}
+  }
+}) %>% unlist
+
+df00$PAV <- lapply(df00$SAMPLE, function(x){
+  if(x %in% df_pav$sample){tail(df_pav$path[df_pav$sample==x], 1)}else{""}
+}) %>% unlist
+
+write.table(df00, "C:/docs/autism/manifest_2025_07_02/manifest.autism.hg38.2025_07_03.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```

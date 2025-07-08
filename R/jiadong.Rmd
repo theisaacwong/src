@@ -293,3 +293,99 @@ df02 <- df01[df01$SAMPLE %in% main_samples, ]
 write.table(df02, "C:/docs/autism/manifest_2025_05_02/autism_SV_manifest_20250502.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
 
+
+```{r}
+CURR_GENOME <- "t2t"
+
+files <- list.files("C:/docs/jiadong/2025_07_07/results_jiadong_2025_07_07/", recursive = TRUE, full.names = TRUE, pattern = ".tsv")
+CHR_ORDER <- c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22", "chrX", "chrY")
+COLNAMES <- c("chr", "start", "end", "n_features", "n_bases", "length", "percent")
+
+df00 <- lapply(files, function(x){
+  df_temp <- fread(x) %>% as.data.frame()
+  colnames(df_temp) <- COLNAMES
+  
+  temp_by_chr <- lapply(df_temp$chr %>% u, function(x){
+    temp_chr <- df_temp[df_temp$chr == x, ]
+    pass_percent <- temp_chr$percent >= 0.95
+    pass_bins <- temp_chr$n_features <= 3
+    data.frame(chr = x,
+               coverage = sum(pass_percent & pass_bins)/nrow(temp_chr))
+  }) %>% do.call(rbind, .)
+  
+  temp_by_chr$SOURCE <- x
+  return(temp_by_chr)
+}) %>% do.call(rbind, .)
+df00$sample <- df00$SOURCE %>% bname %>% str_remove(".tsv")
+df00$HAP <- df00$sample %>% str_extract("hap.")
+df00$role <- "sample"
+df00$SOURCE <- NULL
+df00 <- df00[!grepl("_|M", df00$chr), ]
+df00$position <- ifelse(grepl("chrX", df00$chr), 23, ifelse(grepl("chrY", df00$chr), 24, str_remove(df00$chr, "chr"))) %>% as.numeric()
+df00$Role <- ifelse(grepl("HGSVC", df00$sample), "HGSVC", 
+                    ifelse(grepl("HPRC", df00$sample), 
+                           "HPRC", 
+                           ifelse(grepl("R10-ONT", df00$sample), 
+                           "R10-ONT", 
+                           "R9-ONT")))
+
+write.table(df00, "C:/docs/jiadong/2025_07_07/t2t_coverage_ggplot.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+sampleToChr <- HashMap$new()
+temp1 <- lapply(seq_down(df00), function(x){
+  curr_sample <- df00$sample[x]
+  if(sampleToChr$containsKey(curr_sample)==FALSE){sampleToChr$put(curr_sample, HashMap$new())}
+  curr_chr <- df00$chr[x]
+  curr_cov <- df00$coverage[x]
+  sampleToChr$get(curr_sample)$put(curr_chr, curr_cov)
+})
+df_print <- lapply(sampleToChr$keySet(), function(curr_sample){
+  curr_row <- lapply(CHR_ORDER, function(curr_chr){
+    sampleToChr$get(curr_sample)$get(curr_chr)
+  }) %>% unlist
+  names(curr_row) <- CHR_ORDER
+  rval <- c(curr_sample, curr_row)
+  names(rval)[1] <- "sample"
+  return(rval)
+}) %>% do.call(rbind, .) %>% as.data.frame()
+write.table(df_print, "C:/docs/jiadong/2025_07_07/t2t_coverage_main.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+
+
+df02 <- df00
+df02$chr <- as.factor(df02$chr)
+STEP <- 0.5
+df02$group_position <- df02$position*2 + ifelse(df02$Role=="HPRC", -STEP, ifelse(df02$Role=="HGSVC", 0, STEP))
+df02$group_position <- df02$position*2
+df02$group_position[df02$Role=="HPRC"] <- df02$position[df02$Role=="HPRC"]*2 - STEP
+df02$group_position[df02$Role=="HGSVC"] <- df02$position[df02$Role=="HGSVC"]*2 - STEP + 2*STEP/3
+df02$group_position[df02$Role=="R10-ONT"] <- df02$position[df02$Role=="R10-ONT"]*2 - STEP + 4/3*STEP
+df02$group_position[df02$Role=="R9-ONT"] <- df02$position[df02$Role=="R9-ONT"]*2 + STEP
+
+group.colors <- c(HPRC = "#0343df", HGSVC = "#15b01a", `R10-ONT` ="#c20078", `R9-ONT` = "#f97306")
+df02$man_color <- group.colors[df02$Role]
+
+# df02 <- df02[sample(seq_down(df02)), ]
+df02$cohort_group <- paste0(df02$chr, "-", df02$Role)
+
+df02$cohort_group[as.character(df02$chr)=="chrY"] <- paste0(df02$cohort_group[as.character(df02$chr)=="chrY"], "-", ifelse(
+  df02$coverage[as.character(df02$chr)=="chrY"] > 0.5,"M", "F")) 
+
+df02$cohort_group[as.character(df02$chr)=="chrX"] <- paste0(df02$cohort_group[as.character(df02$chr)=="chrX"], "-", ifelse(
+  df02$coverage[as.character(df02$chr)=="chrX"] > 0.5,"M", "F")) 
+
+
+
+g2 <- ggplot(df02) +
+  geom_jitter(aes(x = group_position, y = coverage, colour = Role, shape = HAP), width = 0.1, height = 0.004, alpha=0.8) +
+  scale_color_manual(values=group.colors) +
+  geom_boxplot(aes(x=group_position, y = coverage, group=cohort_group), alpha = 0.5, outlier.shape = NA) +
+  scale_y_continuous(breaks=seq(0,1,.2), labels = seq(0,100,20)) + 
+  scale_x_continuous(breaks=2*(1:24), labels = CHR_ORDER) + 
+  ylab("Percent Contig Coverage") + 
+  xlab("Chromosome") +
+  coord_cartesian(ylim=c(0,1),xlim=c(2.7,47.5)) + 
+  ggtitle("Haplotype Assembly CHM13 Coverage by Chromosome") + 
+  guides(color = guide_legend(override.aes = list(size = 5)), shape = guide_legend(override.aes = list(size = 3))) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) ; g2
+ggsave("C:/docs/jiadong/2025_07_07/coverage_t2t_window_shift_with_box.pdf", g2, width = 18, height = 7, units = "in")
+```

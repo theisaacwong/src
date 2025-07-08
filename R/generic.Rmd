@@ -61,3 +61,299 @@ library(jsonlite)
 df0 <- read_json("C:/docs/temp/ncdu_2024-08-26")
 ```
 
+```{r}
+df0 <- fread("C:/Users/iwong1/Downloads/nucflag_pre_release_v0.1.index.csv") %>% as.data.frame()
+```
+
+
+if you have lethal hits, when should you fish?
+
+```{r}
+TIME_1 <- Sys.time()
+TOUGHNESS <- 5
+N_ITERATIONS <- 100000000
+DICE <- 1:6
+
+UNIT_WS <- 3
+STRENGTH <- 5
+
+GET_WOUND_THRESHOLD <- function(TOUGHNESS, STRENGTH){
+  if(TOUGHNESS == STRENGTH){
+    return(4)
+  }
+  if(TOUGHNESS >= (STRENGTH * 2)){
+    return(6)
+  }
+  if(TOUGHNESS > STRENGTH){
+    return(5)
+  }
+  if(TOUGHNESS <= (STRENGTH/2)){
+    return(2)
+  }
+  return(3)
+}
+
+df00 <- lapply(4:12, function(TOUGHNESS){
+  WOUND_THRESHOLD <- GET_WOUND_THRESHOLD(TOUGHNESS = TOUGHNESS, STRENGTH = STRENGTH)
+  df01 <- lapply(4, function(UNIT_SV){
+    HIT_ROLL_1 <- sample(DICE, N_ITERATIONS, replace = TRUE)
+    HIT_ROLL_2 <- sample(DICE, N_ITERATIONS, replace = TRUE)
+    HIT_ROLL_RE <- ifelse(HIT_ROLL_1 >= UNIT_WS, HIT_ROLL_1, HIT_ROLL_2)
+    HIT_ROLL_FISH <- ifelse(HIT_ROLL_1 == 6, 6, HIT_ROLL_2)
+    WOUND_ROLL <- sample(DICE, N_ITERATIONS, replace = TRUE)
+    SAVE_ROLL <- sample(DICE, N_ITERATIONS, replace = TRUE)
+    
+    # hitting normally
+    BOOL_HIT_NORMAL <- HIT_ROLL_1 >= UNIT_WS
+    BOOL_WOUND_NORMAL <- WOUND_ROLL >= WOUND_THRESHOLD
+    BOOL_SAVE <- SAVE_ROLL <= UNIT_SV
+    DAMAGE_NORMAL <- mean(BOOL_HIT_NORMAL & BOOL_WOUND_NORMAL & BOOL_SAVE)
+    
+    # hitting with oath rerolls
+    BOOL_HIT_REROLL <- HIT_ROLL_RE >= UNIT_WS
+    DAMAGE_REROLL <- mean(BOOL_HIT_REROLL & BOOL_WOUND_NORMAL & BOOL_SAVE)
+    
+    # hitting normally with lethals
+    BOOL_WOUND_LETHAL <- (WOUND_ROLL >= WOUND_THRESHOLD) | (HIT_ROLL_1 == 6)
+    DAMAGE_LETHALS <- mean(BOOL_HIT_NORMAL & BOOL_WOUND_LETHAL & BOOL_SAVE)
+    
+    # hitting with lethals, rerolling only fails
+    BOOL_WOUND_LETHAL_RR <- (WOUND_ROLL >= WOUND_THRESHOLD) | (HIT_ROLL_RE == 6)
+    DAMAGE_LETHALS_RR <- mean(BOOL_HIT_REROLL & BOOL_WOUND_LETHAL_RR & BOOL_SAVE)
+    
+    # hitting with lethals, fishing
+    BOOL_HIT_FISH <- HIT_ROLL_FISH >= UNIT_WS
+    BOOL_WOUND_LETHAL_FISH <- (WOUND_ROLL >= WOUND_THRESHOLD) | (HIT_ROLL_FISH == 6)
+    DAMAGE_LETHALS_FISH <- mean(BOOL_HIT_FISH & BOOL_WOUND_LETHAL_FISH & BOOL_SAVE)
+    
+    # +1 to wound
+    BOOL_WOUND_CHAPLAIN <- (WOUND_ROLL+1) >= WOUND_THRESHOLD
+    DAMAGE_CHAPLAIN <- mean(BOOL_HIT_NORMAL & BOOL_WOUND_CHAPLAIN & BOOL_SAVE)
+    
+    # +1 to wound with oath rerolls
+    DAMAGE_CHAPLAIN_RR <- mean(BOOL_HIT_REROLL & BOOL_WOUND_CHAPLAIN & BOOL_SAVE)
+    
+    # chaplain and lethals
+    BOOL_WOUND_LETHAL_CHAPLAIN <- BOOL_WOUND_LETHAL | BOOL_WOUND_CHAPLAIN
+    DAMAGE_LETHAL_CHAPLAIN <- mean(BOOL_HIT_NORMAL & BOOL_WOUND_LETHAL_CHAPLAIN & BOOL_SAVE)
+    
+    # reroll lethal chaplain
+    BOOL_WOUND_LETHAL_RR_CHAPLAIN <- BOOL_WOUND_CHAPLAIN | (HIT_ROLL_RE == 6)
+    DAMAGE_LETHAL_RR_CHAPLAIN <- mean(BOOL_HIT_REROLL & BOOL_WOUND_LETHAL_RR_CHAPLAIN & BOOL_SAVE)
+    
+    # lethal fishing chaplain
+    BOOL_WOUND_LETHAL_FISH_CHAPLAIN <- BOOL_WOUND_CHAPLAIN | (HIT_ROLL_FISH == 6)
+    DAMAGE_LETHALS_FISH_CHAPLAIN <- mean(BOOL_HIT_FISH & BOOL_WOUND_LETHAL_FISH_CHAPLAIN & BOOL_SAVE)
+    
+    # sustained hits
+    
+    
+    df_temp <- data.frame(TOUGHNESS = TOUGHNESS, 
+                          UNIT_SV = UNIT_SV, 
+                          NORMAL = 100*DAMAGE_NORMAL, 
+                          REROLL = 100*DAMAGE_REROLL, 
+                          LETHALS = 100*DAMAGE_LETHALS, 
+                          LETHALS_RR = 100*DAMAGE_LETHALS_RR, 
+                          LETHALS_FISH = 100*DAMAGE_LETHALS_FISH, 
+                          CHAPLAIN = 100*DAMAGE_CHAPLAIN, 
+                          CHAPLAIN_RR = 100*DAMAGE_CHAPLAIN_RR,
+                          LETHAL_CHAPLAIN = 100*DAMAGE_LETHAL_CHAPLAIN,
+                          LETHAL_RR_CHAP = 100*DAMAGE_LETHAL_RR_CHAPLAIN,
+                          LETHAL_FISH_CHAP = 100*DAMAGE_LETHALS_FISH_CHAPLAIN)
+    return(df_temp)
+  }) %>% do.call(rbind, .)
+}) %>% do.call(rbind, .)
+print(Sys.time() - TIME_1)
+```
+
+```{r}
+TIME_1 <- Sys.time()
+TOUGHNESS <- 10
+N_ITERATIONS <- 1000000
+DICE <- 1:6
+
+STRENGTH <- 8
+
+GET_WOUND_THRESHOLD <- function(TOUGHNESS, STRENGTH){
+  if(TOUGHNESS == STRENGTH){
+    return(4)
+  }
+  if(TOUGHNESS >= (STRENGTH * 2)){
+    return(6)
+  }
+  if(TOUGHNESS > STRENGTH){
+    return(5)
+  }
+  if(TOUGHNESS <= (STRENGTH/2)){
+    return(2)
+  }
+  return(3)
+}
+df00 <- lapply(3:4, function(UNIT_WS){
+  df02 <- lapply(c(8,10), function(TOUGHNESS){
+    WOUND_THRESHOLD <- GET_WOUND_THRESHOLD(TOUGHNESS = TOUGHNESS, STRENGTH = STRENGTH)
+    df01 <- lapply(4:5, function(UNIT_SV){
+      HIT_ROLL_1 <- sample(DICE, N_ITERATIONS, replace = TRUE)
+      HIT_ROLL_2 <- sample(DICE, N_ITERATIONS, replace = TRUE)
+      HIT_ROLL_RE <- ifelse(HIT_ROLL_1 >= UNIT_WS, HIT_ROLL_1, HIT_ROLL_2)
+      HIT_ROLL_FISH <- ifelse(HIT_ROLL_1 == 6, 6, HIT_ROLL_2)
+      HIT_ROLL_FISH_5s <- ifelse(HIT_ROLL_1 >= 5, HIT_ROLL_1, HIT_ROLL_2)
+      WOUND_ROLL <- sample(DICE, N_ITERATIONS, replace = TRUE)
+      SAVE_ROLL <- sample(DICE, N_ITERATIONS, replace = TRUE)
+      
+      # hitting normally
+      BOOL_HIT_NORMAL <- HIT_ROLL_1 >= UNIT_WS
+      BOOL_WOUND_NORMAL <- WOUND_ROLL >= WOUND_THRESHOLD
+      BOOL_SAVE <- (SAVE_ROLL < UNIT_SV) | (WOUND_ROLL==6)
+      DAMAGE_NORMAL <- mean(BOOL_HIT_NORMAL & BOOL_WOUND_NORMAL & BOOL_SAVE)
+      
+      # hitting with oath rerolls
+      BOOL_HIT_REROLL <- HIT_ROLL_RE >= UNIT_WS
+      DAMAGE_REROLL <- mean(BOOL_HIT_REROLL & BOOL_WOUND_NORMAL & BOOL_SAVE)
+      
+      # hitting normally with lethals
+      BOOL_WOUND_LETHAL <- (WOUND_ROLL >= WOUND_THRESHOLD) | (HIT_ROLL_1 == 6)
+      BOOL_SAVE <- (SAVE_ROLL < UNIT_SV) | (WOUND_ROLL==6 & HIT_ROLL_1 != 6)
+      DAMAGE_LETHALS <- mean(BOOL_HIT_NORMAL & BOOL_WOUND_LETHAL & BOOL_SAVE)
+      
+      # hitting with lethals, rerolling only fails
+      BOOL_WOUND_LETHAL_RR <- (WOUND_ROLL >= WOUND_THRESHOLD) | (HIT_ROLL_RE == 6)
+      BOOL_SAVE <- (SAVE_ROLL < UNIT_SV) | (WOUND_ROLL==6 & HIT_ROLL_RE != 6)
+      DAMAGE_LETHALS_RR <- mean(BOOL_HIT_REROLL & BOOL_WOUND_LETHAL_RR & BOOL_SAVE)
+      
+      # hitting with lethals, fishing
+      BOOL_HIT_FISH <- HIT_ROLL_FISH >= UNIT_WS
+      BOOL_WOUND_LETHAL_FISH <- (WOUND_ROLL >= WOUND_THRESHOLD) | (HIT_ROLL_FISH == 6)
+      BOOL_SAVE <- (SAVE_ROLL < UNIT_SV) | (WOUND_ROLL==6 & HIT_ROLL_FISH != 6)
+      DAMAGE_LETHALS_FISH <- mean(BOOL_HIT_FISH & BOOL_WOUND_LETHAL_FISH & BOOL_SAVE)
+      
+      # sustained hits
+      N_EXTRA_HITS <- sum(HIT_ROLL_1==6)
+      WOUND_ROLL_EXTRA <- sample(DICE, N_EXTRA_HITS, replace = TRUE)
+      SAVE_ROLL_EXTRA  <- sample(DICE, N_EXTRA_HITS, replace = TRUE)
+      BOOL_WOUND_EXTRA <- WOUND_ROLL_EXTRA >= WOUND_THRESHOLD
+      BOOL_SAVE_EXTRA  <- (SAVE_ROLL_EXTRA < UNIT_SV) | (WOUND_ROLL_EXTRA==6)
+      DAMAGE_EXTRA_SUM <- sum(BOOL_WOUND_EXTRA & BOOL_SAVE_EXTRA)
+      BOOL_SAVE <- (SAVE_ROLL < UNIT_SV) | (WOUND_ROLL==6)
+      DAMAGE_NORMAL_SUM <- sum(BOOL_HIT_NORMAL & BOOL_WOUND_NORMAL & BOOL_SAVE)
+      FINAL_MEAN_DAMAGE_SUS <- (DAMAGE_EXTRA_SUM + DAMAGE_NORMAL_SUM)/N_ITERATIONS
+
+      # sustained hits with oath rerolls
+      N_EXTRA_HITS <- sum(HIT_ROLL_RE==6)
+      WOUND_ROLL_EXTRA <- sample(DICE, N_EXTRA_HITS, replace = TRUE)
+      SAVE_ROLL_EXTRA  <- sample(DICE, N_EXTRA_HITS, replace = TRUE)
+      BOOL_WOUND_EXTRA <- WOUND_ROLL_EXTRA >= WOUND_THRESHOLD
+      BOOL_SAVE_EXTRA  <- (SAVE_ROLL_EXTRA <= UNIT_SV) | (WOUND_ROLL_EXTRA==6)
+      DAMAGE_EXTRA_SUM <- sum(BOOL_WOUND_EXTRA & BOOL_SAVE_EXTRA)
+      FINAL_MEAN_DAMAGE_SUSRR <- (DAMAGE_EXTRA_SUM + DAMAGE_NORMAL_SUM)/N_ITERATIONS
+
+
+      # sustained hits with fishing
+      N_EXTRA_HITS <- sum(HIT_ROLL_FISH==6)
+      WOUND_ROLL_EXTRA <- sample(DICE, N_EXTRA_HITS, replace = TRUE)
+      SAVE_ROLL_EXTRA  <- sample(DICE, N_EXTRA_HITS, replace = TRUE)
+      BOOL_WOUND_EXTRA <- WOUND_ROLL_EXTRA >= WOUND_THRESHOLD
+      BOOL_SAVE_EXTRA  <- (SAVE_ROLL_EXTRA <= UNIT_SV) | (WOUND_ROLL_EXTRA==6)
+      DAMAGE_EXTRA_SUM <- sum(BOOL_WOUND_EXTRA & BOOL_SAVE_EXTRA)
+      FINAL_MEAN_DAMAGE_SUSFISH <- (DAMAGE_EXTRA_SUM + DAMAGE_NORMAL_SUM)/N_ITERATIONS
+      
+      # sustained hits, 5s
+      N_EXTRA_HITS <- sum(HIT_ROLL_1>=5)
+      WOUND_ROLL_EXTRA <- sample(DICE, N_EXTRA_HITS, replace = TRUE)
+      SAVE_ROLL_EXTRA  <- sample(DICE, N_EXTRA_HITS, replace = TRUE)
+      BOOL_WOUND_EXTRA <- WOUND_ROLL_EXTRA >= WOUND_THRESHOLD
+      BOOL_SAVE_EXTRA  <- (SAVE_ROLL_EXTRA <= UNIT_SV) | (WOUND_ROLL_EXTRA==6)
+      DAMAGE_EXTRA_SUM <- sum(BOOL_WOUND_EXTRA & BOOL_SAVE_EXTRA)
+      DAMAGE_NORMAL_SUM <- sum(BOOL_HIT_NORMAL & BOOL_WOUND_NORMAL & BOOL_SAVE)
+      FINAL_MEAN_DAMAGE_SUS5s <- (DAMAGE_EXTRA_SUM + DAMAGE_NORMAL_SUM)/N_ITERATIONS
+
+      # sustained hits with oath rerolls, 5s
+      N_EXTRA_HITS <- sum(HIT_ROLL_RE>=5)
+      WOUND_ROLL_EXTRA <- sample(DICE, N_EXTRA_HITS, replace = TRUE)
+      SAVE_ROLL_EXTRA  <- sample(DICE, N_EXTRA_HITS, replace = TRUE)
+      BOOL_WOUND_EXTRA <- WOUND_ROLL_EXTRA >= WOUND_THRESHOLD
+      BOOL_SAVE_EXTRA  <- (SAVE_ROLL_EXTRA <= UNIT_SV) | (WOUND_ROLL_EXTRA==6)
+      DAMAGE_EXTRA_SUM <- sum(BOOL_WOUND_EXTRA & BOOL_SAVE_EXTRA)
+      FINAL_MEAN_DAMAGE_SUSRR5s <- (DAMAGE_EXTRA_SUM + DAMAGE_NORMAL_SUM)/N_ITERATIONS
+
+
+      # sustained hits with fishing, 5s
+      N_EXTRA_HITS <- sum(HIT_ROLL_FISH_5s>=5)
+      WOUND_ROLL_EXTRA <- sample(DICE, N_EXTRA_HITS, replace = TRUE)
+      SAVE_ROLL_EXTRA  <- sample(DICE, N_EXTRA_HITS, replace = TRUE)
+      BOOL_WOUND_EXTRA <- WOUND_ROLL_EXTRA >= WOUND_THRESHOLD
+      BOOL_SAVE_EXTRA  <- (SAVE_ROLL_EXTRA <= UNIT_SV) | (WOUND_ROLL_EXTRA==6)
+      DAMAGE_EXTRA_SUM <- sum(BOOL_WOUND_EXTRA & BOOL_SAVE_EXTRA)
+      FINAL_MEAN_DAMAGE_SUSFISH5s <- (DAMAGE_EXTRA_SUM + DAMAGE_NORMAL_SUM)/N_ITERATIONS
+      
+      
+      df_temp <- data.frame(WS=UNIT_WS,
+                            TOUGH = TOUGHNESS, 
+                            SV = UNIT_SV, 
+                            NORMAL = 100*DAMAGE_NORMAL, 
+                            REROLL = 100*DAMAGE_REROLL, 
+                            LETHAL = 100*DAMAGE_LETHALS, 
+                            LETHAL_RR = 100*DAMAGE_LETHALS_RR, 
+                            LETHAL_FISH = 100*DAMAGE_LETHALS_FISH,
+                            SUS = 100*FINAL_MEAN_DAMAGE_SUS, 
+                            SUS_RR = 100*FINAL_MEAN_DAMAGE_SUSRR, 
+                            SUS_FISH = 100*FINAL_MEAN_DAMAGE_SUSFISH,
+                            SUS5 = 100*FINAL_MEAN_DAMAGE_SUS5s, 
+                            SUS5_RR = 100*FINAL_MEAN_DAMAGE_SUSRR5s, 
+                            SUS5_FISH = 100*FINAL_MEAN_DAMAGE_SUSFISH5s)
+      return(df_temp)
+    }) %>% do.call(rbind, .)
+    return(df01)
+  }) %>% do.call(rbind, .)
+  return(df02)
+}) %>% do.call(rbind, .)
+write.table(df00, "C:/docs/mike/TAS_MATH.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+print(Sys.time() - TIME_1)
+```
+
+
+```{r}
+get_costs <- function(HIDIVE_RESCUE=0.12, LOCITYPER=0.14, N_SAMPLES=seq(10000, 20000, 1000), N_LOCI=seq(50, 300, 25), POWER=3, FUDGE=1){
+  df_costs <- lapply(N_SAMPLES, function(s){
+    per_loci <- lapply(N_LOCI, function(n){
+      hidive_cost <- s * HIDIVE_RESCUE
+      locityper_cost <- s * LOCITYPER * (n^(1/POWER))  
+      mysum <- round(FUDGE*(hidive_cost + locityper_cost), -2)
+      return(mysum)
+    })
+    names(per_loci) <- N_LOCI
+    df_rval <- do.call(cbind, per_loci) %>% as.data.frame()
+    return(df_rval)
+  }) %>% do.call(rbind, .) %>% as.data.frame()
+  df_costs$n_samples <- N_SAMPLES
+  df_costs <- df_costs[, c(ncol(df_costs), 1:length(N_LOCI))]
+  return(df_costs)
+}
+
+cost_per_sample <- function(df_temp){
+  df_rval <- df_temp
+  for(row in 1:nrow(df_temp)){
+    for(col in 2:ncol(df_temp)){
+      df_rval[row, col] <- round(df_temp[row, col] / df_temp[row, 1], 3)
+    }
+  }
+  return(df_rval)
+}
+
+
+df_optimistic <- get_costs(FUDGE=1.5)
+df_pessimistic <- get_costs(LOCITYPER = 0.18, HIDIVE_RESCUE = 0.13, POWER = 2, FUDGE=1.2)
+
+# write.table(df_optimistic, "C:/docs/locityper/projected_costs_tot_opt.tsv", sep="\t", col.names=TRUE, row.names=FALSE, quote=FALSE)
+# write.table(cost_per_sample(df_optimistic), "C:/docs/locityper/projected_costs_per_opt.tsv", sep="\t", col.names=TRUE, row.names=FALSE, quote=FALSE)
+# write.table(df_pessimistic, "C:/docs/locityper/projected_costs_tot_pes.tsv", sep="\t", col.names=TRUE, row.names=FALSE, quote=FALSE)
+# write.table(cost_per_sample(df_pessimistic), "C:/docs/locityper/projected_costs_per_pes.tsv", sep="\t", col.names=TRUE, row.names=FALSE, quote=FALSE)
+
+df_opt <- get_costs(N_SAMPLES=seq(15000, 20000, 1000), N_LOCI=seq(300, 2800, 300), FUDGE=1.3, LOCITYPER = 0.16, POWER = 2)
+
+
+df_temp <- get_costs(N_SAMPLES=seq(15000, 20000, 1000), N_LOCI=seq(300, 10000, 500), FUDGE=1.5, LOCITYPER = 0.16, POWER=2.5)
+
+
+```
+

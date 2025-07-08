@@ -7,7 +7,7 @@ library("cowsay")
 library("parallel")
 library("googlesheets4")
 
-#COBALT
+# COBALT
 # On average, any data manipulation that can be described in a sentence or two of English can be
 # programmed in one line in R. If you find yourself writing a long 'for' loop to do something that
 # sounds simple, take a step back and research if an existing combination of functions can easily
@@ -138,6 +138,11 @@ bname <- function(file_path){
 # formals(utils:::write.table)$sep <- "\t"
 # formals(utils:::write.table)$quote <- FALSE
 
-fortune() %>% paste(collapse = "\n\t-") %>% say(by="egret")
+if(interactive()){
+  fortune() %>% paste(collapse = "\n\t-") %>% say(by="egret")
+}
+
+
+
 
 
