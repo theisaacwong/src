@@ -1490,34 +1490,42 @@ ggsave(paste0(OUT_DIR, "heatmap_listening_activity_week_past_year.pdf"), g26, wi
   
   
 ```{r}
+df6$binID <- paste0(df6$timecode)
+df_monthly <- lapply(df6$binID %>% u, function(x){
+  df_temp <- df6[df6$binID == x, ]
+  rval <- data.frame(n_artists = df_temp$master_metadata_album_artist_name %>% lu,
+                     n_songs = df_temp$spotify_track_uri %>% lu,
+                     binID = x, 
+                     timecode = x, 
+                     month = df_temp$month[1] %>% as.numeric)
+  return(rval)
+}) %>% do.call(rbind, .)
+df_monthly <- df_monthly[order(df_monthly$binID, decreasing = FALSE), ]
+df_monthly$rowID <- seq_down(df_monthly)
 
+df_filtered <- df_monthly
+g27 <- ggplot(df_filtered, aes(fill=n_artists, y=n_artists, x = rowID)) + 
+  geom_bar(position="stack", stat="identity") +
+  scale_x_continuous(breaks = df_filtered$rowID, labels = month.name[df_filtered$month %>% u %>% as.numeric()]) + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  xlab("") + 
+  ylab("# unique artists") + 
+  ggtitle(paste0("unique artists played, past year")) + 
+  theme(legend.position="none") ; g27
+ggsave(paste0(OUT_DIR, "unique artists played, past year.pdf"), g27, width = 22, height = 10, units = "in", limitsize = FALSE)
+
+g28 <- ggplot(df_filtered, aes(fill=n_songs, y=n_songs, x = rowID)) + 
+  geom_bar(position="stack", stat="identity") +
+  scale_x_continuous(breaks = df_filtered$rowID, labels = month.name[df_filtered$month %>% u %>% as.numeric()]) + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  xlab("") + 
+  ylab("# unique songs") + 
+  ggtitle(paste0("unique songs played, past year")) + 
+  theme(legend.position="none") ; g28
+ggsave(paste0(OUT_DIR, "unique songs played, past year.pdf"), g28, width = 22, height = 10, units = "in", limitsize = FALSE)
 ```
-
-
-basic stats: 
-  unique artists 
-  unique songswwww
-
-
-https://imgur.com/a/hi-NidHdl2
-https://imgur.com/a/hi-DyQhD4l
-https://imgur.com/a/hi-UA6M6QD
 
 
 
 Things to add
-1. listening times
-2. top lifetime, top year
-3. # different streams, lifetime, year, etc
-4. # different tracks, 
-5. # different artists
-6. # different albums
-7. total time streamed
-8. listening clocks / peak streaming time
-
-** 9 **: convert normal data to an input for this pipeline: 
-
 trends?? +/- change in listening time or something??? which
-
-
-TODO: rolling trends of past 12 months
