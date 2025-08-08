@@ -218,3 +218,24 @@ df_temp1 <- fread("C:/docs/aou/counts_rd3/subset.chr1_out.counts") %>% as.data.f
 df_temp2 <- fread("C:/docs/aou/counts_rd7/subset.chr1_out.counts") %>% as.data.frame()
 ```
 
+
+
+```{r}
+df0 <- fread("C:/docs/aou/kiran_outputs/sr_sample.tsv") %>% as.data.frame()
+df0$script <- paste0("echo ", df0$`entity:sr_sample_id`, "; ", 
+                     # "mkdir -p ", df0$`entity:sr_sample_id`, "; ",
+                     "mkdir -p ", df0$`entity:sr_sample_id`, "/panel_results; ",
+                     # "gsutil cp ", df0$panel_all_results_tar_gz, " "  , df0$`entity:sr_sample_id`, "/panel_all_results/ ; ",
+                     "gsutil cp ", df0$panel_all_summary_csv, " "  , df0$`entity:sr_sample_id`, "/panel_results/ ; ",
+                     # "gsutil cp ", df0$panel_results_tar_gz, " "  , df0$`entity:sr_sample_id`, "/ ; "
+)
+splits <- split(df0$script, cut(seq_along(df0$script), breaks = 4, labels = FALSE))
+
+write.table(splits[[1]], "C:/docs/aou/kiran_outputs/download_script_1.sh", sep=" ", col.names = FALSE, row.names = FALSE, quote=FALSE)
+write.table(splits[[2]], "C:/docs/aou/kiran_outputs/download_script_2.sh", sep=" ", col.names = FALSE, row.names = FALSE, quote=FALSE)
+write.table(splits[[3]], "C:/docs/aou/kiran_outputs/download_script_3.sh", sep=" ", col.names = FALSE, row.names = FALSE, quote=FALSE)
+write.table(splits[[4]], "C:/docs/aou/kiran_outputs/download_script_4.sh", sep=" ", col.names = FALSE, row.names = FALSE, quote=FALSE)
+
+write.table(df0$script, "C:/docs/aou/kiran_outputs/download_script.sh", sep=" ", col.names = FALSE, row.names = FALSE, quote=FALSE)
+```
+

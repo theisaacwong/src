@@ -1,0 +1,142 @@
+##FIRST MAKE JELLYFISH KMER COUNT FILE
+##apptainer shell --bind /net/:/net/ /net/eichler/vol28/home/plendere/nobackups/apptainer/locityper-v0.16.11.sif
+##jellyfish count --canonical --lower-count 2 --out-counter-len 2 --mer-len 25 --threads 8 --size 3G --output counts.jf /net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v2.0/T2T-CHM13v2.fasta
+##OR: cp /net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/MUC4/locityper/counts.jf .
+#locityper add             -d results/HG01258/db             -a 9             -r /net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v2.0/T2T-CHM13v2.fasta             -j counts.jf             -l MUC5AC chr11:1227366-1274380 results/HG01258/fresh_fasta-MUC5AC.fa             -@ 8
+
+# cp /net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/5ac_5b_publication/locityper_LoO3/mei-test/runlocal .
+# cp /net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/5ac_5b_publication/locityper_LoO3/mei-test/runsnake .
+# ../runsnake 24 --cores 192 --config manifest=manifest_279genomes.tab -p 2>&1 | tee -a addtodb.log
+# ./runlocal 10 --config manifest=manifest_279genomes.tab -p 2>&1 | tee -a addtodb.log
+
+import pandas as pd
+
+manifest_path = config.get(
+    "manifest",
+    "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/manifest_279genomes.tab",
+)
+df = pd.read_csv(
+    manifest_path,
+    sep="\t",
+    header=0,
+    index_col="genome",
+)
+
+locityper_container = "/net/eichler/vol28/home/plendere/nobackups/apptainer/locityper-v0.18.0.sif"
+reference_path = "/net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v2.0/T2T-CHM13v2.fasta"
+
+mucin_dict = {
+    "MUC1": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc1_alleles_FINAL.fa",
+    "MUC2": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc2_alleles_FINAL.fa",
+    "MUC3A": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc3a_alleles_FINAL.fa",
+    "MUC4": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc4_alleles_FINAL.fa",
+    "MUC5AC": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc5ac_alleles_FINAL.fa",
+    "MUC5B": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc5b_alleles_FINAL.fa",
+    "MUC6": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc6_alleles_FINAL.fa",
+    "MUC7": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc7_alleles_FINAL.fa",
+    "MUC12": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc12_alleles_FINAL.fa",
+    "MUC16": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc16_alleles_FINAL.fa",
+    "MUC17": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc17_alleles_FINAL.fa",
+    "MUC19": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc19_alleles_FINAL.fa",
+    "MUC20": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc20_alleles_FINAL.fa",
+    "MUC21": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc21_alleles_FINAL.fa",
+    "MUC22": "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/input_files/FINAL_FILES/muc22_alleles_FINAL.fa",
+}
+
+mucin_interval_dict = {
+    "MUC1": "chr1:154324612-154333450",
+    "MUC2": "chr11:1121431-1196528",
+    "MUC3A": "chr7:102181451-102223199",
+    "MUC4": "chr3:198522931-198624977",
+    "MUC5AC": "chr11:1223529-1281288",
+    "MUC5B": "chr11:1282510-1340769",
+    "MUC6": "chr11:1071211-1118320",
+    "MUC7": "chr4:73808446-73827540",
+    "MUC12": "chr7:102256962-102342586",
+    "MUC16": "chr19:8955661-9197528",
+    "MUC17": "chr7:102341849-102397548",
+    "MUC19": "chr12:40323018-40587950",
+    "MUC20": "chr3:198624398-198673339",
+    "MUC21": "chr6:30846965-30855663",
+    "MUC22": "chr6:30867232-30905667",
+}
+
+
+###for rule subset_mucins
+def findCram(wildcards):
+    return df.at[wildcards.sample, "cram"]
+
+def get_mucin(wildcards):
+    return mucin_dict[wildcards.mucin]
+
+
+
+rule all:
+    input:
+        expand(
+           "results/{sample}/db/loci/{mucin}/success",
+            sample=df.index,
+            mucin=["MUC1", "MUC2", "MUC3A", "MUC4", "MUC5AC", "MUC5B", "MUC6", "MUC7", "MUC12", "MUC16", "MUC17", "MUC19", "MUC20", "MUC21", "MUC22"],
+        ),
+        #expand("results/{sample}/preproc/success", sample=df.index),
+
+
+container: locityper_container
+
+
+####beginning of stepwise rules
+
+
+rule exclude_sample:
+    input:
+        in_mucin=get_mucin,
+    output:
+        included_samples_txt="results/{sample}/included_samples-{mucin}.txt",
+    threads: 1
+    resources:
+        mem=lambda wildcards, attempt: attempt * 4,
+        hrs=24,
+    shell:
+        """
+        grep ">" {input.in_mucin} | cut -f2 -d'>' | grep -vE "{wildcards.sample}_1|{wildcards.sample}_2" > {output.included_samples_txt}
+        """
+
+
+rule make_new_fasta:
+    input:
+        in_mucin=get_mucin,
+        include_samples="results/{sample}/included_samples-{mucin}.txt",
+    output:
+        fresh_fasta="results/{sample}/fresh_fasta-{mucin}.fa",
+    threads: 1
+    resources:
+        mem=lambda wildcards, attempt: attempt * 4,
+        hrs=24,
+    shell:
+        """
+        samtools faidx {input.in_mucin} -r {input.include_samples} > {output.fresh_fasta}
+        """
+
+rule add_mucin_to_db:
+    input:
+        fresh_mucin_fasta="results/{sample}/fresh_fasta-{mucin}.fa",
+        ref1=reference_path,
+    output:
+        out_mucin="results/{sample}/db/loci/{mucin}/success",
+    params:
+        mucin_interval=lambda wildcards: mucin_interval_dict[wildcards.mucin],
+    threads: 8
+    resources:
+        mem=lambda wildcards, attempt: attempt * 4,
+        hrs=24,
+    shell:
+        """
+        locityper add \
+            -d results/{wildcards.sample}/db \
+            -r {input.ref1} \
+            -j ./counts.jf \
+            -l {wildcards.mucin} {params.mucin_interval} {input.fresh_mucin_fasta} \
+            -@ {threads}
+        """
+
+

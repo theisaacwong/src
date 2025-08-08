@@ -1,0 +1,183 @@
+# cp /net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/5ac_5b_publication/locityper_LoO3/mei-test/runlocal .
+# cp /net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/5ac_5b_publication/locityper_LoO3/mei-test/runsnake .
+# apptainer shell --bind /net/:/net/ /net/eichler/vol26/7200/software/containers/locityper/0.10.9-2/locityper_0.10.9-2.sif
+# jellyfish count --canonical --lower-count 2 --out-counter-len 2 --mer-len 25 --threads 8 --size 3G --output counts.jf /net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v1.1/chm13_v1.1_plus38Y_masked.fasta
+#locityper add -d db -r /net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v1.1/chm13_v1.1_plus38Y_masked.fasta -j counts.jf -l MUC5AC chr11:1227366-1274380 all_muc5ac_seqs.fa
+# ./runsnake 20 --config manifest=manifest_279genomes.tab -p 2>&1 | tee -a preproc_and_geno.log
+# ./runlocal 20 --config manifest=manifest_279genomes.tab -p 2>&1 | tee -a preproc_and_geno.log
+
+
+import pandas as pd
+
+manifest_path = config.get(
+    "manifest",
+    "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/all_mucs/locityper_loo/manifest_279genomes.tab",
+)
+
+df = pd.read_csv(
+    manifest_path,
+    sep="\t",
+    header=0,
+    index_col="genome",
+)
+
+locityper_container = "/net/eichler/vol28/home/iwong1/nobackups/apptainer/locityper-1.0.0.sif"
+reference_path = "/net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v2.0/T2T-CHM13v2.fasta"
+counts_jf_path = "/net/eichler/vol28/projects/mucin/nobackups/airway_mucins_FIXED/5ac_5b_publication/locityper_manymore/plusflank/weights_curve/counts.jf"
+
+mucins = ["MUC1", "MUC2", "MUC3A", "MUC4", "MUC5AC", "MUC5B", "MUC6", "MUC7", "MUC12", "MUC16", "MUC17", "MUC19", "MUC20", "MUC21", "MUC22"]
+
+wildcard_constraints:
+    sample="|".join(df.index)
+
+# --- Input resolution helpers ---
+def findCram(wildcards):
+    return df.at[wildcards.sample, "cram"]
+
+def get_genome(wildcards):
+    return df.at[wildcards.sample, "genome"]
+
+# --- Workflow Target ---
+rule all:
+    input:
+        expand("results/{sample}/cleanup.success", sample=df.index),
+
+container: locityper_container
+
+# --- Rules ---
+
+rule convert:
+    input:
+        cram=findCram,
+    output:
+        fastq1="fastq/{sample}/ILLUMINA_{sample}_1.fastq",
+        fastq2="fastq/{sample}/ILLUMINA_{sample}_2.fastq",
+    priority: 10
+    threads: 8
+    resources:
+        load=100,
+        mem=12,
+        hrs=48,
+    shell:
+        """
+        set -euxo pipefail
+        mkdir -p fastq/{wildcards.sample}
+        rm -rf fastq/{wildcards.sample}/success.txt
+
+        mkdir -p logs/{wildcards.sample}; touch logs/{wildcards.sample}/log.txt
+        echo $(hostname) "; convert {wildcards.sample}; " $(date) "; start" >> logs/{wildcards.sample}/log.txt
+
+        samtools collate -@ {threads} -u -O {input.cram} | samtools fastq -@ {threads} -1 {output.fastq1} -2 {output.fastq2} -0 /dev/null -s /dev/null -n
+
+        echo $(hostname) "; convert {wildcards.sample}; " $(date) "; finish" >> logs/{wildcards.sample}/log.txt
+        touch fastq/{wildcards.sample}/success.txt
+        """
+
+rule preproc:
+    input:
+        fastq1=rules.convert.output.fastq1,
+        fastq2=rules.convert.output.fastq2,
+        ref2=reference_path,
+        counts_jf=counts_jf_path,
+    output:
+        out_reads="results/{sample}/preproc/success",
+    priority: 20
+    threads: 8
+    resources:
+        load=1,
+        mem=lambda wildcards, attempt: attempt * 4,
+        hrs=24,
+    shell:
+        """
+        set -euxo pipefail
+
+        mkdir -p logs/{wildcards.sample}; touch logs/{wildcards.sample}/log.txt
+        echo $(hostname) "; preproc {wildcards.sample}; " $(date) "; start" >> logs/{wildcards.sample}/log.txt
+
+        locityper preproc \
+            -i {input.fastq1} {input.fastq2} \
+            -j {input.counts_jf} \
+            -@ {threads} \
+            --technology illumina \
+            -r {input.ref2} \
+            -o results/{wildcards.sample}/preproc;
+
+        touch {output.out_reads}
+        echo $(hostname) "; preproc {wildcards.sample}; " $(date) "; finish" >> logs/{wildcards.sample}/log.txt
+        """
+
+rule genotype:
+    input:
+        preproc=rules.preproc.output.out_reads,
+        fastq1=rules.convert.output.fastq1,
+        fastq2=rules.convert.output.fastq2,
+    output:
+        out_succ="results/{sample}/analysis/genotype_all_mucins.success",
+    priority: 30
+    threads: 8
+    resources:
+        load=1,
+        mem=lambda wildcards, attempt: attempt * 4,
+        hrs=24,
+    params:
+        mucins=" ".join(mucins),
+    shell:
+        """
+        set -euxo pipefail
+
+        locityper genotype \
+            -i {input.fastq1} {input.fastq2} \
+            -d results/{wildcards.sample}/db \
+            -p results/{wildcards.sample}/preproc \
+            -@ {threads} \
+            --reg-weights paths.txt \
+            --debug 2 \
+            -o results/{wildcards.sample}/analysis;
+
+        # Create dummy success files for each mucin
+        for mucin in {params.mucins}; do
+            mkdir -p results/{wildcards.sample}/analysis/loci/$mucin
+            touch results/{wildcards.sample}/analysis/loci/$mucin/success
+        done
+
+        echo "Genotype complete for {wildcards.sample}" > {output.out_succ}
+        """
+
+rule cleanup:
+    input:
+        in_fin = rules.genotype.output.out_succ,
+    output:
+        out_fin = "results/{sample}/cleanup.success",
+    params:
+        mucins=" ".join(mucins),
+    shell:
+        r"""
+        set -euxo pipefail
+
+        # First verify that all mucin success files exist
+        for mucin in {params.mucin}; do
+            if [ ! -f results/{wildcards.sample}/analysis/loci/$mucin/success ]; then
+                echo "Missing success file for $mucin"
+                exit 1
+            fi
+        done
+
+        # Delete per-mucin files
+        for mucin in {params.mucin}; do
+            rm -f results/{wildcards.sample}/analysis/loci/$mucin/aln.bam
+            rm -f results/{wildcards.sample}/analysis/loci/$mucin/alns.csv.gz
+            rm -f results/{wildcards.sample}/analysis/loci/$mucin/depth.csv.gz
+            rm -f results/{wildcards.sample}/analysis/loci/$mucin/filter.csv.gz
+            rm -f results/{wildcards.sample}/analysis/loci/$mucin/read_kmers.csv.gz
+            rm -f results/{wildcards.sample}/analysis/loci/$mucin/read_pairs.csv.gz
+            rm -f results/{wildcards.sample}/analysis/loci/$mucin/reads.csv.gz
+            rm -f results/{wildcards.sample}/analysis/loci/$mucin/sol.csv.gz
+            rm -f results/{wildcards.sample}/analysis/loci/$mucin/weighted_reads.csv.gz
+            rm -f results/{wildcards.sample}/analysis/loci/$mucin/windows.bed.gz
+        done
+
+        # Remove fastq dir
+        rm -rf fastq/{wildcards.sample}
+
+        echo "Cleanup complete for {wildcards.sample}" > {output.out_fin}
+        """

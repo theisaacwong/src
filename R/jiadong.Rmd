@@ -293,8 +293,14 @@ df02 <- df01[df01$SAMPLE %in% main_samples, ]
 write.table(df02, "C:/docs/autism/manifest_2025_05_02/autism_SV_manifest_20250502.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
 
+```{r}
+
+```
+
+
 
 ```{r}
+library("svglite")
 CURR_GENOME <- "t2t"
 
 files <- list.files("C:/docs/jiadong/2025_07_07/results_jiadong_2025_07_07/", recursive = TRUE, full.names = TRUE, pattern = ".tsv")
@@ -329,7 +335,7 @@ df00$Role <- ifelse(grepl("HGSVC", df00$sample), "HGSVC",
                            "R10-ONT", 
                            "R9-ONT")))
 
-write.table(df00, "C:/docs/jiadong/2025_07_07/t2t_coverage_ggplot.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+# write.table(df00, "C:/docs/jiadong/2025_07_07/t2t_coverage_ggplot.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 sampleToChr <- HashMap$new()
 temp1 <- lapply(seq_down(df00), function(x){
   curr_sample <- df00$sample[x]
@@ -347,45 +353,65 @@ df_print <- lapply(sampleToChr$keySet(), function(curr_sample){
   names(rval)[1] <- "sample"
   return(rval)
 }) %>% do.call(rbind, .) %>% as.data.frame()
-write.table(df_print, "C:/docs/jiadong/2025_07_07/t2t_coverage_main.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
-
+# write.table(df_print, "C:/docs/jiadong/2025_07_07/t2t_coverage_main.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 
 
 df02 <- df00
 df02$chr <- as.factor(df02$chr)
-STEP <- 0.5
-df02$group_position <- df02$position*2 + ifelse(df02$Role=="HPRC", -STEP, ifelse(df02$Role=="HGSVC", 0, STEP))
-df02$group_position <- df02$position*2
-df02$group_position[df02$Role=="HPRC"] <- df02$position[df02$Role=="HPRC"]*2 - STEP
-df02$group_position[df02$Role=="HGSVC"] <- df02$position[df02$Role=="HGSVC"]*2 - STEP + 2*STEP/3
-df02$group_position[df02$Role=="R10-ONT"] <- df02$position[df02$Role=="R10-ONT"]*2 - STEP + 4/3*STEP
-df02$group_position[df02$Role=="R9-ONT"] <- df02$position[df02$Role=="R9-ONT"]*2 + STEP
+STEP <- 0.7
+chr_space <- 2.3
+df02$group_position <- df02$position*chr_space + ifelse(df02$Role=="HPRC", -STEP, ifelse(df02$Role=="HGSVC", 0, STEP))
+df02$group_position <- df02$position*chr_space
+df02$group_position[df02$Role=="HPRC"] <- df02$position[df02$Role=="HPRC"]*chr_space - STEP
+df02$group_position[df02$Role=="HGSVC"] <- df02$position[df02$Role=="HGSVC"]*chr_space - STEP + 2*STEP/3
+df02$group_position[df02$Role=="R10-ONT"] <- df02$position[df02$Role=="R10-ONT"]*chr_space - STEP + 4/3*STEP
+df02$group_position[df02$Role=="R9-ONT"] <- df02$position[df02$Role=="R9-ONT"]*chr_space + STEP
 
 group.colors <- c(HPRC = "#0343df", HGSVC = "#15b01a", `R10-ONT` ="#c20078", `R9-ONT` = "#f97306")
 df02$man_color <- group.colors[df02$Role]
 
-# df02 <- df02[sample(seq_down(df02)), ]
 df02$cohort_group <- paste0(df02$chr, "-", df02$Role)
-
 df02$cohort_group[as.character(df02$chr)=="chrY"] <- paste0(df02$cohort_group[as.character(df02$chr)=="chrY"], "-", ifelse(
   df02$coverage[as.character(df02$chr)=="chrY"] > 0.5,"M", "F")) 
-
 df02$cohort_group[as.character(df02$chr)=="chrX"] <- paste0(df02$cohort_group[as.character(df02$chr)=="chrX"], "-", ifelse(
   df02$coverage[as.character(df02$chr)=="chrX"] > 0.5,"M", "F")) 
-
 
 
 g2 <- ggplot(df02) +
   geom_jitter(aes(x = group_position, y = coverage, colour = Role, shape = HAP), width = 0.1, height = 0.004, alpha=0.8) +
   scale_color_manual(values=group.colors) +
-  geom_boxplot(aes(x=group_position, y = coverage, group=cohort_group), alpha = 0.5, outlier.shape = NA) +
+  geom_boxplot(aes(x=group_position, y = coverage, group=cohort_group), alpha = 0.5, outlier.shape = NA, position = "identity") +
   scale_y_continuous(breaks=seq(0,1,.2), labels = seq(0,100,20)) + 
-  scale_x_continuous(breaks=2*(1:24), labels = CHR_ORDER) + 
+  scale_x_continuous(breaks=chr_space*(1:24), labels = CHR_ORDER) + 
+  labs(shape='Haplotype', color='Technology') +
   ylab("Percent Contig Coverage") + 
   xlab("Chromosome") +
-  coord_cartesian(ylim=c(0,1),xlim=c(2.7,47.5)) + 
+  coord_cartesian(ylim=c(0,1),xlim=c(3.4,max(df02$group_position)-chr_space*0.8)) + 
   ggtitle("Haplotype Assembly CHM13 Coverage by Chromosome") + 
   guides(color = guide_legend(override.aes = list(size = 5)), shape = guide_legend(override.aes = list(size = 3))) +
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) ; g2
-ggsave("C:/docs/jiadong/2025_07_07/coverage_t2t_window_shift_with_box.pdf", g2, width = 18, height = 7, units = "in")
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), 
+        panel.background = element_blank(), 
+        axis.line = element_line(colour = "black")); g2
+# ggsave(paste0("C:/docs/jiadong/2025_07_07/coverage_t2t_window_shift_",STEP,"-",chr_space,".pdf"), g2, width = 18, height = 7, units = "in")
+# ggsave(paste0("C:/docs/jiadong/2025_07_07/coverage_t2t_window_shift_",STEP,"-",chr_space,".png"), g2, width = 18, height = 7, units = "in")
+ggsave(paste0("C:/docs/jiadong/2025_07_07/coverage_t2t_window_shift_",STEP,"-",chr_space,"_element_blank_axis_line_black.svg"), g2, width = 18, height = 7, units = "in")
 ```
+
+
+```{r}
+df_temp <- data.frame(x = rep(c(1,2), each=200),
+                      y = rep(c(rnorm(50)+10, rnorm(50)+20), 2), 
+                      z = rep(rep(letters[1:2], each=50), 2))
+
+g_temp <- ggplot(data=df_temp) + 
+  geom_jitter(aes(x=x, y=y, colour=z)) + 
+  geom_boxplot(data=df_temp[df_temp$x==1, ], aes(x=x,y=y, group=z), position = "dodge", alpha=0.5) + 
+  geom_boxplot(data=df_temp[df_temp$x==2, ], aes(x=x,y=y, group=z), position = "identity", alpha=0.5) + 
+  scale_x_continuous(breaks=1:2, labels=c("dodge", "identity")) + 
+  scale_y_continuous(labels=NULL) + 
+  ggtitle("boxplot position") + 
+  xlab("") + 
+  ylab(""); g_temp
+ggsave(paste0("C:/docs/jiadong/2025_07_07/boxplot_dodge_vs_identity.png"), g_temp, width = 8, height = 5, units = "in")
+```
+

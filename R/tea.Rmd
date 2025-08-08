@@ -20,24 +20,60 @@ Lipton time
 ```{r}
 df1 <- df0[df0$tea == "lipton", ]
 
+WINDOW <- 10
+df1$rolling_window <- lapply(seq_down(df1), function(x){
+  if((x <= WINDOW) | (x  >= (nrow(df1)-WINDOW)) ){return(NA)}
+  OPEN <- x - WINDOW
+  CLOSE <- x + WINDOW
+  return(mean(df1$dt_day[OPEN:CLOSE]))
+}) %>% unlist
+
+
+df1$key <- paste(df1$year, df1$month, df1$day, sep="_")
+srt_counts <- df1$key %>% srt
+df1$count <- lapply(seq_down(df1), function(x){
+  if(srt_counts[df1$key[x]] > 1){
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}) %>% unlist
+
 ggplot(df1, aes(x = dt_full, y = dt_day)) + 
   geom_point() + 
+  geom_line(data=df1, mapping=aes(x=dt_full, y = rolling_window), color="RED") +
   coord_cartesian(ylim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
-  scale_y_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",4), rep(" PM", 5)))) + 
+  # scale_x_continuous(breaks=df1$dt_full[seq(0,nrow(df1), length.out=7)]) +
+  scale_y_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",3), rep(" PM", 6)))) + 
   ylab("") + 
   geom_smooth(method='lm') +
-  ggtitle("daily Lipton time")
+  # scale_color_manual(values = ifelse(df1$count, "ORANGE", "BLACK")) +
+  ggtitle("daily Lipton time") + 
+  geom_point(data=df1[df1$count, ], mapping=aes(x = dt_full, y = dt_day, color="RED")) + 
+  theme(legend.position = "none")
+
+ggplot(df1, aes(x = dt_full, y = dt_day)) + 
+  geom_point() + 
+  geom_line(data=df1, mapping=aes(x=dt_full, y = rolling_window), color="RED") +
+  coord_cartesian(ylim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
+  # scale_x_continuous(breaks=df1$dt_full[seq(0,nrow(df1), length.out=7)]) +
+  scale_y_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",3), rep(" PM", 6)))) + 
+  ylab("") + 
+  geom_smooth(method='lm') +
+  # scale_color_manual(values = ifelse(df1$count, "ORANGE", "BLACK")) +
+  ggtitle("daily Lipton time") + 
+  theme(legend.position = "none")
 
 ggplot(df1, aes(x = dt_day)) + 
   geom_histogram(fill=wes_palette("BottleRocket1")[5], bins = 30) + 
   coord_cartesian(xlim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
-  scale_x_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",4), rep(" PM", 5)))) + 
+  scale_x_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",3), rep(" PM", 6)))) + 
   ylab("") + 
   ggtitle("daily Lipton time")
 ```
 
 
-Lipton time
+Coffee time
 ```{r}
 df1 <- df0[grepl("coffee", df0$tea), ]
 
@@ -52,7 +88,7 @@ ggplot(df1, aes(x = dt_full, y = dt_day)) +
 ggplot(df1, aes(x = dt_day)) + 
   geom_histogram(fill=wes_palette("BottleRocket1")[5], bins = 30) + 
   coord_cartesian(xlim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
-  scale_x_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",4), rep(" PM", 5)))) + 
+  scale_x_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",3), rep(" PM", 6)))) + 
   ylab("") + 
   ggtitle("daily coffee time")
 ```
@@ -68,28 +104,66 @@ ggplot(df1, aes(x = dt_full, y = dt_day)) +
   scale_y_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",4), rep(" PM", 5)))) + 
   ylab("") + 
   geom_smooth(method='lm') +
-  ggtitle("daily time")
+  ggtitle("daily tea time")
 
 ggplot(df1, aes(x=dt_day)) + 
   geom_histogram(fill=wes_palette("Cavalcanti1")[4], bins = 35) +
-  scale_x_continuous(breaks = as.POSIXct(8:18 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(8:12,1:6), c(rep(" AM",5), rep(" PM", 6))))
+  scale_x_continuous(breaks = as.POSIXct(8:18 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(8:12,1:6), c(rep(" AM",4), rep(" PM", 7))))
 ```
 
 ```{r}
-df1 <- df0[(df0$tea != "lipton"), ]
-# df1 <- df0[df0$tea != "lipton", ]
+df1 <- df0[df0$tea != "lipton", ]
+
+df1$is_coffee <- grepl("coffee", df1$tea)
+df1$key <- paste(df1$year, df1$month, df1$day, sep = "_")
+
+df2 <- lapply(u(df1$key), function(x){
+  df_temp <- df1[df1$key==x, ]
+  df_temp$First <- df_temp$dt_day==min(df_temp$dt_day)
+  df_temp$Last  <- df_temp$dt_day==max(df_temp$dt_day)
+  return(df_temp)
+}) %>% do.call(rbind, .)
+df_temp2 <- df2[df2$Last, ]
+df_temp2$First <- FALSE
+df3 <- rbind(df2[df2$First, ], 
+             df_temp2, 
+             df2[df2$First==FALSE & df2$Last==FALSE, ])
+df3$status <- ifelse(df3$First, "first", ifelse(df3$Last, "last", "middle"))
 
 ggplot(df1, aes(x = dt_full, y = dt_day)) + 
   geom_point() + 
   coord_cartesian(ylim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
-  scale_y_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",4), rep(" PM", 5)))) + 
+  scale_y_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",3), rep(" PM", 6)))) + 
   ylab("") + 
   geom_smooth(method='lm') +
-  ggtitle("daily time")
+  ggtitle("daily bevy time")
+
+ggplot(df1, aes(x = dt_full, y = dt_day, color=is_coffee)) + 
+  geom_point() + 
+  coord_cartesian(ylim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
+  scale_y_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",3), rep(" PM", 6)))) + 
+  ylab("") + 
+  scale_color_manual(values=c(wes_palette("Darjeeling1")[2], wes_palette("Darjeeling1")[3])) +
+  geom_smooth(method='lm') +
+  ggtitle("daily bevy time")
+
+ggplot(df3, aes(x = dt_full, y = dt_day, color=status)) + 
+  geom_point() + 
+  coord_cartesian(ylim = c(as.POSIXct("9:00", format = "%H:%M"), as.POSIXct("17:00", format = "%H:%M"))) + 
+  scale_y_continuous(breaks = as.POSIXct(9:17 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(9:12,1:5), c(rep(" AM",3), rep(" PM", 6)))) + 
+  ylab("") + 
+  scale_color_manual(values=c(wes_palette("Darjeeling1")[2], wes_palette("Darjeeling1")[3], wes_palette("Darjeeling1")[1])) +
+  geom_smooth(method='lm') +
+  ggtitle("daily bevy time")
 
 ggplot(df1, aes(x=dt_day)) + 
   geom_histogram(fill=wes_palette("Cavalcanti1")[4], bins = 35) +
-  scale_x_continuous(breaks = as.POSIXct(8:18 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(8:12,1:6), c(rep(" AM",5), rep(" PM", 6))))
+  scale_x_continuous(breaks = as.POSIXct(8:18 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(8:12,1:6), c(rep(" AM",4), rep(" PM", 7))))
+
+ggplot(df3[df3$status != "middle",], aes(x=dt_day, fill=status)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..)) +
+  scale_fill_manual(values=c(wes_palette("FantasticFox1")[5], wes_palette("FantasticFox1")[3])) +
+  scale_x_continuous(breaks = as.POSIXct(8:18 %>% paste0(":00"), format = "%H:%M"), labels = paste0(c(8:12,1:6), c(rep(" AM",4), rep(" PM", 7))))
 ```
 
 things that would be fun to keep track of:
@@ -102,6 +176,9 @@ things that would be fun to keep track of:
   - split by before or after?
   
 ```{r}
+df1 <- df0[(df0$tea != "lipton"), ]
+df1$key <- paste(df1$year, df1$month, df1$day, sep="_")
+
 
 ```
   

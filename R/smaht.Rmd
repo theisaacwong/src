@@ -1,0 +1,110 @@
+---
+title: "smaht"
+output: html_document
+date: "2025-07-22"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(xlsx)
+```
+
+
+
+```{r}
+df00 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "TissueSample")
+df01 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "(Tissue)")
+df02 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "Analyte")
+df03 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "AnalytePreparation")
+df04 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "PreparationKit")
+df05 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "Treatment")
+df06 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "Library")
+df07 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "LibraryPreparation")
+df08 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "Sequencing")
+df09 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "FileSet")
+df10 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "UnalignedReads")
+df11 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "Software")
+df12 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "AlignedReads")
+df13 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "VariantCalls")
+df14 <- read.xlsx2("C:/docs/smaht/smht020/SMHT020 - ONT Metadata.xlsx", sheetName = "SupplementaryFile")
+df_ont_data <- read_sheet("https://docs.google.com/spreadsheets/d/1hK770z1egV_wvnzGAVmBE2jyLzHjYd_YJFTWs9bb1Jo/edit?gid=0#gid=0", sheet="Per-Run Data") %>% as.data.frame()
+fout <- function(this_data_frame, path="C:/docs/smaht/smht020/new.tsv"){
+  write.table(this_data_frame, "C:/docs/smaht/smht020/new.tsv", col.names = FALSE, row.names = FALSE, quote=FALSE)
+}
+```
+
+
+```{r}
+df_temp <- data.frame(description = df00$submitted_id %>% str_extract("PS[^_]+"))
+write.table(df_temp, "C:/docs/smaht/smht020/new.tsv", col.names = FALSE, row.names = FALSE, quote=FALSE)
+```
+
+```{r}
+df1 <- fread("C:/docs/smaht/smht020/manifest.tsv") %>% as.data.frame()
+df1$NAME <- df1$INPUT %>% bname
+df1$NAME2 <- df1$NAME %>% toupper() %>% str_replace("_PASS.BAM$", "_BAM") %>% str_replace("_PASS.FASTQ.GZ$", "_FASTQ")
+df1$NAME3 <- paste0("UWSC_UNALIGNED-READS_FILTERED_", df1$NAME2)
+write.table(df1$NAME3, "C:/docs/smaht/smht020/new.tsv", col.names = FALSE, row.names = FALSE, quote=FALSE)
+write.table(df1$NAME, "C:/docs/smaht/smht020/new.tsv", col.names = FALSE, row.names = FALSE, quote=FALSE)
+
+df2 <- fread("C:/docs/smaht/smht020/md5_summary.txt", header=FALSE) %>% as.data.frame()
+df1$md5 <- df1$INPUT %>% lapply(function(x){
+  df2$V1[df2$V2==x]
+}) %>% unlist
+fout(df1$md5)
+
+df1$flow_cell <- df1$NAME %>% str_extract("(?<=_.._)[^_]+(?=_........_)")
+fout(df1$flow_cell)
+
+df3 <- fread("C:/docs/smaht/smht020/SMHT020.qc_summary.tsv") %>% as.data.frame()
+df3 <- df3[df3$FILTER=="filt", ]
+df1$n50 <- lapply(df1$NAME, function(x){
+  which_runid <- lapply(df3$RUNID, function(y){
+    grepl(y, x)
+  }) %>% unlist %>% which
+  df3$N50_K[which_runid] * 1000
+}) %>% unlist
+fout(df1$n50)
+
+df1$file_format <- ifelse(grepl("bam$", df1$INPUT), "bam", "fastq_gz")
+fout(df1$file_format)
+
+df09$PSID <- df09$submitted_id %>% str_extract("PS[^-_]+(?=_)")
+df1$PSID <- df1$NAME %>% str_extract("PS[^-_]+(?=_)")
+df1$file_sets <- df1$PSID %>% lapply(function(x){
+  if(x %in% df09$PSID){
+    return(df09$submitted_id[df09$PSID==x])  
+  }
+  return("")
+}) %>% unlist
+fout(df1$file_sets)
+
+df1$derived_from <- ifelse(grepl("bam", df1$NAME), "", df1$NAME3) %>% str_replace("_FASTQ$", "_BAM")
+fout(df1$derived_from)
+
+df1$software <- ifelse(df1$file_format=="bam", "UWSC_SOFTWARE_DORADO_102_NVIDIA_A100", "UWSC_SOFTWARE_DORADO_102_NVIDIA_A100|UWSC_SOFTWARE_SAMTOOLS_V1.19.2|UWSC_SOFTWARE_BGZIP_V1.16
+")
+fout(df1$software)
+
+df_temp <- fread("C:/docs/smaht/smht020/new.tsv") %>% as.data.frame()
+df_temp$val <- ifelse(df_temp$file_format=="bam", "UWSC_SOFTWARE_DORADO_102_NVIDIA_A100", "UWSC_SOFTWARE_DORADO_102_NVIDIA_A100|UWSC_SOFTWARE_SAMTOOLS_V1.19.2|UWSC_SOFTWARE_BGZIP_V1.16")
+fout(df_temp$val)
+```
+
+
+
+
+
+```{r}
+df_temp <- read.xlsx2("C:/docs/smaht/smht020/SMHT020_test.xlsx", sheetName = "(Tissue)")
+df_temp$external_id <- 1:39
+write.xlsx2(df_temp, "C:/docs/smaht/smht020/SMHT020_test.xlsx", sheetName = "(Tissue)", append = TRUE)
+
+df_temp1 <- read.table("C:/docs/smaht/smht020/new.tsv")
+df_temp1$V2 <- 1:6
+write.table(df_temp1, "C:/docs/smaht/smht020/new.tsv")
+```
+
