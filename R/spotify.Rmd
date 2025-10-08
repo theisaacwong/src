@@ -9,12 +9,13 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-MAIN_PATH_1 <- "C:/Users/iwong1/Documents/mike/my_spotify_data_20/"
-MAIN_PATH_2 <- "C:/docs/mike/my_spotify_data_20/Spotify Extended Streaming History/"
+MAIN_PATH_1 <- "C:/Users/iwong1/Documents/mike/my_spotify_data_23/"
+MAIN_PATH_2 <- "C:/docs/mike/my_spotify_data_23/Spotify Extended Streaming History/"
 FILTER <- FALSE
 library(jsonlite)
 library(plyr)
 library(wesanderson)
+library(Cairo)
 ```
 
 
@@ -266,7 +267,7 @@ g1b <- ggplot(dfb0[1:N_TOP_ARTIST, ], aes(x=ID, y=time, fill=album)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), legend.position="none") + 
   xlab("") + 
   ylab("Hours Listened") +
-  ggtitle(paste0("Spotify Top ", N_TOP_ARTIST, " Artists, lifetime")) +
+  ggtitle(paste0("Spotify Top ", N_TOP_ARTIST, " Albums, lifetime")) +
   scale_fill_manual(name = "Album", values = gg_color_hue(N_TOP_ARTIST) %>% my_rev) + 
   scale_y_continuous(breaks=seq(0, dfb0$time[1]+50, 20))
 plot(g1b)
@@ -424,6 +425,51 @@ if(!FILTER)ggsave(paste0(OUT_DIR, "top_artists_by_year_", TOP_N_ARTIST, ".pdf"),
 g1
 ```
 
+do top 5 albums per year
+```{r}
+TOP_N_ARTIST <- 5
+df3$binID <- paste0(df3$year, "__", df3$master_metadata_album_album_name)
+df_yearly <- lapply(df3$binID %>% u, function(x){
+  df_temp <- df3[df3$binID == x, ]
+  rval <- data.frame(master_metadata_album_album_name = df_temp$master_metadata_album_album_name[1],
+                     year = df_temp$year[1], 
+                     timecode = df_temp$timecode[1],
+                     binID = df_temp$binID[1],
+                     time_minute = sum(df_temp$ms_played)/60000)
+  return(rval)
+}) %>% do.call(rbind, .)
+df_yearly$hour <- df_yearly$time_minute / 60
+
+df_condensed <- df_yearly
+df_condensed <- lapply(df_yearly$year %>% u, function(x){
+  df_temp <- df_yearly[df_yearly$year == x, ]
+  top_artists_yearly <- df_temp$master_metadata_album_album_name[order(df_temp$hour, decreasing = TRUE)][1:TOP_N_ARTIST]
+  df_temp1 <- df_temp[df_temp$master_metadata_album_album_name %in% top_artists_yearly, ]
+  return(df_temp1[order(df_temp1$hour, decreasing = TRUE), ])
+}) %>% do.call(rbind, .)
+
+
+df_filtered <- df_condensed
+df_filtered <- df_filtered[df_filtered$year != "2020", ]
+max_hours <- lapply(df_filtered$year %>% u, function(x){sum(df_filtered$hour[df_filtered$year==x])}) %>% unlist %>% max
+df_filtered$total_a_time <- lapply(df_filtered$master_metadata_album_album_name, function(x){df_filtered$hour[df_filtered$master_metadata_album_album_name==x] %>% sum}) %>% unlist
+df_filtered$master_metadata_album_album_name <- reorder(df_filtered$master_metadata_album_album_name, df_filtered$total_a_time, decreasing = FALSE)
+df_filtered$master_metadata_album_album_name <- factor(df_filtered$master_metadata_album_album_name, levels=levels(df_filtered$master_metadata_album_album_name))
+
+g1 <- ggplot(df_filtered, aes(fill=master_metadata_album_album_name, y=hour, x = year, label = master_metadata_album_album_name)) + 
+  geom_bar(position="stack", stat="identity") +
+  # scale_x_continuous(breaks = df_filtered$rowID %>% u, labels = month.name[df_filtered$rowID %>% u]) +
+  geom_text(size = 3, position = position_stack(vjust = 0.5)) +
+  xlab("") + 
+  ylab("Hours Listened") + 
+  ggtitle(paste0("Spotify top ", TOP_N_ARTIST, " albums by year")) +
+  scale_fill_manual(name = "Album", values = gg_color_hue(df_filtered$master_metadata_album_album_name %>% lu) %>% my_rev) + 
+  scale_y_continuous(breaks=seq(0, max_hours + 20, 50))+ 
+  theme(legend.position="none")
+if(!FILTER)ggsave(paste0(OUT_DIR, "top_albums_by_year_", TOP_N_ARTIST, ".pdf"), g1, width = 10, height = 10, units = "in", limitsize = FALSE)
+g1
+```
+
 # plot total listening time by year o
 ```{r}
 df_byyear <- lapply(df3$year %>% u, function(year){
@@ -432,13 +478,15 @@ df_byyear <- lapply(df3$year %>% u, function(year){
   data.frame(year = year, 
              time_hours = sum(df_temp$minute)/1440) %>% return()
 }) %>% do.call(rbind, .)
-ggplot(df_byyear, aes(x=year, y=time_hours, group=1)) + 
+g_time_all <- ggplot(df_byyear, aes(x=year, y=time_hours, group=1)) + 
   geom_line() + 
   geom_point() + 
   ylab("Time (days)") + 
   xlab("Year") + 
   ggtitle("Total time by Year") + 
   scale_y_continuous(breaks=seq(0,120,10))
+plot(g_time_all)
+if(!FILTER)ggsave(paste0(OUT_DIR, "total_time_by_year.pdf"), g_time_all, width = 10, height = 10, units = "in", limitsize = FALSE)
 ```
 
 
@@ -1142,7 +1190,7 @@ g202 <- ggplot(dfb[1:N_TOP_ARTIST, ], aes(x=ID, y=time, fill=album)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), legend.position="none") + 
   xlab("") + 
   ylab("Hours Listened") +
-  ggtitle(paste0("Spotify Top ", N_TOP_ARTIST, " Songs, Past Year")) +
+  ggtitle(paste0("Spotify Top ", N_TOP_ARTIST, " Albums, Past Year")) +
   scale_fill_manual(name = "Artist", values = gg_color_hue(N_TOP_ARTIST) %>% my_rev) + 
   scale_y_continuous(breaks=seq(0, dfb$time[1], 2))
 plot(g202)
@@ -1239,7 +1287,6 @@ df_condensed <- lapply(df_monthly$timecode %>% u, function(x){
 
 
 df_filtered <- df_condensed
-df_filtered <- df_filtered[df_filtered$year == this_year, ]
 df_filtered <- df_filtered[order(df_filtered$timecode, decreasing = FALSE), ]
 timeCodeToX <- HashMap$new()
 devnull <- lapply(seq_down(df_filtered), function(x){
@@ -1340,8 +1387,12 @@ g22 <- ggplot(df_filtered, aes(fill=spotify_track_uri , y=hour, x = rowID, label
   scale_fill_manual(name = "Artist", values = gg_color_hue(df_filtered$spotify_track_uri %>% lu) %>% my_rev) + 
   scale_y_continuous(breaks=seq(0, max_hours+5, 2)) +
   theme(legend.position="none")
-ggsave(paste0(OUT_DIR, "top_songs_by_month_past_year.pdf"), g22, width = 14, height = 12, units = "in", limitsize = FALSE)
+ggsave(paste0(OUT_DIR, "TEST_top_songs_by_month_past_year.png"), g22, width = 14, height = 12, units = "in", limitsize = FALSE)
 print(g22)
+
+cairo_pdf(paste0(OUT_DIR, "TEST_top_songs_by_month_past_year.pdf"), width = 14, height = 12)
+plot(g22)
+dev.off()
 ```
   
 usual listening time, by second resolution
@@ -1667,7 +1718,27 @@ g28 <- ggplot(df_filtered, aes(fill=n_songs, y=n_songs, x = rowID)) +
 ggsave(paste0(OUT_DIR, "unique songs played, past year.pdf"), g28, width = 22, height = 10, units = "in", limitsize = FALSE)
 ```
 
+```{r}
+library(reticulate)
+use_condaenv("C:/docs/miniconda3/envs/spotipy")
+```
 
 
 Things to add
 trends?? +/- change in listening time or something??? which
+```{python}
+import os
+import platform
+
+import spotipy
+
+os.name
+platform.system()
+print("hello")
+
+```
+
+```{r}
+print("hello")
+```
+

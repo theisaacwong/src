@@ -311,6 +311,34 @@ write.table(df00, "C:/docs/mike/TAS_MATH.tsv", sep="\t", col.names = TRUE, row.n
 print(Sys.time() - TIME_1)
 ```
 
+```{r}
+TIME_1 <- Sys.time()
+N_ITERATIONS <- 20000000
+DICE <- 1:6
+
+ROLL_1 <- sample(DICE, N_ITERATIONS, replace = TRUE)
+ROLL_2 <- sample(DICE, N_ITERATIONS, replace = TRUE)
+ROLL_3 <- sample(DICE, N_ITERATIONS, replace = TRUE)
+ROLL_4 <- sample(DICE, N_ITERATIONS, replace = TRUE)
+
+CHARGE_1 <- ROLL_1 + ROLL_2
+CHARGE_2 <- ROLL_3 + ROLL_4
+
+df_charges <- data.frame(dist = 3:11)
+df_charges$roll <- lapply(df_charges$dist, function(x){
+  return(round(sum(CHARGE_1 >= x) / N_ITERATIONS * 100, 1))
+}) %>% unlist
+df_charges$reroll <- lapply(df_charges$dist, function(x){
+  temp1 <- CHARGE_1 >= x
+  temp2 <- CHARGE_2 >= x
+  temp3 <- ifelse(temp1, temp1, temp2)
+  return(round(sum(temp3) / N_ITERATIONS * 100, 1))
+}) %>% unlist
+TIME_2 <- Sys.time()
+TIME_2 - TIME_1
+```
+
+
 
 ```{r}
 get_costs <- function(HIDIVE_RESCUE=0.12, LOCITYPER=0.14, N_SAMPLES=seq(10000, 20000, 1000), N_LOCI=seq(50, 300, 25), POWER=3, FUDGE=1){
@@ -355,5 +383,14 @@ df_opt <- get_costs(N_SAMPLES=seq(15000, 20000, 1000), N_LOCI=seq(300, 2800, 300
 df_temp <- get_costs(N_SAMPLES=seq(15000, 20000, 1000), N_LOCI=seq(300, 10000, 500), FUDGE=1.5, LOCITYPER = 0.16, POWER=2.5)
 
 
+```
+
+```{r}
+cost_1 <- 134/500/42
+# 0.006380952
+cost_2 <- 431.40/500/1637
+# 0.0005270617
+
+costs <- c(150, 166, 193, 182, 170, 174, 160, 136, 175, 432, 134)
 ```
 

@@ -31,6 +31,9 @@ seq_down <- function(x){ 1:nrow(x)}
 lo <- function(x){sapply(x, length)==1}
 ld <- function(x){sapply(x, length) %>% table}
 
+adf <- function(path, header=TRUE){
+  return(as.data.frame(fread(path, header=header)))
+}
 
 
 wrapper <- function(x, ...) {

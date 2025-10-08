@@ -6,7 +6,7 @@ options(gargle_oauth_email = TRUE)
 if(length(args)==1){
   tea_type <- args[1]
 } else if(length(args)==0){
-  tea_type <- "costco_green"
+  tea_type <- "T&T_green"
 } else {
   tea_type <- paste0(args, collapse = "_")
 }

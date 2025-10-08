@@ -1,0 +1,105 @@
+import pandas as pd
+
+
+configfile: "config.yaml"
+
+
+MANIFEST = config.get("MANIFEST", "manifest.tab")
+REF_DICT = config['REF']
+TRF_DICT = config['TRF']
+PBSV_VERSION = config["PBSV_VERSION"]
+
+manifest_df = pd.read_csv(MANIFEST, sep="\t", index_col="SAMPLE")
+
+pbsv_dict = {"sv": "DEL,INS,INV", "dup": "DUP", "bnd": "BND"}
+
+
+def find_aln(wildcards):
+    return manifest_df.at[wildcards.sample, wildcards.ref]
+
+
+def find_svtype(wildcards):
+    return pbsv_dict[wildcards.svtype]
+
+def find_ref(wildcards):
+    return REF_DICT[wildcards.ref]
+
+def find_trf(wildcards):
+    return TRF_DICT[wildcards.ref]
+
+wildcard_constraints:
+    sample="|".join(manifest_df.index),
+    ref='|'.join(REF_DICT),
+    trf='|'.join(TRF_DICT)
+
+paired_values = list(zip(REF_DICT, TRF_DICT))
+
+localrules:
+    all,
+
+
+rule all:
+    input:
+        expand(
+            "{ref}/results/{sample}/pbsv_{sample}_{svtype}.vcf.gz",
+            sample=manifest_df.index,
+            svtype=pbsv_dict,
+            ref=REF_DICT,
+        ),
+
+
+rule pbsv_svsig:
+    input:
+        bam=find_aln,
+        trf=find_trf,
+    output:
+        svsig="tmp/{ref}/{sample}/{sample}.svsig.gz",
+    singularity:
+        f"docker://eichlerlab/pbsv:{PBSV_VERSION}"
+    threads: 1
+    resources:
+        mem=lambda wildcards, attempt: attempt * 16,
+        hrs=24,
+    shell:
+        """
+        pbsv discover --tandem-repeats {input.trf} {input.bam} {output.svsig}
+        """
+
+
+rule pbsv_call:
+    input:
+        ref=find_ref,
+        svsig=rules.pbsv_svsig.output.svsig,
+    output:
+        vcf=temp("{ref}/results/{sample}/pbsv_{sample}_{svtype}.vcf"),
+    singularity:
+        f"docker://eichlerlab/pbsv:{PBSV_VERSION}"
+    threads: 4
+    params:
+        vcf_out=find_svtype,
+    resources:
+        mem=lambda wildcards, attempt: attempt * 32,
+        hrs=24,
+    shell:
+        """
+        pbsv call -j {threads} --ccs --types {params.vcf_out} {input.ref} {input.svsig} {output.vcf} 
+        """
+
+
+rule gzip_index:
+    input:
+        vcf=rules.pbsv_call.output.vcf,
+    output:
+        vcf="{ref}/results/{sample}/pbsv_{sample}_{svtype}.vcf.gz",
+    threads: 1
+    resources:
+        mem=lambda wildcards, attempt: attempt * 32,
+        hrs=24,
+    singularity:
+        "docker://eichlerlab/binf-basics:0.1"
+    shell:
+        """
+        bgzip -c {input.vcf} > {output.vcf}
+        sleep 120s
+        tabix -p vcf -f {output.vcf}
+        """

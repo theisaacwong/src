@@ -315,9 +315,106 @@ add in date lines as column, using rep(., each=NNN)
   
   
 
-
-
-
 TODO: also check nobackups/backups files
 
+
+
+
+
+
+```{r}
+getExtension <- function(file) strsplit(file, ".", fixed=T)[[1]][-1]
+df0 <- fread("C:/docs/website/ncdu_20250812_backups.tsv", header=FALSE) %>% as.data.frame()
+# df0$folders <- df0$V1 %>% dirname %>% str_split("/")
+df1 <- df0
+# df1$V1 <- df1$V1 %>%  str_remove("^/nect/eichler")
+
+t2 <- Sys.time()
+bool_gb <- grepl("GB", df1$V5)
+bool_mb <- grepl("MB", df1$V5)
+bool_tb <- grepl("TB", df1$V5)
+bool_kb <- grepl("KB", df1$V5)
+df1$size_GB <- 0
+df1$size_GB[bool_kb] <- as.numeric(str_remove(df1$V5[bool_kb], " KB"))/1000000
+df1$size_GB[bool_gb] <- as.numeric(str_remove(df1$V5[bool_gb], " GB"))
+df1$size_GB[bool_mb] <- as.numeric(str_remove(df1$V5[bool_mb], " MB"))/1000
+df1$size_GB[bool_tb] <- as.numeric(str_remove(df1$V5[bool_tb], " TB"))*1000
+print(Sys.time() - t2)
+
+
+subfolderize <- function(x){
+  folders <- x %>% str_split("/") %>% unlist %>% grepv(".", .)
+  folders <- folders[1:(length(folders)-1)]
+  return(folders)  
+}
+
+
+
+t3 <- Sys.time()
+dirToSize <- HashMap$new()
+for(index in seq_down(df1)){
+  curr_dir <- df1$V1[index]
+  curr_size <- df1$size_GB[index]
+  if(is.na(curr_dir) | curr_size==0){next}
+  dirs <- lapply(seq(1, str_count(curr_dir, "/")-1), function(x){
+    str_extract(curr_dir, paste0("(/[^/]+){",x ,"}"))
+  }) %>% unlist
+  for(dir in dirs){
+    if(!dirToSize$containsKey(dir)){
+      dirToSize$put(dir, 0)
+    } 
+    dirToSize$put(dir, dirToSize$get(dir) + curr_size)
+  }
+}
+print(Sys.time() - t3)
+
+temp1 <- dirToSize$toString() 
+df2 <- data.frame(dir = names(temp1),
+                  size_gb = unlist(temp1))
+df2 <- df2[order(df2$size_gb, decreasing = TRUE), ]
+rownames(df2) <- seq_down(df2)
+
+
+# fwrite(df2, "C:/docs/website/backups_dir.tsv", col.names = TRUE, row.names=FALSE, quote=FALSE, sep="\t")
+# df2 <- fread("C:/docs/website/backups_dir.tsv") %>% as.data.frame()
+
+t4 <- Sys.time()
+THRESHOLD_FRACTION <- 0.6
+TO_REMOVE_HASH <- HashMap$new()
+for(dir in df2$dir){
+  TO_REMOVE_HASH$put(dir, "FALSE")
+}
+temp1 <- lapply(df2$dir, function(curr_dir){
+  curr_size <- dirToSize$get(curr_dir)
+  dirs <- lapply(seq(1, str_count(curr_dir, "/")), function(x){
+    str_extract(curr_dir, paste0("(/[^/]+){",x ,"}"))
+  }) %>% unlist
+  for(dir in dirs){
+    if(curr_dir!=dir & (curr_size >= THRESHOLD_FRACTION * dirToSize$get(dir))){
+      TO_REMOVE_HASH$put(dir, "TRUE")
+    }
+  }
+})
+print(Sys.time() - t4)
+
+
+temp2 <- TO_REMOVE_HASH$toString() 
+df3 <- data.frame(dir = names(temp2),
+                  toRemove = unlist(temp2) %>% as.logical(), 
+                  stringsAsFactors = FALSE)
+df3 <- df3[order(df3$dir), ]
+rownames(df3) <- seq_down(df3)
+df3$size <- lapply(df3$dir, function(x){dirToSize$get(x)}) %>% unlist
+
+df4 <- df3[df3$toRemove==FALSE, ]
+df4 <- df4[order(df4$size, decreasing = TRUE), ]
+df4 <- df4[df4$size > 100, ]
+df4$toRemove <- NULL
+df5 <- df4[order(df4$dir), ]
+df6 <- data.frame(size = round(df5$size), 
+                  dir = df5$dir, 
+                  stringsAsFactors = FALSE)
+write.table(df6, "C:/docs/website/backups_dir_filtered_100.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df6[order(df6$size, decreasing = TRUE), ], "C:/docs/website/backups_dir_filtered_100_sort.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
 

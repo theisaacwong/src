@@ -1,0 +1,76 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-08-12"
+---
+
+```{r}
+df0 <- fread("C:/docs/etc/data_kinnex_pre_release.index.csv") %>% as.data.frame()
+header <- c("#!/bin/bash", "module load awscli/2.17.9", "set -euxo pipefail")
+
+
+df0$dest_dir <- paste0("/net/eichler/vol28/projects/long_read_archive/nobackups/pop/", df0$sample_ID, "/raw_data/PacBio_Kinnex")
+df0$script <- paste("mkdir -p ", df0$dest_dir, " ; echo ", df0$path," ; aws s3 cp ", df0$path, " ", df0$dest_dir, " --no-sign-request")
+write.table(c(header, df0$script), "C:/docs/etc/hprc_kinnex_s3_paths_download.sh", sep = "\t", col.names = FALSE, row.names = FALSE, quote=FALSE) 
+
+
+df0$final_path <- paste0(df0$dest_dir, "/", df0$filename)
+write.table(df0$final_path, "C:/docs/etc/kinnex_intermediate_paths.txt", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+df0$dest_dir2 <- paste0("/net/eichler/vol28/projects/long_read_archive/nobackups/pop/", df0$sample_ID, "/raw_data/PacBio_HiFi/Kinnex")
+df0$finalest_path <- paste0(df0$dest_dir2, "/", df0$filename)
+df0$script2 <- paste0("mkdir -p ", df0$dest_dir2, " ; mv ", df0$final_path, " ", df0$dest_dir2, "/ ; ")
+df0$script3 <- paste0("rm -rf ", df0$dest_dir)
+write.table(c(header, df0$script2, df0$script3), "C:/docs/etc/hprc_kinnex_s3_paths_finalize.sh", sep = "\t", col.names = FALSE, row.names = FALSE, quote=FALSE) 
+
+write.table(df0$finalest_path, "C:/docs/etc/data_kinnex_pre_release.index.lra_paths.txt", sep="\t", col.names = FALSE, row.names = FALSE, quote=FALSE)
+```
+
+```{r}
+df0 <- fread("C:/docs/mike/Challengers Players and Lists - All Players.tsv") %>% as.data.frame()
+df0 <- df0[order(df0$Elo, decreasing = TRUE), ]
+df1 <- df0[grepl("Rain City Wych", df0$Team), ]
+
+df00 <- df0
+df00$List <- NULL
+df00$Notes <- NULL
+df00$V8 <- NULL
+rownames(df00) <- seq_down(df00)
+
+list_by_team <- lapply(u(df00$Team), function(x){
+  df00[df00$Team == x, ]
+})
+names(list_by_team) <- u(df00$Team)
+
+df01 <- data.frame(Team = u(df00$Team), 
+                   Elo = -1)
+df01$Elo <- lapply(df01$Team, function(x){
+  mean(df00$Elo[df00$Team == x], na.rm = TRUE)
+}) %>% unlist
+
+df01 <- df01[order(df01$Elo, decreasing = TRUE), ]
+
+MY_TEAM <- "Rain City Wych Pigeons - Team Emerald"
+THRESHOLD <- 100
+
+df01$CONT <- abs(df01$Elo - df01$Elo[df01$Team==MY_TEAM]) <= THRESHOLD
+df01$CONT[df01$Team == MY_TEAM] <- FALSE
+
+df02 <- list_by_team[df01$Team[df01$CONT]] %>% do.call(rbind, .)
+df02$key <- paste0(df02$Faction, "  ", df02$Detachment)
+
+temp1 <- df02$key %>% srt %>% as.data.frame()
+temp2 <-  df0$Faction %>% srt %>% as.data.frame()
+temp3 <-  df0$Detachment %>% srt %>% as.data.frame()
+temp3$x <- temp3$x %>% as.character()
+
+df2 <- df0[df0$Faction == "Black Templars", ]
+
+# average Elo of opponenets, Andrew Kismarton
+df3 <- rbind(df00[grepl("Brad Chester", df00$Name), ], 
+             df00[grepl("Steeler French", df00$Name), ], 
+             df00[grepl("Scott Spalding", df00$Name), ], 
+             df00[grepl("Nell Hulslander", df00$Name), ], 
+             df00[grepl("Kody Mckinnon", df00$Name), ])
+```
+

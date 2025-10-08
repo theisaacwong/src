@@ -1,0 +1,55 @@
+import pandas as pd
+import os, sys
+
+configfile: "config.yaml"
+
+MANIFEST = config.get("MANIFEST", "manifest.tab")
+DOCKER = config.get("DOCKER", "docker://iqwong/altina:1.2")
+NTHREADS = config.get("NTHREADS", 1)
+
+REF_DICT = config['REF']
+
+manifest_df = pd.read_csv(MANIFEST, sep="\t", index_col="SAMPLE")
+
+
+def get_input(wildcards):
+    return manifest_df.at[wildcards.sample, wildcards.ref]
+
+def find_ref(wildcards):
+    return REF_DICT[wildcards.ref]
+
+
+wildcard_constraints:
+    sample="|".join(manifest_df.index),
+    ref='|'.join(REF_DICT)
+
+localrules:
+    all,
+
+rule all:
+    input:
+        expand(
+            "{ref}/results/{sample}/{sample}.delly.vcf",
+            sample=manifest_df.index,
+            ref=REF_DICT
+        ),
+
+rule generic_rule:
+    input: 
+        bam=get_input,
+        ref=find_ref
+    output: 
+        vcf="{ref}/results/{sample}/{sample}.delly.vcf",
+    threads: NTHREADS,
+    resources:
+        mem=lambda wildcards, attempt: attempt * 16,
+        hrs=24,
+    shell:
+        """
+        set -eux; mkdir -p {wildcards.ref}/results/{wildcards.sample}
+
+        delly lr -y pb -o {wildcards.ref}/results/{wildcards.sample}/output.temp.vcf -g {input.ref} {input.bam}
+        bcftools view {wildcards.ref}/results/{wildcards.sample}/output.temp.vcf > {output.vcf}     
+        rm -rf {wildcards.ref}/results/{wildcards.sample}/output.temp.vcf {wildcards.ref}/results/{wildcards.sample}/output.temp.vcf.csi
+        
+        """

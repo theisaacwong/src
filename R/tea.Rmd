@@ -198,5 +198,8 @@ names(list_by_day) <- u(df1$date)
 
 ```{r}
 temp1 <- df0$tea %>% srt
+temp2 <- df0$tea
+temp2[grepl("coffee", temp2)] <- "coffee"
+temp1 <- temp2 %>% srt
 ```
 

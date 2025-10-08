@@ -239,3 +239,76 @@ write.table(splits[[4]], "C:/docs/aou/kiran_outputs/download_script_4.sh", sep="
 write.table(df0$script, "C:/docs/aou/kiran_outputs/download_script.sh", sep=" ", col.names = FALSE, row.names = FALSE, quote=FALSE)
 ```
 
+```{r}
+df0 <- fread("C:/docs/aou/Sample_sv.pheWAS.txt") %>% as.data.frame()
+df0$svs_split <- df0$SV_IDs %>% str_split(",")
+temp1 <- df0$svs_split %>% lapply(length) %>% unlist
+loci_max <- max(temp1)
+loci_min <- min(temp1)
+loci_mean <- mean(temp1)
+costs <- c(206.82, 134, 432, 175, 136, 158, 174, 170, 182, 193, 166, 149, 177, 147, 193, 169, 256, 264, 387, 404, 66 , 67)
+nsamp <- c(256   , 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 499, 500, 500, 150, 99)
+sum_costs <- sum(costs)
+sum_samps <- sum(nsamp)
+my_rate <- sum_costs / (sum_samps * loci_max)
+my_rate2 <- sum_costs / (sum_samps * loci_mean)
+my_rate3 <- sum_costs / (sum_samps * loci_min)
+
+print(c(my_rate, my_rate2, my_rate3))
+```
+
+```{r}
+df_crams <- data.frame(count = c(71, 96, 104, 111, 120, 130, 164, 198, 243, 263),
+                       time  = c("Aug 26 11:15:45", "Aug 26 11:45:06", "Aug 26 11:55:38", "Aug 26 12:04:10", "Aug 26 12:14:52", "Aug 26 12:27:28", "Aug 26 13:11:19", "Aug 26 13:50:47", "Aug 26 14:47:33", "Aug 26 15:51:44") %>% as.POSIXct(format="%b %d %H:%M:%OS", tz="UTC"))
+
+df_crams <- data.frame(count = c(2, 46, 91, 151, 175, 213, 301),
+                       time  = c("Aug 29 11:10:00", "Aug 29 12:06:45", "Aug 29 13:02:36", "Aug 29 14:20:00", "Aug 29 14:48:30", "Aug 29 15:33:46", "Aug 29 17:18:24") %>% as.POSIXct(format="%b %d %H:%M:%OS", tz="UTC"))
+
+df_crams <- data.frame(count = c(1, 20, 39, 70, 119, 151, 206),
+                       time  = c("Sep  3 10:25:06", "Sep  3 10:47:41", "Sep  3 11:09:53", "Sep  3 11:46:55", "Sep  3 12:48:05", "Sep  3 13:26:35", "Sep  3 14:30:18") %>% as.POSIXct(format="%b %d %H:%M:%OS", tz="UTC"))
+
+
+df_crams <- data.frame(count = c(13, 33, 43, 96, 160, 250, 341),
+                       time  = c("Sep  8 09:56:36", "Sep  8 10:20:26", "Sep  8 10:32:39", "Sep  8 11:35:55", "Sep 8 12:50:18", "Sep  8 14:37:41", "Sep  8 16:26:29") %>% as.POSIXct(format="%b %d %H:%M:%OS", tz="UTC"))
+
+
+n_crams <- df_crams$count[nrow(df_crams)] - df_crams$count[1]
+n_time <- df_crams$time[nrow(df_crams)] - df_crams$time[1]
+my_rate <- n_time/n_crams
+total_time <- my_rate * 1040
+
+final_time <- df_crams$time[1] + total_time 
+
+final_time
+
+df_crams$final_time <- lapply(seq_down(df_crams), function(x){
+  if(x==1){return(final_time)}
+  n_crams <- df_crams$count[x] - df_crams$count[1]
+  n_time <- df_crams$time[x] - df_crams$time[1]
+  my_rate <- n_time/n_crams
+  total_time <- my_rate * 1040
+  return(df_crams$time[1] + total_time )
+}) %>% unlist %>% as.POSIXct(tz="UTC")
+
+df_crams
+```
+
+as.POSIXct(df00$ts, format="%Y-%m-%dT%H:%M:%OSZ", tz="UTC")
+
+```{r}
+rolls <- data.frame(d1 = rep(1:6, 6),
+                    d2 = rep(1:6, each=6))
+rolls$total <- rolls$d1 + rolls$d2
+
+roll <- function(){
+  return(sum(sample(1:6, 2, TRUE)))
+}
+N <- 100000
+charges <- data.frame(charge_distance = 1:12)
+charges$roll <- lapply(charges$charge_distance, function(x){
+  
+  
+  
+})
+```
+

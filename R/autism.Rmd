@@ -2813,3 +2813,44 @@ write.table(df10, "C:/docs/autism/manifest_2025_07_02/pav_hg38_callable.tsv", se
 
 ```
 
+
+```{r}
+df0 <- fread("C:/docs/autism/manifest_2025_10_06/bams.txt") %>% as.data.frame()
+df0$sample <- df0$path %>% bname %>% str_remove(".all.sorted.bam")
+df0$ref <- lapply(df0$path, function(x){
+  unlist(str_split(x, "/"))[10]
+}) %>% unlist
+migrate <- function(source, sample, ref, curr, max){
+  dest_bam <- paste0("/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/", sample, "/alignments/PacBio_HiFi/", ref, "/alignment.bam")
+  dest_bai <- paste0("/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/", sample, "/alignments/PacBio_HiFi/", ref, "/alignment.bam.bai")
+  script_000 <- paste0("mkdir -p ", "/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/", sample, "/alignments/PacBio_HiFi/", ref)
+  script_1 <- paste0("mv ", source, " ", dest_bam)
+  script_2 <- paste0("mv ", source, ".bai ", dest_bai)
+  script_3 <- paste0("ln -s ", dest_bam, " ", source)
+  script_4 <- paste0("ln -s ", dest_bai, " ", source, ".bai")
+  script_0 <- paste0("echo ", curr, "/", max, ": ", source)
+  script_00 <- "date"
+  c(script_00, script_0, script_000, script_1, script_2, script_3, script_4, "\n")
+}
+bign <- nrow(df0)
+temp2 <- lapply(seq_down(df0), function(x){
+  migrate(df0$path[x], df0$sample[x], df0$ref[x], x, bign)
+}) %>% unlist
+
+temp2 <- c("#!/bin/bash", "set -euo pipefail", temp2)
+write.table(temp2, "C:/docs/autism/manifest_2025_10_06/migration.sh", col.names = FALSE, row.names = FALSE, quote=FALSE)
+
+temp3 <- temp2[grepl("mv.*long_read_archive.*bam$", temp2)] %>% str_extract("/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/.*bam$")
+df1 <- data.frame(sample = temp3 %>% lapply(function(x){unlist(str_split(x, "/"))[9]}) %>% unlist %>% u )
+MY_REFS <- df0$ref %>% u
+for(CURR_REF in MY_REFS){
+  new_col <- lapply(df1$sample, function(curr_sample){
+    temp3[grepl(paste0(curr_sample, ".*/", CURR_REF, "/"), temp3)]
+  })  %>% unlist
+  df1 <- cbind(df1, new_col)
+  colnames(df1)[ncol(df1)] <- CURR_REF
+}
+write.table(df1, "C:/docs/autism/manifest_2025_10_06/bams.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+```
+

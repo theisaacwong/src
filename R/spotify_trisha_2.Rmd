@@ -1097,6 +1097,20 @@ df3 <- df3[order(df3$time, decreasing = TRUE), ]
 dft <- df3
 dft$ID <- seq_down(dft)
 dft$name <- lapply(dft$track, function(x){idToName$get(x)}) %>% unlist
+trackToArtist <- HashMap$new()
+temp1 <- lapply(seq_down(df6), function(x){
+  curr_track <- df6$spotify_track_uri[x]
+  if(is.null(curr_track)){return(x)}
+  trackToArtist$put(curr_track, df6$master_metadata_album_artist_name[x])
+  return(0)
+}) %>% unlist
+dft$artist <- lapply(dft$track, function(x){ 
+  if(trackToArtist$containsKey(x)){
+    return(trackToArtist$get(x))
+  }  else {
+    return("NAN")
+  }
+} ) %>% unlist
 
 N_TOP_ARTIST <- 40
 g201 <- ggplot(dft[1:N_TOP_ARTIST, ], aes(x=ID, y=time, fill=track)) + 

@@ -1,0 +1,91 @@
+import pandas as pd
+import os, sys
+
+configfile: "config.yaml"
+
+
+MANIFEST = config.get("MANIFEST", "manifest.tab")
+SNIFFLES_VERSION = config.get("SNIFFLES_VERSION", "2.3.2")
+NTHREADS = config.get("NTHREADS", 2)
+
+manifest_df = pd.read_csv(MANIFEST, sep="\t", index_col="SAMPLE")
+
+REF_DICT = config['REF']
+
+TRF_DICT = config['TRF']
+
+def get_aln(wildcards):
+    return manifest_df.at[wildcards.sample, wildcards.ref]
+
+def get_ref(wildcards):
+    return REF_DICT[wildcards.ref]
+
+def get_trf(wildcards):
+    return TRF_DICT[wildcards.ref]
+
+wildcard_constraints:
+    sample="|".join(manifest_df.index),
+    software="sniffles|cutesv|pbsv",
+    ref='|'.join(REF_DICT),
+    trf='|'.join(TRF_DICT),
+    
+
+localrules:
+    all,
+
+
+rule all:
+    input:
+        expand(
+            "{ref}/results/{sample}/sniffles/{sniffles_ver}/{sample}.sniffles.vcf.gz",
+            sample=manifest_df.index,
+            sniffles_ver=SNIFFLES_VERSION,
+            ref=REF_DICT,
+        ),
+        expand(
+            "{ref}/results/{sample}/sniffles/{sniffles_ver}/{sample}.sniffles.vcf.gz.tbi",
+            sample=manifest_df.index,
+            sniffles_ver=SNIFFLES_VERSION,
+            ref=REF_DICT,
+        ),
+
+
+rule sniffles:
+    input: 
+        bam=get_aln,
+        ref=get_ref,
+        trf=get_trf,
+    output: 
+        vcf="{ref}/results/{sample}/sniffles/{sniffles_ver}/{sample}.sniffles.vcf",
+    threads: NTHREADS,
+    resources:
+        mem=lambda wildcards, attempt: attempt * 16,
+        hrs=24,
+    singularity:
+        f"docker://eichlerlab/sniffles:{SNIFFLES_VERSION}",
+    shell:
+        """
+        mkdir -p {wildcards.ref}/results/{wildcards.sample}/sniffles/{wildcards.sniffles_ver}/
+        sniffles -i {input.bam} --tandem-repeats {input.trf} --threads {threads} --reference {input.ref} -v {output.vcf}
+        """
+
+        
+rule compress:
+    input: 
+        vcf="{ref}/results/{sample}/{software}/{version}/{sample}.{tag}.vcf",
+    output: 
+        vcf="{ref}/results/{sample}/{software}/{version}/{sample}.{tag}.vcf.gz",
+        index="{ref}/results/{sample}/{software}/{version}/{sample}.{tag}.vcf.gz.tbi",
+    threads: 2,
+    resources:
+        mem=lambda wildcards, attempt: attempt * 16,
+        hrs=24,
+    singularity:
+        "docker://eichlerlab/binf-basics:0.1",
+    shell:
+        """
+        echo "{wildcards.ref}/results/{wildcards.sample}/{wildcards.software}/{wildcards.version}/{wildcards.sample}.{wildcards.tag}.vcf.gz"
+        echo "{wildcards.ref}/results/{wildcards.sample}/{wildcards.software}/{wildcards.version}/{wildcards.sample}.{wildcards.tag}.vcf.gz.tbi"
+        bgzip -@ {threads} {input.vcf}
+        tabix -p vcf {output.vcf}
+        """
