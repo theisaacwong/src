@@ -9,9 +9,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-
-
-
 df0 <- fread("C:/docs/fastcn/populations.tab") %>% as.data.frame()
 df1 <- read.table("C:/docs/fastcn/nhp.tracks", header=FALSE)
 df1$keywords <- lapply(df1$V1, function(x){x %>% str_remove("_wssd.bb") %>% str_split("_") %>% unlist})
