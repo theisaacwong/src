@@ -1,0 +1,8 @@
+MANIFEST: benchmark_blood_saliva.txt
+REF:
+  GRCh38: /net/eichler/vol28/eee_shared/assemblies/hg38/no_alt/hg38.no_alt.fa
+  CHM13_v2.0: /net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v2.0/T2T-CHM13v2.fasta
+  CHM13_v2.0_noY: /net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v2.0/T2T-CHM13v2_noY.fasta
+  GRCh38_noY: /net/eichler/vol28/eee_shared/assemblies/hg38/no_alt/hg38.no_alt-noY.fa
+  CHM13v2.masked_Y: /net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v2.0/T2T-CHM13v2.masked_Y.fasta
+  CHM13v2.masked_Ypars: /net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v2.0/T2T-CHM13v2.masked_Ypars.fasta
