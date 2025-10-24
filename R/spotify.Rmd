@@ -9,8 +9,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-MAIN_PATH_1 <- "C:/Users/iwong1/Documents/mike/my_spotify_data_23/"
-MAIN_PATH_2 <- "C:/docs/mike/my_spotify_data_23/Spotify Extended Streaming History/"
+MAIN_PATH_1 <- "C:/Users/iwong1/Documents/mike/my_spotify_data_24/"
+MAIN_PATH_2 <- "C:/docs/mike/my_spotify_data_24/Spotify Extended Streaming History/"
 FILTER <- FALSE
 library(jsonlite)
 library(plyr)

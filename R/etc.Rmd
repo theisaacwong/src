@@ -74,3 +74,108 @@ df3 <- rbind(df00[grepl("Brad Chester", df00$Name), ],
              df00[grepl("Kody Mckinnon", df00$Name), ])
 ```
 
+
+
+```{r}
+df000 <- data.frame(cohort = c("hprc", "ceph", "hgsvc"), files=c("C:/docs/etc/files.v2.txt", "C:/docs/etc/files.ceph.txt", "C:/docs/etc/files.hgsvc.txt"), verk=c("2.2.1", "2.2.1", "1.4.1"))
+
+for(COHORT in seq_down(df000)){
+  print(df000$cohort[COHORT])
+  temp1 <- df000$files[COHORT] %>% readLines()
+  
+  FILLER <- ifelse(df000$cohort[COHORT] == "hprc", "", ".gz")
+  
+  df1 <- data.frame(sample=temp1[grepl("fa.gz$", temp1)] %>% bname %>% str_remove("_.*") %>% u)
+  df1$fasta <- lapply(df1$sample, function(x){
+    temp1[grepl(paste0(x, "_chrY.fa.gz$") ,temp1)]
+  }) %>% unlist
+  df1$fai <- lapply(df1$sample, function(x){
+    temp1[grepl(paste0(x, "_chrY.fa", FILLER,".fai$") ,temp1)]
+  }) %>% unlist
+  df1$gzi <- lapply(df1$sample, function(x){
+    temp1[grepl(paste0(x, "_chrY.fa.gz.gzi$") ,temp1)]
+  }) %>% unlist
+  
+  LRA_BASE <- "/net/eichler/vol28/projects/long_read_archive/nobackups/pop/"
+  
+  migrate <- function(sample, fasta, fai, gzi, curr, max){
+    DEST_DIR <- paste0(LRA_BASE, sample, "/assemblies/verkko/", df000$verk[COHORT],"/")
+    
+    script_00 <- paste0("echo ", curr, "/", max, ": ", sample)
+    script_01 <- paste0("mkdir -p ", DEST_DIR)
+    script_02 <- paste0("mv ", fasta, "       ", DEST_DIR)
+    script_03 <- paste0("mv ", fai, "      ", DEST_DIR)
+    script_04 <- paste0("mv ", gzi, "   ", DEST_DIR)
+    script_05 <- "date"
+    
+    c(script_00, script_01, script_02, script_03, script_04, script_05, "\n")
+  }
+  
+  bign <- nrow(df1)
+  temp2 <- lapply(seq_down(df1), function(x){
+    migrate(sample=df1$sample[x], fasta=df1$fasta[x], fai=df1$fai[x], gzi=df1$gzi[x], curr=x, max=bign)}) %>% unlist
+  
+  temp2 <- c("#!/bin/bash", "set -euo pipefail", temp2)
+  
+  df10 <- data.frame(sample=df1$sample)
+  TEMP_BASE <- paste0("/assemblies/verkko/", df000$verk[COHORT], "/")
+  df10$fasta <- paste0(LRA_BASE, df10$sample, TEMP_BASE, bname(df1$fasta))
+  df10$fai   <- paste0(LRA_BASE, df10$sample, TEMP_BASE, bname(df1$fai))
+  df10$gzi   <- paste0(LRA_BASE, df10$sample, TEMP_BASE, bname(df1$gzi))
+  
+  write.table(temp2, paste0("C:/docs/etc/migration.", df000$cohort[COHORT],"_y.sh"), col.names = FALSE, row.names = FALSE, quote=FALSE)
+  write.table(df10,  paste0("C:/docs/etc/manifest." , df000$cohort[COHORT],"_y.tsv"), sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+  
+  temp1_samples <- temp1[grepl("_nonY.fa.gz$", temp1)] %>% bname %>% str_remove("_.*") %>% u
+  df1 <- data.frame(sample=temp1[grepl("_nonY.fa.gz$", temp1)] %>% bname %>% str_remove("_.*") %>% u)
+  df1$fasta <- lapply(df1$sample, function(x){
+    temp1[grepl(paste0(x, "_nonY.fa.gz$") ,temp1)]
+  }) %>% unlist
+  df1$fai <- lapply(df1$sample, function(x){
+    temp1[grepl(paste0(x, "_nonY.fa", FILLER,".fai$") ,temp1)]
+  }) %>% unlist
+  df1$gzi <- lapply(df1$sample, function(x){
+    temp1[grepl(paste0(x, "_nonY.fa.gz.gzi$") ,temp1)]
+  }) %>% unlist
+  
+  bign <- nrow(df1)
+  temp2 <- lapply(seq_down(df1), function(x){
+    migrate(sample=df1$sample[x], fasta=df1$fasta[x], fai=df1$fai[x], gzi=df1$gzi[x], curr=x, max=bign)}) %>% unlist
+  
+  temp2 <- c("#!/bin/bash", "set -euo pipefail", temp2)
+  
+  df10 <- data.frame(sample=df1$sample)
+  TEMP_BASE <- paste0("/assemblies/verkko/", df000$verk[COHORT], "/")
+  df10$fasta <- paste0(LRA_BASE, df10$sample, TEMP_BASE, bname(df1$fasta))
+  df10$fai   <- paste0(LRA_BASE, df10$sample, TEMP_BASE, bname(df1$fai))
+  df10$gzi   <- paste0(LRA_BASE, df10$sample, TEMP_BASE, bname(df1$gzi))
+  
+  write.table(temp2, paste0("C:/docs/etc/migration.", df000$cohort[COHORT],"_nony.sh"), col.names = FALSE, row.names = FALSE, quote=FALSE)
+  write.table(df10,  paste0("C:/docs/etc/manifest." , df000$cohort[COHORT],"_nony.tsv"), sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+}
+```
+
+```{r}
+df1 <- fread("C:/docs/etc/manifest.ceph_nony.tsv") %>% as.data.frame()
+df1$cohort <- "ceph"
+df1$class <- "nony"
+df2 <- fread("C:/docs/etc/manifest.ceph_y.tsv") %>% as.data.frame()
+df2$cohort <- "ceph"
+df2$class <- "y"
+df3 <- fread("C:/docs/etc/manifest.hgsvc_nony.tsv") %>% as.data.frame()
+df3$cohort <- "hgsvc"
+df3$class <- "nony"
+df4 <- fread("C:/docs/etc/manifest.hgsvc_y.tsv") %>% as.data.frame()
+df4$cohort <- "hgsvc"
+df4$class <- "y"
+df5 <- fread("C:/docs/etc/manifest.hprc_nony.tsv") %>% as.data.frame()
+df5$cohort <- "hprc"
+df5$class <- "nony"
+df6 <- fread("C:/docs/etc/manifest.hprc_y.tsv") %>% as.data.frame()
+df6$cohort <- "hprc"
+df6$class <- "y"
+
+df7 <- rbind(df1, df2, df3, df4, df5, df6)
+write.table(df7, "C:/docs/etc/manifest.chrynony.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+

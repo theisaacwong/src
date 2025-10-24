@@ -324,10 +324,12 @@ TODO: also check nobackups/backups files
 
 ```{r}
 getExtension <- function(file) strsplit(file, ".", fixed=T)[[1]][-1]
-df0 <- fread("C:/docs/website/ncdu_20250812_backups.tsv", header=FALSE) %>% as.data.frame()
+# df0 <- fread("C:/docs/website/ncdu_20251", header=FALSE) %>% as.data.frame()
+df0 <- fread("C:/docs/website/project_long_read_archive.tsv", header=FALSE) %>% as.data.frame()
 # df0$folders <- df0$V1 %>% dirname %>% str_split("/")
 df1 <- df0
-# df1$V1 <- df1$V1 %>%  str_remove("^/nect/eichler")
+# df1$V1 <- df1$V1 %>%  str_remove("^/nect/eichler") # no trailing / (?)
+df1$V1 <- df1$V1 %>%  str_remove("^/net/eichler/vol28/projects")
 
 t2 <- Sys.time()
 bool_gb <- grepl("GB", df1$V5)
@@ -375,8 +377,8 @@ df2 <- df2[order(df2$size_gb, decreasing = TRUE), ]
 rownames(df2) <- seq_down(df2)
 
 
-# fwrite(df2, "C:/docs/website/backups_dir.tsv", col.names = TRUE, row.names=FALSE, quote=FALSE, sep="\t")
-# df2 <- fread("C:/docs/website/backups_dir.tsv") %>% as.data.frame()
+fwrite(df2, "C:/docs/website/lra_dir.tsv", col.names = TRUE, row.names=FALSE, quote=FALSE, sep="\t")
+df2 <- fread("C:/docs/website/lra_dir.tsv") %>% as.data.frame()
 
 t4 <- Sys.time()
 THRESHOLD_FRACTION <- 0.6
@@ -414,7 +416,11 @@ df5 <- df4[order(df4$dir), ]
 df6 <- data.frame(size = round(df5$size), 
                   dir = df5$dir, 
                   stringsAsFactors = FALSE)
-write.table(df6, "C:/docs/website/backups_dir_filtered_100.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
-write.table(df6[order(df6$size, decreasing = TRUE), ], "C:/docs/website/backups_dir_filtered_100_sort.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df6, "C:/docs/website/lra_filtered_100.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df6[order(df6$size, decreasing = TRUE), ], "C:/docs/website/lra_dir_filtered_100_sort.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
+```{r}
+
 ```
 

@@ -2854,3 +2854,288 @@ write.table(df1, "C:/docs/autism/manifest_2025_10_06/bams.tsv", sep="\t", col.na
 
 ```
 
+
+```{r}
+df0 <- fread("C:/docs/autism/manifest_2025_10_06/assemblies.txt") %>% as.data.frame()
+
+df0$TRIO_STRING <- ifelse(grepl("(_p1|_s1)", df0$SAMPLE), "trio/", "")
+LRA_BASE <- "/net/eichler/vol28/projects/long_read_archive/nobackups/clinical"
+
+migrate <- function(source, sample, trio, curr, max){
+  DEST_DIR <- paste0(LRA_BASE, "/", sample, "/assemblies/hifiasm/", trio, "0.25.0")
+  DEST_FA <- paste0(DEST_DIR, "/", bname(source))
+  DEST_FAI <- paste0(DEST_DIR, "/", bname(source), ".fai")
+  
+  script_00 <- paste0("echo ", curr, "/", max, ": ", source)
+  script_01 <- paste0("mkdir -p ", DEST_DIR)
+  script_02 <- paste0("mv ", source, "     ", DEST_FA)
+  script_03 <- paste0("mv ", source, ".fai ", DEST_FAI)  
+  script_04 <- paste0("ln -s ", DEST_FA, "     ", source)
+  script_05 <- paste0("ln -s ", DEST_FAI, " ", source, ".fai")
+  script_06 <- "date"
+  
+  c(script_00, script_01, script_02, script_03, script_04, script_05, script_06, "\n")
+}
+
+bign <- 2*nrow(df0)
+temp2 <- c(
+  lapply(seq_down(df0), function(x){
+    migrate(source=df0$HAP1[x], sample=df0$SAMPLE[x], trio=TRIO_STRING[x], curr=x, max=bign)
+  }) %>% unlist,
+  lapply(seq_down(df0), function(x){
+    migrate(source=df0$HAP2[x], sample=df0$SAMPLE[x], trio=TRIO_STRING[x], curr=x+40, max=bign)
+}) %>% unlist)
+
+temp2 <- c("#!/bin/bash", "set -euo pipefail", temp2)
+write.table(temp2, "C:/docs/autism/manifest_2025_10_06/migration.asmqc.sh", col.names = FALSE, row.names = FALSE, quote=FALSE)
+
+df1 <- data.frame(path=temp3 <- temp2[grepl("mv.*long_read_archive.*fasta$", temp2)] %>% str_extract("/net/eichler/vol28/projects/long_read_archive/nobackups/clinical/.*fasta$"))
+df1$sample <- df1$path %>% bname %>% str_remove("_hap..fasta")
+df1$hap <- df1$path %>% bname %>% str_extract("hap.")
+
+df2 <- data.frame(SAMPLE = u(df1$sample))
+df2$HAP1 <- lapply(df2$SAMPLE, function(x){df1$path[df1$sample==x & df1$hap=="hap1"]}) %>% unlist
+df2$HAP2 <- lapply(df2$SAMPLE, function(x){df1$path[df1$sample==x & df1$hap=="hap2"]}) %>% unlist
+
+write.table(df2, "C:/docs/autism/manifest_2025_10_06/asmqc.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
+
+
+```{r}
+df00 <- fread("C:/docs/autism/manifest_2025_10_06/output_manifests/new40.tsv") %>% as.data.frame()
+MY_REFS <- colnames(df00)[-1]
+
+FILES_PBSV     <- readLines("C:/docs/autism/manifest_2025_10_06/output_manifests/files.pbsv.txt")
+FILES_SNIFFLES <- readLines("C:/docs/autism/manifest_2025_10_06/output_manifests/files.sniffles.txt")
+FILES_CUTESV   <- readLines("C:/docs/autism/manifest_2025_10_06/output_manifests/files.cutesv.txt")
+FILES_DELLY   <- readLines("C:/docs/autism/manifest_2025_10_06/output_manifests/files.delly.txt")
+FILES_SAWFISH   <- readLines("C:/docs/autism/manifest_2025_10_06/output_manifests/files.sawfish.txt")
+FILES_PAV <- readLines("C:/docs/autism/manifest_2025_10_06/output_manifests/files.pav.txt")
+FILES_HAPDIFF <- readLines("C:/docs/autism/manifest_2025_10_06/output_manifests/files.hapdiff.txt")
+FILES_ASM <- fread("C:/docs/autism/manifest_2025_10_06/output_manifests/asmnew40.man.tsv") %>% as.data.frame()
+
+for(REFERENCE in MY_REFS){
+  print(REFERENCE)
+  OUTPUT_FILE <- paste0("C:/docs/autism/manifest_2025_10_06/output_manifests/manifest.new40.", REFERENCE, ".tsv")
+  df01 <- data.frame(SAMPLE = df00$SAMPLE)  
+  
+    
+  df01$ALN <- lapply(df01$SAMPLE, function(SAMPLE){
+    df00[[REFERENCE]][df00$SAMPLE==SAMPLE]
+  }) %>% unlist  
+  
+  df01$ASM_QC_HAP1 <- lapply(df01$SAMPLE, function(SAMPLE){FILES_ASM$HAP1[FILES_ASM$NAME==SAMPLE]}) %>% unlist
+  
+  df01$ASM_QC_HAP2 <- lapply(df01$SAMPLE, function(SAMPLE){FILES_ASM$HAP2[FILES_ASM$NAME==SAMPLE]}) %>% unlist
+  
+  df01$PBSV_BND <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pbsv/", REFERENCE, "/results/", SAMPLE, "/pbsv_", SAMPLE, "_bnd.vcf.gz")  
+    if(target_file %in% FILES_PBSV){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  df01$PBSV_DUP <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pbsv/", REFERENCE, "/results/", SAMPLE, "/pbsv_", SAMPLE, "_dup.vcf.gz")  
+    if(target_file %in% FILES_PBSV){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  df01$PBSV_SV <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pbsv/", REFERENCE, "/results/", SAMPLE, "/pbsv_", SAMPLE, "_sv.vcf.gz")  
+    if(target_file %in% FILES_PBSV){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  
+  df01$SNIFFLES <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/sniffles/", REFERENCE, "/results/", SAMPLE, "/sniffles/2.3.2/", SAMPLE, ".sniffles.vcf.gz")  
+    if(target_file %in% FILES_SNIFFLES){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  
+  df01$CUTESV <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/cuteSV/", REFERENCE, "/results/", SAMPLE, "/cutesv/2.1.1/", SAMPLE,".cutesv.vcf.gz")  
+    if(target_file %in% FILES_CUTESV){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  
+  df01$DELLY <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/delly/", REFERENCE, "/results/", SAMPLE, "/", SAMPLE, ".delly.vcf")  
+    if(target_file %in% FILES_DELLY){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  
+  df01$SAWFISH <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/sawfish_hapdiff/",REFERENCE,"/sawfish/",SAMPLE,"/sawfish_call/genotyped.sv.vcf.gz")  
+    if(target_file %in% FILES_SAWFISH){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  
+  df01$PAV <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pav_new/2025_10_08/",REFERENCE,"/",SAMPLE,".vcf.gz")  
+    if(target_file %in% FILES_PAV){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  
+  df01$HAPDIFF <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/sawfish_hapdiff/",REFERENCE,"/hapdiff/",SAMPLE,"/hapdiff_phased.vcf.gz")  
+    if(target_file %in% FILES_HAPDIFF){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  
+  
+  
+  my_names <- colnames(df01)[-c(1)]
+  df01 <- df01[,c("SAMPLE", sort(my_names))]
+  
+  
+  if(any(df01=="")){print(paste0("ERROR: ", REFERENCE))}
+  write.table(df01, OUTPUT_FILE, sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+}
+```
+
+
+```{r}
+df00 <- fread("C:/docs/autism/manifest_2025_10_06/output_manifest_blood_saliva/benchmark_blood_saliva.txt") %>% as.data.frame()
+MY_REFS <- colnames(df00)[-1]
+
+FILES_ALL <- readLines("C:/docs/autism/manifest_2025_10_06/output_manifest_blood_saliva/bloodsaliva.files.all.txt")
+BASE_DIR <- "/net/eichler/vol28/projects/autism_genome_assembly/nobackups/Benchmark_saliva"
+
+df00 <- df00[grepl("saliva", df00$SAMPLE), ]
+
+for(REFERENCE in MY_REFS){
+  print(REFERENCE)
+  OUTPUT_FILE <- paste0("C:/docs/autism/manifest_2025_10_06/output_manifest_blood_saliva/blood_saliva.manifest.", REFERENCE, ".tsv")
+  df01 <- data.frame(SAMPLE = df00$SAMPLE)  
+  
+  df01$ALN <- lapply(df01$SAMPLE, function(SAMPLE){
+    df00[[REFERENCE]][df00$SAMPLE==SAMPLE]
+  }) %>% unlist  
+  
+  df01$ASM_QC_HAP1 <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0(BASE_DIR, "/hifiasm/assembly_qc/fcs_cleaned_fasta/",SAMPLE,"_hap1/",SAMPLE,"_hap1.fasta")  
+    if(target_file %in% FILES_ALL){
+      return(target_file)
+    } else {ifelse(grepl("PM1001.05", SAMPLE), "NO_ILLUMINA", "")}}) %>% unlist
+  
+  df01$ASM_QC_HAP2 <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0(BASE_DIR, "/hifiasm/assembly_qc/fcs_cleaned_fasta/",SAMPLE,"_hap2/",SAMPLE,"_hap2.fasta")  
+    if(target_file %in% FILES_ALL){
+      return(target_file)
+    } else {ifelse(grepl("PM1001.05", SAMPLE), "NO_ILLUMINA", "")}}) %>% unlist
+  
+  df01$PBSV_BND <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0(BASE_DIR, "/pbsv/", REFERENCE, "/results/", SAMPLE,  "/pbsv_", SAMPLE, "_bnd.vcf.gz")  
+    if(target_file %in% FILES_ALL){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  df01$PBSV_DUP <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0(BASE_DIR, "/pbsv/", REFERENCE, "/results/", SAMPLE,  "/pbsv_", SAMPLE, "_dup.vcf.gz")  
+    if(target_file %in% FILES_ALL){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  df01$PBSV_SV <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0(BASE_DIR, "/pbsv/", REFERENCE, "/results/", SAMPLE,  "/pbsv_", SAMPLE, "_sv.vcf.gz")  
+    if(target_file %in% FILES_ALL){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+ 
+  df01$SAWFISH <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0(BASE_DIR,"/sawfish/",REFERENCE,"/sawfish/",SAMPLE,"/sawfish_call/genotyped.sv.vcf.gz")  
+    if(target_file %in% FILES_ALL){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  
+  df01$SNIFFLES <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0(BASE_DIR, "/sniffles/", REFERENCE, "/results/", SAMPLE, "/sniffles/2.3.2/", SAMPLE, ".sniffles.vcf.gz")  
+    if(target_file %in% FILES_ALL){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+
+  df01$CUTESV <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0(BASE_DIR, "/cuteSV/", REFERENCE, "/results/", SAMPLE, "/cutesv/2.1.1/", SAMPLE, ".cutesv.vcf.gz")  
+    if(target_file %in% FILES_ALL){
+      return(target_file)
+    } else {return("")}}) %>% unlist  
+  
+  df01$DELLY <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0(BASE_DIR, "/delly/", REFERENCE, "/results/", SAMPLE, "/", SAMPLE, ".delly.vcf")  
+    if(target_file %in% FILES_ALL){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  
+  df01$PAV <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0(BASE_DIR, "/pav_hifiasm/", REFERENCE, "/", SAMPLE,".vcf.gz")  
+    if(target_file %in% FILES_ALL){
+      return(target_file)
+    } else {ifelse(grepl("PM1001.05", SAMPLE), "NO_ILLUMINA", "")}}) %>% unlist
+
+  df01$HAPDIFF <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0(BASE_DIR, "/hapdiff/",REFERENCE,"/hapdiff/",SAMPLE,"/hapdiff_phased.vcf.gz")  
+    if(target_file %in% FILES_ALL){
+      return(target_file)
+    } else {ifelse(grepl("PM1001.05", SAMPLE), "NO_ILLUMINA", "")}}) %>% unlist
+  
+  
+  
+  my_names <- colnames(df01)[-c(1)]
+  df01 <- df01[,c("SAMPLE", sort(my_names))]
+  
+  if(any(df01=="")){print(paste0("ERROR: ", REFERENCE))}
+  write.table(df01, OUTPUT_FILE, sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+}
+```
+
+```{r}
+df00 <- fread("C:/docs/autism/manifest_2025_10_06/output_manifests/new40.tsv") %>% as.data.frame()
+MY_REFS <- colnames(df00)[-1]
+
+FILES_PAV <- readLines("C:/docs/autism/manifest_2025_10_06/output_manifests/files.pav.txt")
+
+MY_REFS <- "GRCh38"
+for(REFERENCE in MY_REFS){
+  print(REFERENCE)
+  OUTPUT_FILE <- paste0("C:/docs/autism/manifest_2025_10_06/output_manifests/pav.callable_regions.", REFERENCE, ".tsv")
+  df01 <- data.frame(SAMPLE = df00$SAMPLE)  
+  
+  df01$callable_regions_h1 <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pav_new/2025_10_08/",REFERENCE,"/results/",SAMPLE,"/callable/callable_regions_h1_500.bed.gz")  
+    if(target_file %in% FILES_PAV){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  
+  df01$callable_regions_h2 <- lapply(df01$SAMPLE, function(SAMPLE){
+    target_file <- paste0("/net/eichler/vol28/projects/autism_genome_assembly/nobackups/pav_new/2025_10_08/",REFERENCE,"/results/",SAMPLE,"/callable/callable_regions_h2_500.bed.gz")  
+    if(target_file %in% FILES_PAV){
+      return(target_file)
+    } else {return("")}}) %>% unlist
+  
+  if(any(df01=="")){print(paste0("ERROR: ", REFERENCE))}
+  write.table(df01, OUTPUT_FILE, sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+}
+```
+
+
+```{r}
+my_files <- readLines("C:/docs/autism/downsampling/files.txt")
+df0 <- data.frame(
+  sample = lapply(my_files, function(x){
+    temp1 <- str_split(x, "/") %>% unlist
+    return(paste0(temp1[10], "_", str_extract(x, "(?<=HiFi_random_Q1_).*(?=.fastq.gz)")))
+  }) %>% unlist, 
+  path = my_files
+)
+for(i in seq_down(df0)){
+  write.table(df0$path[i], paste0("C:/docs/autism/downsampling/sample_", df0$sample[i], "_fofn.txt"), sep="\t", col.names = FALSE, row.names = FALSE, quote=FALSE)
+}
+
+
+df1 <- fread("C:/docs/autism/downsampling/files.tsv", header=FALSE) %>% as.data.frame()
+df1$sample <- df1$V1 %>% bname %>% str_remove("sample_") %>% str_remove("_fofn.txt")
+df1$hifi_fofn <- df1$V1
+df1$V1 <- NULL
+df1$maternal_illumina <- "NA"
+df1$paternal_illumina <- "NA"
+df1$family_id <- df1$sample
+write.table(df1, "C:/docs/autism/downsampling/manifest.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
