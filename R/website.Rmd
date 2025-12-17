@@ -421,6 +421,16 @@ write.table(df6[order(df6$size, decreasing = TRUE), ], "C:/docs/website/lra_dir_
 ```
 
 ```{r}
-
+log_files <- list.files("C:/docs/website/check_tmp/", pattern="grid.gs.washington.edu.txt", full.names = TRUE)
+df00 <- lapply(log_files, function(x){
+  curr_lines <- readLines(x)
+  data <- curr_lines[4] %>% str_split("\\s+") %>% unlist()
+  df_temp <- data.frame(hostname = curr_lines[1],
+                        size = data[2],
+                        used = data[3],
+                        avail = data[4],
+                        perc = data[5])
+}) %>% do.call(rbind, .)
+df00 <- df00[order(df00$hostname), ]
 ```
 

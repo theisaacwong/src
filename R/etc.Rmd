@@ -51,6 +51,12 @@ df01$Elo <- lapply(df01$Team, function(x){
 df01 <- df01[order(df01$Elo, decreasing = TRUE), ]
 
 MY_TEAM <- "Rain City Wych Pigeons - Team Emerald"
+
+
+
+
+
+
 THRESHOLD <- 100
 
 df01$CONT <- abs(df01$Elo - df01$Elo[df01$Team==MY_TEAM]) <= THRESHOLD
@@ -123,8 +129,8 @@ for(COHORT in seq_down(df000)){
   df10$fai   <- paste0(LRA_BASE, df10$sample, TEMP_BASE, bname(df1$fai))
   df10$gzi   <- paste0(LRA_BASE, df10$sample, TEMP_BASE, bname(df1$gzi))
   
-  write.table(temp2, paste0("C:/docs/etc/migration.", df000$cohort[COHORT],"_y.sh"), col.names = FALSE, row.names = FALSE, quote=FALSE)
-  write.table(df10,  paste0("C:/docs/etc/manifest." , df000$cohort[COHORT],"_y.tsv"), sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+  # write.table(temp2, paste0("C:/docs/etc/migration.", df000$cohort[COHORT],"_y.sh"), col.names = FALSE, row.names = FALSE, quote=FALSE)
+  # write.table(df10,  paste0("C:/docs/etc/manifest." , df000$cohort[COHORT],"_y.tsv"), sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
   
   temp1_samples <- temp1[grepl("_nonY.fa.gz$", temp1)] %>% bname %>% str_remove("_.*") %>% u
   df1 <- data.frame(sample=temp1[grepl("_nonY.fa.gz$", temp1)] %>% bname %>% str_remove("_.*") %>% u)
@@ -150,10 +156,12 @@ for(COHORT in seq_down(df000)){
   df10$fai   <- paste0(LRA_BASE, df10$sample, TEMP_BASE, bname(df1$fai))
   df10$gzi   <- paste0(LRA_BASE, df10$sample, TEMP_BASE, bname(df1$gzi))
   
-  write.table(temp2, paste0("C:/docs/etc/migration.", df000$cohort[COHORT],"_nony.sh"), col.names = FALSE, row.names = FALSE, quote=FALSE)
-  write.table(df10,  paste0("C:/docs/etc/manifest." , df000$cohort[COHORT],"_nony.tsv"), sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+  # write.table(temp2, paste0("C:/docs/etc/migration.", df000$cohort[COHORT],"_nony.sh"), col.names = FALSE, row.names = FALSE, quote=FALSE)
+  # write.table(df10,  paste0("C:/docs/etc/manifest." , df000$cohort[COHORT],"_nony.tsv"), sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 }
 ```
+
+here in a box i hide the letters written 
 
 ```{r}
 df1 <- fread("C:/docs/etc/manifest.ceph_nony.tsv") %>% as.data.frame()

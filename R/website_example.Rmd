@@ -1,0 +1,61 @@
+---
+title: "website_test"
+output: html_document
+date: "2025-10-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(stringr)
+library(magrittr)
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+```
+
+# A title
+
+some text
+
+## Another Title
+
+lorem ipsum dolore sit amet
+
+```{r}
+N <- 600
+df00 <- data.frame(sample = paste0("sample_a", 1:N),
+                   var1 = rnorm(N, 0, 2),
+                   var2 = rnorm(N, 0, 2),
+                   type = "one")
+df01 <- data.frame(sample = paste0("sample_b", 1:N),
+                   var1 = rnorm(N, 2.5, 2),
+                   var2 = rnorm(N, 2.5, 2),
+                   type = "two")
+df_final <- rbind(df00, df01)
+ggplot(df_final, aes(x=var1, y = var2, color=type)) + 
+  geom_point() +
+  ggtitle("random dots")
+```
+some different dots
+
+
+```{r}
+N <- 600
+df00 <- data.frame(sample = paste0("sample_a", 1:N),
+                   var1 = rnorm(N, 0, 2),
+                   var2 = rnorm(N, 0, 2),
+                   type = "one")
+df01 <- data.frame(sample = paste0("sample_b", 1:N),
+                   var1 = rnorm(N, 4, 2),
+                   var2 = rnorm(N, 2.5, 2),
+                   type = "two")
+df_final <- rbind(df00, df01)
+ggplot(df_final, aes(x=var1, y = var2, color=type)) + 
+  geom_point() +
+  ggtitle("more random dots")
+```

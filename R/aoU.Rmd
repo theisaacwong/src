@@ -312,3 +312,34 @@ charges$roll <- lapply(charges$charge_distance, function(x){
 })
 ```
 
+
+
+```{r}
+df00 <- fread("C:/docs/aou/sv_intersection/HA_GRCh38_SVs_intersection_CDS.tsv") %>% as.data.frame()
+df00$genes_list <- df00$`GENE(S)` %>% str_split(",")
+df_acmg <- fread("C:/docs/aou/sv_intersection/TargetedGeneLoci - ACMG_CHM13_Repeats.tsv") %>% as.data.frame()
+df_cmrg <- fread("C:/docs/aou/sv_intersection/TargetedGeneLoci - CMRG_CHM13_Repeats.tsv") %>% as.data.frame()
+df00$ACMG <- lapply(df00$genes_list, function(x){
+  any(df_acmg$gene %in% x)
+}) %>% unlist
+df00$CMRG <- lapply(df00$genes_list, function(x){
+  any(df_cmrg$gene %in% x)
+}) %>% unlist
+
+df00$`ACMG/CMRG` <- lapply(seq_down(df00), function(x){
+  if(df00$ACMG[x] & df00$CMRG[x]){
+    return("ACMG, CMRG")
+  }
+  if(df00$ACMG[x]){
+    return("ACMG")
+  }
+  if(df00$CMRG[x]){
+    return("CMRG")
+  }
+  return("-")
+}) %>% unlist
+
+df00$genes_list <- NULL
+write.table(df00, "C:/docs/aou/sv_intersection/HA_GRCh38_SVs_intersection_CDS_iw.tsv", col.names = TRUE, row.names = FALSE, quote=FALSE, sep="\t")
+```
+

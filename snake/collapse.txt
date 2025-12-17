@@ -1,0 +1,48 @@
+bcftools merge --threads {threads} --merge none --file-list {input.vcf} -O z | bcftools norm --threads {threads} --do-not-normalize --multiallelics -any -O v | bcftools +fill-tags -O v -- -t AN,AC | python /net/eichler/vol28/projects/medical_reference/nobackups/Scripts/MedRef/SampleSet/snakefiles/EditQUAL.py| bgzip -c > {output.outvcf}
+        tabix -p vcf {output.outvcf}
+		
+		
+		
+#!/usr/bin/env python
+
+# encoding: utf-8
+
+'''
+
+@author: Jiadong Lin
+
+@contact: jdlin@uw.edu
+
+@time: 4/24/25
+'''
+
+import sys
+
+def parse_vcf_info_column(info_str):
+    info_tokens = info_str.split(";")
+    info_dict = {}
+
+    for token in info_tokens:
+        if "=" not in token:
+            continue
+        info_dict[token.split('=')[0]] = token.split('=')[1]
+
+    return info_dict
+
+if __name__ == '__main__':
+
+    for line in sys.stdin:
+        if line.startswith('#'):
+            print(line.strip(), file=sys.stdout)
+            continue
+        entries = line.strip().split('\t')
+        info_dict = parse_vcf_info_column(entries[7])
+        qual = info_dict['AC']
+        other_columns = '\t'.join(entries[9:])
+        rec = f'{entries[0]}\t{entries[1]}\t{entries[2]}\t{entries[3]}\t{entries[4]}\t{qual}\t{entries[6]}\t{entries[7]}\t{entries[8]}\t{other_columns}'
+        print(rec, file=sys.stdout)
+		
+		
+		
+truvari collapse --input {input.vcf} -c {output.removed_vcf} --sizemin 50 --sizemax 100000 --keep maxqual {params.opts} | bcftools sort --max-mem $( expr {threads} \\* {resources.mem} )G --output-type z > {output.collapsed_vcf}
+tabix -p vcf {output.collapsed_vcf}

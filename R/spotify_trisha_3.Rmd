@@ -9,8 +9,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-MAIN_PATH_1 <- "C:/Users/iwong1/Documents/mike/my_spotify_data_27/"
-MAIN_PATH_2 <- "C:/docs/mike/my_spotify_data_27/Spotify Extended Streaming History/"
+MAIN_PATH_1 <- "C:/Users/iwong1/Documents/mike/my_spotify_data_trisha2//"
+MAIN_PATH_2 <- "C:/docs/mike/my_spotify_data_trisha2/Spotify Extended Streaming History/"
 FILTER <- FALSE
 library(jsonlite)
 library(plyr)
@@ -302,7 +302,7 @@ df2 <- df0 %>% lapply(function(x){data.frame(as.list(unlist(x)), stringsAsFactor
 df3 <- rbind.fill(df2)
 df3[is.na(df3)] <- "NA"
 df3 <- df3[df3$master_metadata_album_artist_name != "NA", ]
-df3$year <- df3$ts %>% str_extract("^202.(?=-)")
+df3$year <- df3$ts %>% str_extract("^20..(?=-)")
 df3$month <- df3$ts %>% str_extract("(?<=-)..(?=-)")
 df3$timecode <- paste0(df3$year, df3$month) %>% as.numeric()
 df3$binID <- paste0(df3$timecode, "__", df3$master_metadata_album_artist_name)
@@ -347,7 +347,6 @@ df_condensed <- lapply(df_monthly$timecode %>% u, function(x){
 
 
 my_years <- df_condensed$year %>% u %>% as.character()
-my_years <- my_years[my_years!="2020"]
 my_plots <- lapply(my_years, function(this_year){
   df_filtered <- df_condensed
   df_filtered <- df_filtered[df_filtered$year == this_year, ]
@@ -406,7 +405,6 @@ df_condensed <- lapply(df_yearly$year %>% u, function(x){
 
 
 df_filtered <- df_condensed
-df_filtered <- df_filtered[df_filtered$year != "2020", ]
 max_hours <- lapply(df_filtered$year %>% u, function(x){sum(df_filtered$hour[df_filtered$year==x])}) %>% unlist %>% max
 df_filtered$total_a_time <- lapply(df_filtered$master_metadata_album_artist_name, function(x){df_filtered$hour[df_filtered$master_metadata_album_artist_name==x] %>% sum}) %>% unlist
 df_filtered$master_metadata_album_artist_name <- reorder(df_filtered$master_metadata_album_artist_name, df_filtered$total_a_time, decreasing = FALSE)
@@ -450,7 +448,6 @@ df_condensed <- lapply(df_yearly$year %>% u, function(x){
 
 
 df_filtered <- df_condensed
-df_filtered <- df_filtered[df_filtered$year != "2020", ]
 max_hours <- lapply(df_filtered$year %>% u, function(x){sum(df_filtered$hour[df_filtered$year==x])}) %>% unlist %>% max
 df_filtered$total_a_time <- lapply(df_filtered$master_metadata_album_album_name, function(x){df_filtered$hour[df_filtered$master_metadata_album_album_name==x] %>% sum}) %>% unlist
 df_filtered$master_metadata_album_album_name <- reorder(df_filtered$master_metadata_album_album_name, df_filtered$total_a_time, decreasing = FALSE)
@@ -516,7 +513,6 @@ df_condensed <- lapply(df_monthly$timecode %>% u, function(x){
 
 
 my_years <- df_condensed$year %>% u %>% as.character()
-my_years <- my_years[my_years!="2020"]
 my_plots <- lapply(my_years, function(this_year){
   df_filtered <- df_condensed
   df_filtered <- df_filtered[df_filtered$year == this_year, ]
@@ -600,7 +596,6 @@ df_condensed <- lapply(df_monthly$timecode %>% u, function(x){
 
 
 my_years <- df_condensed$year %>% u %>% as.character()
-my_years <- my_years[my_years!="2020"]
 my_plots <- lapply(my_years, function(this_year){
   df_filtered <- df_condensed
   df_filtered <- df_filtered[df_filtered$year == this_year, ]
@@ -680,7 +675,6 @@ df_condensed <- lapply(df_monthly$year %>% u, function(x){
   df_temp1 <- df_temp1[order(df_temp1$hour, decreasing = TRUE), ]
   return(df_temp1)
 }) %>% do.call(rbind, .)
-df_condensed <- df_condensed[df_condensed$year != "2020", ]
 
 df_filtered <- df_condensed
 df_filtered <- df_filtered[order(df_filtered$timecode, decreasing = FALSE), ]
@@ -866,7 +860,6 @@ x is month, y is day time
 N_BINS <- 24
 
 MY_YEAR <- df3$year %>% u
-MY_YEAR <- MY_YEAR[MY_YEAR != "2020"]
 
 for(YEAR in MY_YEAR){
   df00 <- df3[grepl(paste0("^", YEAR), df3$ts), ]
@@ -966,7 +959,6 @@ x is month, y is day time
 N_BINS <- 24
 
 MY_YEAR <- df3$year %>% u
-MY_YEAR <- MY_YEAR[MY_YEAR != "2020"]
 
 weekday_labels <- c("Sunday", "Monday", "Tuesday",  "Wednesday", "Thursday", "Friday", "Saturday")
 
@@ -1198,7 +1190,7 @@ ggsave(paste0(OUT_DIR, "top_artists_past_year_", TOP_N_ARTIST, ".pdf"), g20, wid
 ggsave(paste0(OUT_DIR, "top_songs_past_year_", TOP_N_ARTIST, ".pdf"), g201, width = 14, height = 8, units = "in", limitsize = FALSE)
 ggsave(paste0(OUT_DIR, "top_albums_past_year_", TOP_N_ARTIST, ".pdf"), g202, width = 14, height = 8, units = "in", limitsize = FALSE)
 ```
-nrow(df6[grepl("evanescence", df6$master_metadata_album_artist_name, ignore.case = TRUE) & df6$ms_played > 35000, ])/1000*3
+
 
 ```{r}
 TOP_N_ARTIST <- 8

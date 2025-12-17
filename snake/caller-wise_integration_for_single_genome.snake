@@ -1,0 +1,191 @@
+rule index_filt_vcf:
+    input:
+        vcf = "{refv}/{sample}/{caller_set}/{cutoff}/truvari_collapsed.insdel.{subset}.vcf",
+    output:
+        gzip = "{refv}/{sample}/{caller_set}/{cutoff}/truvari_collapsed.insdel.{subset}.vcf.gz",
+    resources:
+        mem=10,
+        hrs=24,
+        disk_free=1,
+    envmodules:
+        "modules",
+        "modules-init",
+        "modules-gs/prod",
+        "modules-eichler/prod",
+        "miniconda/4.12.0"
+    shell:
+        """
+        bcftools sort -O z {input.vcf} -o {output.gzip}
+        tabix -p vcf {output.gzip}
+        rm {input.vcf}
+        """
+
+rule parse_truvari_collapse:
+    input:
+        vcf="{refv}/{sample}/{caller_set}/{cutoff}/truvari_collapsed.insdel.vcf.gz",
+        # qual="{refv}/{sample}/{caller_set}/pred_qual_v1.0.txt",
+        headers=find_header,
+        excl=find_cprmask
+    params:
+        callers = get_callers,
+    output:
+        filt_vcf = "{refv}/{sample}/{caller_set}/{cutoff}/truvari_collapsed.insdel.filt.vcf",
+        pav_supp_vcf="{refv}/{sample}/{caller_set}/{cutoff}/truvari_collapsed.insdel.pav-supp.vcf",
+        pav_read_supp_vcf="{refv}/{sample}/{caller_set}/{cutoff}/truvari_collapsed.insdel.pav-read-supp.vcf",
+        # boostsv_pass_vcf="{refv}/{sample}/{caller_set}/{cutoff}/truvari_collapsed.insdel.boostsv_pass.vcf",
+        filt_bed="{refv}/{sample}/{caller_set}/{cutoff}/truvari_collapsed.insdel.pav-supp.bed.gz",
+        pav_read_supp_bed="{refv}/{sample}/{caller_set}/{cutoff}/truvari_collapsed.insdel.pav-read-supp.bed.gz",
+        pav_bed="{refv}/{sample}/{caller_set}/{cutoff}/truvari_collapsed.insdel.pav-only.bed.gz",
+    envmodules:
+        "modules",
+        "modules-init",
+        "modules-gs/prod",
+        "modules-eichler/prod",
+        "miniconda/4.12.0",
+    resources:
+        mem=10,
+        hrs=24,
+        disk_free=1,
+    shell:
+        """
+        python /net/eichler/vol28/projects/medical_reference/nobackups/Scripts/MedRef/CallerSet/snakefiles/FilterSV.py -i {input.vcf} -o $( dirname {output.filt_vcf} ) -c {params.callers} -e {input.excl} -a {input.headers} -n {wildcards.sample}
+        """
+
+rule truvari:
+    input:
+        bcfvcf = "{refv}/{sample}/{caller_set}/{cutoff}/insdel.tmp.vcf.gz"
+    output:
+        removed = "{refv}/{sample}/{caller_set}/{cutoff}/removed.vcf.gz",
+        collapse = "{refv}/{sample}/{caller_set}/{cutoff}/truvari_collapsed.insdel.vcf.gz"
+    params:
+        merge_opts = caller_param
+    resources:
+        mem=10,
+        hrs=24,
+        disk_free=1,
+    envmodules:
+        "modules",
+        "modules-init",
+        "modules-gs/prod",
+        "modules-eichler/prod",
+        "truvari/5.2.0"
+    shell:
+        """
+        truvari collapse -i {input.bcfvcf} -c {output.removed} --sizemin 50 --sizemax 100000 --gt het -k maxqual --intra {params.merge_opts} | bcftools sort --max-mem 8G -O z -o {output.collapse}
+        tabix -p vcf {output.collapse}
+        """
+
+rule create_caller_list:
+    input:
+        vcf = get_caller_vcfs
+    output:
+        caller_list= "{refv}/{sample}/{caller_set}/caller_vcf_list.txt"
+    resources:
+        mem=10,
+        hrs=24,
+        disk_free=1,
+    run:
+        fout = open(output.caller_list, 'w')
+        for a_vcf in input.vcf:
+            print(a_vcf, file=fout)
+        fout.close()
+
+
+rule bcftool_all:
+    input:
+        vcf_list = rules.create_caller_list.output.caller_list
+    output:
+        outvcf="{refv}/{sample}/{caller_set}/{cutoff}/insdel.tmp.vcf.gz"
+    # log:
+    #     "log/{refv}/{sample}.bcftool.log",
+    resources:
+        mem=10,
+        hrs=24,
+        disk_free=1,
+    envmodules:
+        "modules",
+        "modules-init",
+        "modules-gs/prod",
+        "modules-eichler/prod",
+        "miniconda/4.12.0"
+    threads: 1
+    shell:
+        """
+        bcftools merge --thread {threads} --merge none --force-samples -O z -o {output.outvcf} --file-list {input.vcf_list}
+        tabix -p vcf {output.outvcf}
+        """
+		
+		
+		
+		
+iwong1@liger:log$ cat /net/eichler/vol28/projects/medical_reference/nobackups/hgsvc_calls/merge_callerset/sample_merge.yaml
+COHORT: HGSVC
+CALLERS:
+  caller_merge: pav,pbsv,sawfish,sniffles,delly,cutesv
+  all_merge: pav,hapdiff,dipcall,pbsv,sawfish,sniffles,delly,cutesv
+MANIFEST: manifest.tab
+CENTRO:
+  CHM13: /net/eichler/vol28/projects/medical_reference/nobackups/ref_diff/chm13/centromere_chm13.txt
+  GRCh38: /net/eichler/vol28/projects/medical_reference/nobackups/ref_diff/hg38/centromeres.bed
+HEADERS:
+  CHM13: /net/eichler/vol28/projects/medical_reference/nobackups/Scripts/MedRef/SampleSet/chm13_headers.txt
+  GRCh38: /net/eichler/vol28/projects/medical_reference/nobackups/Scripts/MedRef/SampleSet/hg38_headers.txt
+REF:
+  CHM13: /net/eichler/vol28/eee_shared/assemblies/CHM13/T2T/v2.0/T2T-CHM13v2.fasta
+  GRCh38: /net/eichler/vol28/eee_shared/assemblies/hg38/no_alt/hg38.no_alt.fa
+TRMASK:
+  CHM13: /net/eichler/vol28/projects/medical_reference/nobackups/ref_diff/chm13/chm13v2.0_maskedY_rCRS.platinumTRs-v1.0.trgt.annotations.bed.gz
+  GRCh38: /net/eichler/vol28/projects/medical_reference/nobackups/ref_diff/hg38/human_GRCh38_no_alt_analysis_set.platinumTRs-v1.0.trgt.annotations.bed.gz
+CPRMASK:
+  CHM13: /net/eichler/vol28/projects/medical_reference/nobackups/ref_diff/chm13/chm13v2.0_complex_sat.bed
+  GRCh38: /net/eichler/vol28/projects/medical_reference/nobackups/ref_diff/hg38/hg38_complexRegions.bed
+SEGDUP:
+  CHM13: /net/eichler/vol28/projects/medical_reference/nobackups/ref_diff/chm13/chm13v2.0_SD.bed.gz
+  GRCh38: /net/eichler/vol28/projects/medical_reference/nobackups/ref_diff/hg38/seg_dup.bed.gz
+RMSK:
+  CHM13: /net/eichler/vol28/projects/medical_reference/nobackups/ref_diff/chm13/chm13v2.0_RepeatMasker.bed.gz
+  GRCh38: /net/eichler/vol28/projects/medical_reference/nobackups/ref_diff/hg38/rmsk.bed.gz
+GENE:
+  CHM13: /net/eichler/vol28/projects/medical_reference/nobackups/ref_diff/chm13/chm13.draft_v2.0.gene_MaxTrans.bed
+  GRCh38: /net/eichler/vol28/projects/medical_reference/nobackups/ref_diff/hg38/hg38_CuratedRefSeq_trans.bed
+  
+  
+  ## this requires a function in truvari v4.3.1, which is not in the latest truvari version
+  def get_caller_vcfs(wildcards):
+    vcf_list = []
+    for caller in CALLERS[wildcards.caller_set].split(','):
+        vcf_list.append(f'{wildcards.refv}/{wildcards.sample}/{wildcards.sample}.{caller}.insdel.vcf.gz')
+    return vcf_list
+	
+	rule norm_caller_vcf:
+    input:
+        vcf="{refv}/{sample}/{sample}.{caller}.vcf",
+        ref=find_ref
+    output:
+        insdel="../merge_callerset/{refv}/{sample}/{sample}.{caller}.insdel.vcf.gz",
+        # inv="{refv}/{sample}/{sample}.{caller}.inv.vcf.gz"
+    envmodules:
+        "modules",
+        "modules-init",
+        "modules-gs/prod",
+        "modules-eichler/prod",
+        "truvari/4.3.1",
+    resources:
+        mem=10,
+        hrs=24,
+        disk_free=1,
+    threads: 1
+    shell:
+        """
+        if [ {wildcards.caller} == longcallD ]
+        then
+            bcftools norm --multiallelics - --output-type v {input.vcf}| bcftools view -i "(SVTYPE=='INS'||SVTYPE=='DEL')&FILTER=='PASS'" -O v - | bcftools sort -o /dev/stdout -O v - | bgzip -c > {output.insdel}
+            tabix -p vcf {output.insdel} 
+        else
+            bcftools norm --multiallelics - --output-type v {input.vcf} | python /net/eichler/vol28/projects/medical_reference/nobackups/Scripts/MedRef/parsers/resolve.py /dev/stdin {wildcards.caller} {input.ref} |  bcftools norm --check-ref s --fasta-ref {input.ref} -N -m-any | bcftools annotate -x 'INFO/AF,INFO/STRAND' > {wildcards.refv}/{wildcards.sample}/{wildcards.caller}.tmp.vcf
+            bcftools view -i "(SVTYPE=='INS'||SVTYPE=='DEL')&FILTER=='PASS'" -O v {wildcards.refv}/{wildcards.sample}/{wildcards.caller}.tmp.vcf | bcftools sort -o /dev/stdout -O v - | bgzip -c > {output.insdel}           
+            tabix -p vcf {output.insdel}
+            rm {wildcards.refv}/{wildcards.sample}/{wildcards.caller}.tmp.vcf
+        fi
+        
+        """

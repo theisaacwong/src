@@ -2,6 +2,8 @@
 #  chmod a-w -R
 #  aws s3 sync s3://garrisonlab/t2t-primates/wfmash-v0.13.0/conservation/approach2_with_cds_all_chroms_together/chm13_1/scores/ . --no-sign-request
 
+rmarkdown::render("test.Rmd")
+
 while true; do echo $(date) >> /net/eichler/vol28/home/iwong1/nobackups/logs/df_h_project.logs.txt2 ; ls -lh /net/eichler/vol28/projects/ | awk '{print $9}' | xargs -I {} sh -c "echo -n {}'\t'; df -h /net/eichler/vol28/projects/{} | grep -v ^File" | awk '{print $1 "\t" $3 "\t" $4 "\t" $5 "\t" $6}' >> /net/eichler/vol28/home/iwong1/nobackups/logs/df_h_project.logs.txt2; sleep 3600; done
 
 -l hostname="e001|e002"

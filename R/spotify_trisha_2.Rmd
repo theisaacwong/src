@@ -213,8 +213,10 @@ dfa0$ID <- seq_down(dfa0)
 
 albumToTime <- HashMap$new()
 temp1 <- lapply(seq_along(df0), function(x){
+  curr_artist <- df0[[x]]$master_metadata_album_artist_name
   curr_album <- df0[[x]]$master_metadata_album_album_name
   if(is.null(curr_album)){return(x)}
+  curr_album <- paste0(curr_album, "___", curr_artist)
   if(albumToTime$containsKey(curr_album)){
     albumToTime$put(curr_album, albumToTime$get(curr_album) + df0[[x]]$ms_played)
   } else {
@@ -266,11 +268,29 @@ g1b <- ggplot(dfb0[1:N_TOP_ARTIST, ], aes(x=ID, y=time, fill=album)) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), legend.position="none") + 
   xlab("") + 
   ylab("Hours Listened") +
-  ggtitle(paste0("Spotify Top ", N_TOP_ARTIST, " Artists, lifetime")) +
+  ggtitle(paste0("Spotify Top ", N_TOP_ARTIST, " Albums, lifetime")) +
   scale_fill_manual(name = "Album", values = gg_color_hue(N_TOP_ARTIST) %>% my_rev) + 
   scale_y_continuous(breaks=seq(0, dfb0$time[1]+50, 20))
 plot(g1b)
 if(!FILTER)ggsave(paste0(OUT_DIR, "top_albums_lifetime.pdf"), g1b, width = 10, height = 7, units = "in", limitsize = FALSE)
+```
+
+```{r}
+colnames(dfb0)[1] <- "main"
+dfb0$album <- lapply(dfb0$main, function(x){
+  unlist(str_split(x, "___"))[1]
+}) %>% unlist
+
+dfb0$artist <- lapply(dfb0$main, function(x){
+  unlist(str_split(x, "___"))[2]
+}) %>% unlist
+
+dfb0 <- dfb0[, c(4,5,2)]
+colnames(dfb0)[3] <- "time_hours"
+
+dfb0 <- dfb0[dfb0$time_hours >= 1, ]
+
+write.table(dfb0, paste0(OUT_DIR, "most_listened_to_albums_lifetime.tsv"), sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
 
 
