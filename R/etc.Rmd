@@ -187,3 +187,25 @@ df7 <- rbind(df1, df2, df3, df4, df5, df6)
 write.table(df7, "C:/docs/etc/manifest.chrynony.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
 
+
+
+```{r}
+flacs <- list.files("C:/Users/iwong1/Music/zip/", recursive = "TRUE", pattern = ".flac$")
+
+df0 <- data.frame(path = flacs, 
+                  song = flacs %>% bname %>% str_remove(".flac"), 
+                  album = flacs %>% lapply(function(x){unlist(str_split(x, "/"))[1]}) %>% unlist)
+temp1 <- srt(df0$album)
+temp2 <- data.frame(albums)
+```
+
+
+find -type f  | grep flac$ | sed "s/'/\\\'/g" | xargs -I {} /bin/bash -c 'echo -e -n "{}"; ffprobe "{}" 2>&1 | grep bitrate' > ~/docs/mike/songs_bitrate.txt
+
+```{r}
+df0 <- data.frame(lines = readLines("C:/docs/mike/songs_bitrate.txt"))
+df0$song <- df0$lines %>% str_extract("(?<=./).*(?=.flac)")
+df0$bitrate <- df0$lines %>% str_extract("(?<=bitrate: ).*(?= kb/s)") %>% as.numeric()
+df0 <- df0[order(df0$bitrate, decreasing = TRUE), ]
+```
+

@@ -233,7 +233,7 @@ dfb0$ID <- seq_down(dfb0)
 
 
 N_TOP_ARTIST <- 40
-g1 <- ggplot(dfa0[1:N_TOP_ARTIST, ], aes(x=ID, y=time, fill=artist)) + 
+g1 <- ggplot(dfa0[1:N_TOP_ARTIST, ], aes(x=ID, y=time, filql=artist)) + 
   geom_bar(position="stack", stat="identity") +
   scale_x_continuous(breaks=1:N_TOP_ARTIST, labels=dfa0$artist[1:N_TOP_ARTIST]) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), legend.position="none") + 
