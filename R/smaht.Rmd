@@ -108,3 +108,81 @@ df_temp1$V2 <- 1:6
 write.table(df_temp1, "C:/docs/smaht/smht020/new.tsv")
 ```
 
+
+
+
+ls -lh | awk9 | grep SDs.bed$  | xargs -I {} /bin/bash -c "echo {}; bedtools sort -i {} | bedtools merge > {}.sort.merge"
+```{r}
+files <- list.files("C:/docs/smaht/ShareSd/", full.names = TRUE, recursive = TRUE, pattern = ".SDs.bed.sort.merge")
+samples <- files %>% bname %>% str_remove(".hap.*") %>% u
+
+
+df00 <- data.frame(SAMPLE = samples,
+                   hap1 = lapply(samples, function(x){
+                     curr_bed_file <- fread(files[grepl("hap1", files) & grepl(x, files)], header=FALSE) %>% as.data.frame()
+                     curr_bed_file$length <- curr_bed_file$V3 - curr_bed_file$V2
+                     sum(curr_bed_file$length) %>% return()
+                   }) %>% unlist,
+                   hap2 = lapply(samples, function(x){
+                     curr_bed_file <- fread(files[grepl("hap2", files) & grepl(x, files)], header=FALSE) %>% as.data.frame()
+                     curr_bed_file$length <- curr_bed_file$V3 - curr_bed_file$V2
+                     sum(curr_bed_file$length) %>% return()
+                   }) %>% unlist
+                   )
+
+df00$hap1_mb <- df00$hap1 / 1000000
+df00$hap2_mb <- df00$hap2 / 1000000
+
+df00$hap1 <- NULL
+df00$hap2 <- NULL
+
+```
+
+
+function to split peri, acro, and remaining SDs
+
+```{r}
+files <- list.files("C:/docs/smaht/ShareSd/", full.names = TRUE, recursive = TRUE, pattern = ".SDs.bed$")
+
+for(file in files){
+  curr_path <- file
+  df00 <- fread(curr_path) %>% as.data.frame()
+  df00$is_acro <- df00$acro==1 | df00$acro2==1 & df00$peri!=1 & df00$peri2!=1
+  df00$is_peri <- df00$peri==1 | df00$peri2==1 & df00$acro!=1 & df00$acro2!=1
+  df00$is_remaining <- df00$is_acro==FALSE & df00$is_peri==FALSE
+  curr_sample <- curr_path %>% bname %>% str_remove(".contig.SDs.bed")
+  write.table(df00[df00$is_acro, ], paste0("C:/docs/smaht/ShareSd/", curr_sample, ".acro.bed"), col.names=TRUE, row.names = FALSE, quote=FALSE, sep="\t")
+  write.table(df00[df00$is_peri, ], paste0("C:/docs/smaht/ShareSd/", curr_sample, ".peri.bed"), col.names=TRUE, row.names = FALSE, quote=FALSE, sep="\t")
+  write.table(df00[df00$is_remaining, ], paste0("C:/docs/smaht/ShareSd/", curr_sample, ".remaining.bed"), col.names=TRUE, row.names = FALSE, quote=FALSE, sep="\t")  
+}
+
+# ls -lh | awk9 | grep -P "(acro|peri|remaining).bed$" |  xargs -I {} /bin/bash -c "echo {}; bedtools sort -i {} | bedtools merge > {}.sort.merge"
+
+files <- list.files("C:/docs/smaht/ShareSd/", full.names = TRUE, recursive = TRUE, pattern = "(acro|peri|remaining).bed.sort.merge")
+
+df01 <- lapply(files, function(x){
+  df_temp <- fread(x, header=FALSE) %>% as.data.frame()
+  df_temp$length <- df_temp$V3 - df_temp$V2
+  class <- x %>% str_extract("acro|peri|remaining") %>% str_to_title()
+  df_rval <- data.frame(SAMPLE=bname(x) %>% str_extract("^.*(?=.hap)"),
+                        HAP = str_extract(x, "hap."),
+                        COHORT = "SMAHT", 
+                        CHR = class,
+                        length = df_temp$length %>% sum)
+  return(df_rval)
+}) %>% do.call(rbind, .)
+
+SAMPLES <- u(df01$SAMPLE)
+HAPS <- u(df01$HAP)
+df02 <- expand.grid(SAMPLES, HAPS) %>% as.data.frame()
+df02 <- df02[order(df02$Var1), ]
+df02$total <- 0
+for(sample in SAMPLES){
+  for(hap in HAPS){
+    df02$total[df02$Var1==sample & df02$Var2==hap] <- df01$length[df01$SAMPLE==sample & df01$HAP==hap] %>% sum  
+  }
+}
+
+
+```
+

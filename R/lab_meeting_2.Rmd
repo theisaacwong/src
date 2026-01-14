@@ -702,7 +702,7 @@ g1
 
 
 ```{r}
-files <- list.files("C:/docs/benchmark/pbsv/20251231/", recursive = TRUE, full.names = TRUE, pattern="log")
+files <- list.files("C:/docs/benchmark/pbsv/20250113/", recursive = TRUE, full.names = TRUE, pattern="log")
 
 df00 <- lapply(files, function(file){
   temp_file <- readLines(file) %>% str_split(";") %>% lapply(str_trim) %>% do.call(rbind, .) %>% as.data.frame()

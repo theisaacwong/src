@@ -207,5 +207,22 @@ df0 <- data.frame(lines = readLines("C:/docs/mike/songs_bitrate.txt"))
 df0$song <- df0$lines %>% str_extract("(?<=./).*(?=.flac)")
 df0$bitrate <- df0$lines %>% str_extract("(?<=bitrate: ).*(?= kb/s)") %>% as.numeric()
 df0 <- df0[order(df0$bitrate, decreasing = TRUE), ]
+df1 <- df0
+df1$lines <- NULL
+df2 <- df1[order(df1$bitrate, decreasing = FALSE), ]
+write.table(df1, "C:/docs/mike/songs_bitrate.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+df1$album <- lapply(df1$song, function(x){
+  unlist(str_split(x, "/"))[1]
+}) %>% unlist
+list_by_album <- lapply(u(df1$album), function(x){
+  df1[df1$album == x, ]
+})
+names(list_by_album) <- u(df1$album)
+df00 <- data.frame(avg_bitrate = lapply(u(df1$album), function(x){
+  df1$bitrate[df1$album==x] %>% mean %>% return
+}) %>% unlist, 
+album = df1$album %>% u)
+df00 <- df00[order(df00$avg_bitrate, decreasing = TRUE), ]
+write.table(df00, "C:/docs/mike/album_bitrate.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
 

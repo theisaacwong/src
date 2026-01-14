@@ -9,8 +9,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-MAIN_PATH_1 <- "C:/Users/iwong1/Documents/mike/my_spotify_data_27/"
-MAIN_PATH_2 <- "C:/docs/mike/my_spotify_data_27/Spotify Extended Streaming History/"
+MAIN_PATH_1 <- "C:/Users/iwong1/Documents/mike/my_spotify_data_28/"
+MAIN_PATH_2 <- "C:/docs/mike/my_spotify_data_28/Spotify Extended Streaming History/"
 FILTER <- FALSE
 library(jsonlite)
 library(plyr)
@@ -1742,5 +1742,80 @@ print("hello")
 
 ```{r}
 print("hello")
+```
+
+```{r}
+# curr_home <- readLines("C:/docs/mike/zip/files.txt")
+# curr_work <- readLines("C:/docs/mike/zip/files.lslh")
+
+curr_cluster <- readLines("C:/docs/mike/zip/files.unzipl.txt", encoding="UTF-8")
+file_indexes <- grepl("^Archive: ", curr_cluster)
+starting_indexes <- which(file_indexes)
+ending_indexes <- c(starting_indexes-1, length(curr_cluster))[-1]
+
+list_by_file <- lapply(seq_along(starting_indexes), function(i){
+  return(curr_cluster[starting_indexes[i]:ending_indexes[i]])
+})
+
+
+df_combine <- lapply(list_by_file, function(curr_lines){
+  # print(curr_lines)
+  zip_name <- str_extract(curr_lines[1], "(?<=/)[^/]+(?=.zip)")
+  album_name <- curr_lines[grepl("/$", curr_lines)] %>% str_extract("(?<=[0-9]{2}:[0-9]{2}).*(?=/)") %>% str_trim()
+  FLAG <- FALSE
+  
+  if(length(album_name)>1){
+    FLAG <- TRUE
+    album_name <- curr_lines[grepl("/$", curr_lines)] %>% str_extract("(?<=[0-9]{2}:[0-9]{2}).*?(?=/)") %>% str_trim()
+    album_name <- album_name[1]
+  }
+  
+  if(identical(album_name, character(0))){
+    album_name <- ""
+    album_regex <- "(?<=[0-9]{2}:[0-9]{2})"
+  }else{
+    album_regex <- album_name 
+    album_regex <- album_regex %>% str_replace_all("\\+", "\\\\+")
+    album_regex <- album_regex %>% str_replace_all("\\[", "\\\\[") %>% str_replace_all("\\]", "\\\\]")
+    album_regex <- album_regex %>% str_replace_all("\\(", "\\\\(") %>% str_replace_all("\\)", "\\\\)")
+    album_regex <- paste0("(?<=",album_regex,"/)")
+  }
+
+  songs <- curr_lines[grepl(".flac$", curr_lines)] %>% str_extract_all(paste0(album_regex, ".*(?=.flac)")) %>% unlist
+  songs <- songs %>% str_trim()
+  songs <- songs[order(songs)]
+  if(length(songs)==1 & album_name==""){album_name <- songs}
+  rval <- data.frame(album = album_name, 
+                     zip = zip_name, 
+                     songs = songs,
+                     warn = FLAG)  
+  return(rval)
+}) %>% do.call(rbind, .)
+
+df_combine$warn <- NULL
+
+write.table(df_combine, "C:/docs/mike/zip/curr_zip_cluster_20260113.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+new_lines <- c(paste0(c("album", "zip", "songs"), collapse = "\t"),
+  lapply(seq_down(df_combine), function(x){
+    df_combine[x,] %>% paste0(collapse = "\t") %>% return
+  }) %>% unlist)
+writeLines(new_lines, "C:/docs/mike/zip/curr_zip_cluster_20260113.fmt.tsv", useBytes=T)
+```
+
+```{r}
+curr_albums_1 <- readLines("C:/docs/mike/zip/files.txt") %>% lapply(function(x){unlist(str_split(x, " "))[-c(1:8)] %>% paste0(collapse = " ")}) %>% unlist %>% str_remove(".flac$")
+curr_albums_2 <- readLines("C:/docs/mike/zip/files.txt") %>% str_extract("(?<=[0-9]{2}:[0-9]{2}).*") %>% str_remove(".flac$") %>% str_trim()
+
+curr_albums <- u(c(curr_albums_1, curr_albums_2))
+
+df_combine$NOT_HAVE <- lapply(df_combine$album, function(x){
+  return((x %in% curr_albums) == FALSE)
+}) %>% unlist
+
+df_combine$album[df_combine$NOT_HAVE] %>% u
+
+files <- df_combine$album[df_combine$NOT_HAVE] %>% u
+
 ```
 
