@@ -853,8 +853,8 @@ my_time_breaks <- c(10, 30, 60, 5*60, 10*60, 30*60, 3600 * (1:4))
 my_labels <- c("10s", "30s", "1m", "5m", "10m", "30m", paste0(1:4, "hr"))
 
 g6 <- ggplot(df02) + 
+  geom_jitter(data=df02, aes(x = mID, y = diff_log, colour = rule), width = 0.25, height = 0.05, alpha=0.3) +
   geom_boxplot(data=df02, aes(x=mID, y = diff_log , group=super_group), alpha = 0.5, outlier.shape = NA) +
-  geom_jitter(data=df02, aes(x = mID, y = diff_log, colour = rule), width = 0.25, height = 0.05, alpha=0.8) +
   scale_x_continuous(breaks = df02$mID %>% u, labels = df02$hostname %>% u) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
   xlab("hostname") +
@@ -865,4 +865,6 @@ g6 <- ggplot(df02) +
   scale_y_continuous(breaks = log(my_time_breaks), labels=my_labels) +
   ylab("runtime")
 g6
+
+ggsave("C:/docs/benchmark/pbsv/20250113/benchmark1-10.pdf", g6, width = 14, height = 8, units = "in", limitsize = FALSE)
 ```

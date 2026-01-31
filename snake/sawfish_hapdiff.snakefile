@@ -42,7 +42,7 @@ rule all:
         expand(
             "sawfish/{sample}/sawfish_call/genotyped.sv.vcf.gz",
             sample=manifest_df.index
-        ),
+        ), 
 
 rule hapdiff:
     input:

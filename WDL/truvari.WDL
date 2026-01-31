@@ -38,7 +38,7 @@ workflow runTruvari {
         counts_jf = counts_jf,
         locus_name = locus_name,
         locus_coordinates = locus_coordinates,
-        alleles_fa = alleles_fa,
+        alleles_
         docker = docker
     }
     

@@ -110,6 +110,8 @@ task GenerateDBFromVCF {
      
      I don't like how we are writing reference.fa to disk, is there a way to avoid that?
 
+        I hate the way the structure is set up here,  
+
      how can you stream a gzipped reference directly into locityper without writing to disk first? does locityper support reading from stdin?
 
      I hate how this is writing reference.fa to disk, can we avoid that? does locityper support reading reference from stdin? if so we could do gunzip -c reference | locityper add -r - ...
@@ -190,6 +192,14 @@ task GenerateDBFromVCF {
                 -L ~{bed}
         done
 
+    }
+
+    output {
+        File db_tar = output_tar
+        File log = "genotype.log"
+        File metrics = "genotype.metrics"
+        File metrics_json = "genotype.metrics.json"
+        File genotype_db = "genotype_db.tar.gz"
     }
 
     

@@ -1815,7 +1815,15 @@ df_combine$NOT_HAVE <- lapply(df_combine$album, function(x){
 
 df_combine$album[df_combine$NOT_HAVE] %>% u
 
-files <- df_combine$album[df_combine$NOT_HAVE] %>% u
+files <- df_combine$zip[df_combine$NOT_HAVE] %>% u
 
+df_clust <- data.frame(zips=readLines("C:/docs/mike/zip/files.findp"))
+df_clust$name <- df_clust$zips %>% bname %>% str_remove("\\.zip")
+df_clust$to_download <- df_clust$name %in% files
+write.table(df_clust$zips[df_clust$to_download], "C:/docs/mike/zip/files.findp.filt", col.names = FALSE, row.names = FALSE, quote=FALSE, sep="\t")
 ```
 
+convert flacs to mp3
+```{bash}
+find -type f | grep flac$ | sed "s/'/\\\\'/g" | sed "s/.flac$//g" | xargs -I {} /bin/bash -c 'ls -lh "{}.flac"; ffmpeg -i "{}.flac"  -ab 320k -map_metadata 0 -id3v2_version 3  -write_id3v1  1  "{}.mp3"; ls -lh "{}.mp3"  '
+```
