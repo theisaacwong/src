@@ -226,3 +226,64 @@ df00 <- df00[order(df00$avg_bitrate, decreasing = TRUE), ]
 write.table(df00, "C:/docs/mike/album_bitrate.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
 
+
+
+
+
+
+
+```{r}
+df0 <- fread("C:/docs/mike/event_elos.csv") %>% as.data.frame()
+df0 <- df0[order(df0$Elo, decreasing = TRUE), ]
+df1 <- df0[grepl("Rain City Wych", df0$Team), ]
+
+df00 <- df0
+df00$List <- NULL
+df00$Notes <- NULL
+df00$V8 <- NULL
+rownames(df00) <- seq_down(df00)
+
+list_by_team <- lapply(u(df00$Team), function(x){
+  df00[df00$Team == x, ]
+})
+names(list_by_team) <- u(df00$Team)
+
+df01 <- data.frame(Team = u(df00$Team), 
+                   Elo = -1)
+df01$Elo <- lapply(df01$Team, function(x){
+  mean(df00$Elo[df00$Team == x], na.rm = TRUE)
+}) %>% unlist
+
+df01 <- df01[order(df01$Elo, decreasing = TRUE), ]
+
+MY_TEAM <- "Rain City Wych Pigeons - Team Emerald"
+
+
+
+
+
+
+THRESHOLD <- 100
+
+df01$CONT <- abs(df01$Elo - df01$Elo[df01$Team==MY_TEAM]) <= THRESHOLD
+df01$CONT[df01$Team == MY_TEAM] <- FALSE
+
+df02 <- list_by_team[df01$Team[df01$CONT]] %>% do.call(rbind, .)
+df02$key <- paste0(df02$Faction, "  ", df02$Detachment)
+
+temp1 <- df02$key %>% srt %>% as.data.frame()
+temp2 <-  df0$Faction %>% srt %>% as.data.frame()
+temp3 <-  df0$Detachment %>% srt %>% as.data.frame()
+temp3$x <- temp3$x %>% as.character()
+
+df2 <- df0[df0$Faction == "Black Templars", ]
+
+# average Elo of opponenets, Andrew Kismarton
+df3 <- rbind(df00[grepl("Brad Chester", df00$Name), ], 
+             df00[grepl("Steeler French", df00$Name), ], 
+             df00[grepl("Scott Spalding", df00$Name), ], 
+             df00[grepl("Nell Hulslander", df00$Name), ], 
+             df00[grepl("Kody Mckinnon", df00$Name), ])
+```
+
+

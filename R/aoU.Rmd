@@ -343,3 +343,137 @@ df00$genes_list <- NULL
 write.table(df00, "C:/docs/aou/sv_intersection/HA_GRCh38_SVs_intersection_CDS_iw.tsv", col.names = TRUE, row.names = FALSE, quote=FALSE, sep="\t")
 ```
 
+```{r}
+N <- 5000
+big_N <- 50000
+df00 <- fread("C:/docs/aou/locityper/full_cram_manifest_424207.tsv") %>% as.data.frame()
+colnames(df00)[1] <- "entity:phase_ii_id"
+
+df00$super_batch <- paste0("locityper_super_batch_", rep(seq(1,ceiling(nrow(df00)/big_N)),each=big_N)[1:nrow(df00)])
+
+temp1 <- lapply(df00$super_batch %>% u, function(batch){
+  super_batch_name <- str_remove(batch, "locityper_super_batch_")
+  df_temp <- df00[df00$super_batch == batch, ]
+  colnames(df_temp)[1] <- paste0("entity:phase_ii_sb", super_batch_name ,"_id")
+  
+  df_memb <- data.frame(memb = paste0("locityper_sb", super_batch_name, "_", rep(seq(1,ceiling(nrow(df_temp)/N)),each=N)[1:nrow(df_temp)]), 
+                      phase_ii = df_temp[,1],
+                      check.names = FALSE)
+  colnames(df_memb) <- c(paste0("membership:phase_ii_sb", super_batch_name,"_set_id"), paste0("phase_ii_sb", super_batch_name))
+  
+  write.table(df_temp, paste0("C:/docs/aou/locityper/mans/phase-ii_", super_batch_name,"_sample.tsv"), sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+  write.table(df_memb, paste0("C:/docs/aou/locityper/mans/phase-ii_", super_batch_name,"_memb.tsv")  , sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+  
+  
+})
+
+```
+
+
+
+```{r}
+df00 <- fread("C:/docs/aou/locityper/full_cram_manifest_424207.tsv") %>% as.data.frame()
+df01 <- fread("C:/docs/aou/locityper/v1pt1b_aou12k_samples_allofus-drc-wgs-lr-prod_AoU_DRC_WGS_LongReads_ShortReads.tsv") %>% as.data.frame()
+df01 <- df01[, c(1,7,8)]
+df02 <- fread("C:/docs/aou/locityper/beri_sample_grch38_allofus-drc-wgs-lr-prod_AoU_DRC_WGS_LongReads_ShortReads.tsv") %>% as.data.frame()
+df02 <- df02[, c(1,2,4,5,11,18)]
+df04 <- fread("C:/docs/aou/locityper/ehr/SR_samples_both_GT_and_condition.txt", header=FALSE) %>% as.data.frame()
+df03 <- fread("C:/docs/aou/locityper/ehr/SR_combined_manifest.massaged.tsv") %>% as.data.frame()
+
+df03 <- df03[df03$research_id %in% df04$V1, ]
+df03 <- df03[match(u(df03$biobankidsampleid), df03$biobankidsampleid), ]
+
+all_crams <- u(c(df00$cram, df01$cram, df02$cram, df02$input_cram))
+
+df03 <- df03[1:1000, ]
+all_crams <- all_crams[1:1000]
+
+#ran on cluster
+
+df03$matching_cram <- lapply(seq_down(df03), function(x){
+  
+  match_1 <- all_crams[grepl(df03$biobankidsampleid[x], all_crams)]
+  if(length(match_1) == 1){
+    return(match_1)
+  } 
+  
+  match_2 <-  all_crams[grepl(df03$biobank_id[x], all_crams)]
+  if(length(match_2) == 1){
+    return(match_2)
+  }
+  
+  match_3 <-  all_crams[grepl(df03$sample_id[x], all_crams)]
+  if(length(match_3) == 1){
+    return(match_3)
+  }
+  
+  match_4 <-  all_crams[grepl(df03$chipwellbarcode[x], all_crams)]
+  if(length(match_4) == 1){
+    return(match_4)
+  }
+  
+  if(length(match_1) > 1){
+    return(match_1)
+  }
+  
+  if(length(match_2) > 1){
+    return(match_2)
+  }
+  
+  if(length(match_3) > 1){
+    return(match_3)
+  }
+  
+  if(length(match_3) > 1){
+    return(match_3)
+  }
+  
+  if(length(match_4) > 1){
+    return(match_4)
+  }
+  
+  return("NO_MATCH")
+})
+
+load("C:/docs/aou/locityper/ehr/df03_clust.rda")
+
+n_matches <- df03$matching_cram %>% lapply(function(x){length(x)}) %>% unlist 
+df05 <- df03[n_matches==1, ]
+df05$matching_cram <- df05$matching_cram %>% unlist
+df05 <- df05[df05$matching_cram != "NO_MATCH", ]
+df05$vcf_path <- NULL
+df05$crai <- paste0(df05$matching_cram, ".crai")
+
+
+N <- 5000
+big_N <- 50000
+
+df00 <- data.frame(`entity:ehr_id` = df05$research_id, 
+                   cram = df05$matching_cram, 
+                   crai = df05$crai, 
+                   chipwellbarcode = df05$chipwellbarcode,
+                   biobank_id = df05$biobank_id, 
+                   sample_id = df05$sample_id, 
+                   biobankidsampleid = df05$biobankidsampleid,
+                   check.names = FALSE)
+
+df00$super_batch <- paste0("locityper_super_batch_", rep(seq(1,ceiling(nrow(df00)/big_N)),each=big_N)[1:nrow(df00)])
+
+temp1 <- lapply(df00$super_batch %>% u, function(batch){
+  super_batch_name <- str_remove(batch, "locityper_super_batch_")
+  df_temp <- df00[df00$super_batch == batch, ]
+  colnames(df_temp)[1] <- paste0("entity:ehr_sb", super_batch_name ,"_id")
+  
+  df_memb <- data.frame(memb = paste0("ehr_sb", super_batch_name, "_m", rep(seq(1,ceiling(nrow(df_temp)/N)),each=N)[1:nrow(df_temp)]), 
+                      ehr = df_temp[,1],
+                      check.names = FALSE)
+  colnames(df_memb) <- c(paste0("membership:ehr_sb", super_batch_name,"_set_id"), paste0("ehr_sb", super_batch_name))
+  
+  write.table(df_temp, paste0("C:/docs/aou/locityper/mans_ehr/ehr_", super_batch_name,"_sample.tsv"), sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+  write.table(df_memb, paste0("C:/docs/aou/locityper/mans_ehr/ehr_", super_batch_name,"_memb.tsv")  , sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+  
+  
+})
+
+```
+

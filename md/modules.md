@@ -13,7 +13,7 @@ while true; do echo $(date) >> /net/eichler/vol28/home/iwong1/nobackups/logs/df_
 # reusing flagger cromwell singularity config
 module load cromwell/85
 java -jar -Dconfig.file=/net/eichler/vol28/software/pipelines/flagger-0.3.3/config/local.conf  $( which cromwell.jar ) run mywdl.wdl --inputs mywdlparams.json
-
+java -jar -Dconfig.file=sge.conf  $( which cromwell.jar ) run ../crom/scatter.1.wdl  --inputs ../manifests/1kg/inputs.json  --metadata-output output.json
 
 # Module organization
  /net/eichler/vol26/7200/software/modules-sw
