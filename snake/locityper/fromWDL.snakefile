@@ -45,7 +45,7 @@ localrules:
 rule all:
     input:
         expand(
-            "results/{sample}/success.txt",
+            "results/gts/{sample}.csv",
             sample=manifest_df.index
         ),
 
@@ -85,16 +85,16 @@ rule LocityperPreprocessAndGenotype:
             line="$1"
             locus_name=$(echo "$line" | cut -f4)
             echo "Processing locus: $locus_name"
-            
+
             # Ensure the locus-specific directory exists
             mkdir -p "results/{wildcards.sample}/out_dir/loci/$locus_name"
-            
+
             locityper genotype -a {input.cram} \
                 -r {input.ref} \
                 -d {input.db} \
                 -p results/{wildcards.sample}/locityper_preproc \
                 -S greedy:i=5k,a=1 -S anneal:i=20,a=20 \
-                --subset-loci "${locus_name}" \
+                --subset-loci $locus_name \
                 -o results/{wildcards.sample}/out_dir
         }}
         export -f process_single_locus
@@ -105,5 +105,19 @@ rule LocityperPreprocessAndGenotype:
         touch {output.output_file}
         """
 
-
+rule Summarize:
+    input:
+        input="results/{sample}/success.txt",
+    output:
+        summary="results/gts.{wildcards.sample}.csv",
+    threads: 4
+    resources:
+        mem=lambda wildcards, attempt: attempt * 8,
+        hrs=24,
+    singularity:
+        "docker://us.gcr.io/broad-dsp-lrma/lr-hidive:0.1.122"
+    shell:        """
+        cd results
+        /usr/local/bin/python3 /locityper/extra/into_csv.py -i ./{wildcards.sample} -o gts.{wildcards.sample}.csv
+        """
 
