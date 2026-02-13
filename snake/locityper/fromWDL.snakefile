@@ -45,7 +45,7 @@ localrules:
 rule all:
     input:
         expand(
-            "results/gts/{sample}.csv",
+            "results/gts.{sample}.csv",
             sample=manifest_df.index
         ),
 
