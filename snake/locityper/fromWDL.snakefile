@@ -51,8 +51,8 @@ rule all:
 
 rule LocityperPreprocessAndGenotype:
     input:
-        cram=find_cram,
-        crai=find_crai,
+        cram=get_cram,
+        crai=get_crai,
         ref=REF,
         counts=JF_FILE,
         db=locityper_db,
