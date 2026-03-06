@@ -564,9 +564,8 @@ ggplot(df01, aes(x=log_unexplained_reads, fill=match)) +
   geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
 
 
-ggsave("C:/docs/aou/locityper/benchmark_1kg_plot_01.png", plot=g1, width=3200, height=2000, units="px")
-ggsave("C:/docs/aou/locityper/benchmark_1kg_plot_02.png", plot=g2, width=3200, height=2000, units="px")
-
+# ggsave("C:/docs/aou/locityper/benchmark_1kg_plot_01.png", plot=g1, width=3200, height=2000, units="px")
+# ggsave("C:/docs/aou/locityper/benchmark_1kg_plot_02.png", plot=g2, width=3200, height=2000, units="px")
 ```
 
 g8 <- ggplot(data=df[df$size>0.125 & df$size<1500, ], aes(x=size_log2, fill=svtype)) +
@@ -635,6 +634,8 @@ df_rval$GENE <- lapply(df_rval$name, function(x){
 }) %>% unlist
 
 write.table(df_rval, "C:/docs/aou/locityper/1kg_benchmark/summary_stats_by_loci.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df_rval, "C:/docs/aou/locityper/1kg_benchmark/summary_stats_by_loci_129.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df01, "C:/docs/aou/locityper/1kg_benchmark/summary_129.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
 
 
@@ -816,5 +817,539 @@ my_plots <- lapply(list_by_locus, function(temp1){
   
   
 })
+```
+
+# VCf to BED regions file
+```{r}
+df00 <- fread("C:/docs/aou/locityper/220/lt_svs_0220.vcf", comment.char = "#", sep="\t") %>% as.data.frame()
+df00 <- df00[, 1:10]
+df00$SVLEN <- df00$V8 %>% str_extract("SVLEN=[^;]+(?=;)") %>% str_remove("SVLEN=") %>% as.numeric()
+BUFFER <- 2000
+df_bed <- data.frame(chr=df00$V1,
+                     start=df00$V2-BUFFER,
+                     end=df00$V2+BUFFER,
+                     name=df00$V3,
+                     SVLEN=df00$SVLEN)
+
+df_bed$SVLEN <- NULL
+write.table(df_bed, "C:/docs/aou/locityper/220/regions.bed", sep="\t", col.names = FALSE, row.names = FALSE, quote=FALSE)
+```
+
+
+
+
+
+```{r}
+files <- list.files("C:/docs/aou/locityper/cel/table_summary/", full.names = TRUE, recursive = TRUE, pattern = ".csv")
+df01 <- lapply(files, function(x){
+  curr_sample <- x %>% str_extract("(?<=table_summary/gts.).*(?=.csv)")
+  df_temp <- fread(x) %>% as.data.frame()
+  df_temp$sample <- curr_sample
+  return(df_temp)
+}) %>% do.call(rbind, .)
+
+df01$ltgt_to_gt <- lapply(seq_down(df01), function(x){
+  rvals <- lapply(unlist(df01$genotype[x] %>% str_split(",")), function(gt){
+    rval <- "ooblets"
+    if(str_detect(gt, "chr9")){
+      rval <- "0"
+    } else {
+      rval <- "1"
+    }
+    return(rval)
+  }) %>% unlist %>% paste0(collapse = "|")
+  return(rvals)
+}) %>% unlist
+
+df01$ltgt_to_gt[df01$ltgt_to_gt=="0|1"] <- "1|0"
+
+library(wesanderson)
+
+list_by_locus <- lapply(u(df01$locus), function(x){
+  df01[df01$locus == x, ]
+})
+names(list_by_locus) <- u(df01$locus)
+
+my_plots <- lapply(list_by_locus, function(temp1){
+  temp2 <- temp1$ltgt_to_gt %>% table
+  df_temp <- data.frame(gts = names(temp2),
+                        counts = unname(temp2),
+                        stringsAsFactors = FALSE)
+  df_temp$props <- temp2 %>% prop.table() %>% unname()
+  g1 <- ggplot(temp1, aes(x = ltgt_to_gt, y = after_stat(prop), group = 1)) +
+    geom_bar(fill = wes_palette("Zissou1")[1]) +
+    scale_y_continuous(labels = scales::percent, breaks = seq(0,1,0.05)) +
+    ylab("Proportion of Total") + 
+    geom_hline(yintercept = 0.05, color = "red") + 
+    ggtitle(paste0(temp1$locus[1], ";  N:", nrow(temp1))) + 
+    xlab("genotype") + 
+    geom_text(data = df_temp, aes(label=counts.Freq, x=gts, y=props+0.03))
+  
+  ggsave(paste0("C:/docs/aou/locityper/cel/plots/", temp1$locus[1], ".png"), plot=g1)
+  
+  
+})
+
+```
+
+# 220
+```{r}
+df00 <- fread("C:/docs/aou/locityper/220/table.txt", sep="\t") %>% as.data.frame()
+
+variantToSamples <- HashMap$new()
+temp1 <- lapply(seq_down(df00), function(x){
+  curr_var <- df00$ID[x]
+  variantToSamples$put(curr_var, HashMap$new())
+  temp2 <- lapply(4:ncol(df00), function(y){
+    curr_sample <- colnames(df00)[y]
+    curr_genotype <- df00[x,y]
+    variantToSamples$get(curr_var)$put(curr_sample, curr_genotype)
+  })
+})
+
+df10 <- lapply(variantToSamples$keySet(), function(var){
+  temp1 <- lapply(variantToSamples$get(var)$keySet(), function(samp){
+    data.frame(variant=var, 
+               sample=samp, 
+               gt=variantToSamples$get(var)$get(samp))
+  }) %>% do.call(rbind, .) %>% as.data.frame()
+  return(temp1)
+}) %>% do.call(rbind, .)
+write.table(df10, "C:/docs/aou/locityper/220/variantToSampleToGT.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+df11 <- df10[df10$gt=="1|0", ]
+df20 <- fread("C:/docs/aou/locityper/220/manifest.tsv") %>% as.data.frame()
+df11$has_cram <- df11$sample %in% df20$SAMPLE
+
+
+
+files <- list.files("C:/docs/aou/locityper/220/results_table/", full.names = TRUE, recursive = TRUE, pattern = ".csv")
+df01 <- lapply(files, function(x){
+  curr_sample <- x %>% str_extract("(?<=results_table/gts.).*(?=.csv)")
+  df_temp <- fread(x) %>% as.data.frame()
+  df_temp$sample <- curr_sample
+  return(df_temp)
+}) %>% do.call(rbind, .)
+
+df01$ref_gt <- lapply(seq_down(df01), function(x){
+  curr_var <- df01$locus[x]
+  curr_sample <- df01$sample[x]
+  if(!variantToSamples$containsKey(curr_var)){return("NA")}
+  if(variantToSamples$get(curr_var)$containsKey(curr_sample)){
+    return(variantToSamples$get(curr_var)$get(curr_sample))
+  } else {
+    return("NA")
+  }
+}) %>% unlist
+
+df01 <- df01[df01$ref_gt != "NA", ]
+df01 <- df01[!grepl("\\.", df01$ref_gt), ]
+
+df01$ltgt_to_gt <- lapply(seq_down(df01), function(x){
+  rvals <- lapply(unlist(df01$genotype[x] %>% str_split(",")), function(gt){
+    rval <- "ooblets"
+    if(gt=="GRCh38"){
+      rval <- "0"
+    } else {
+      which_hap  <- gt %>% str_extract("(?<=\\.).$") %>% as.numeric()
+      which_samp <- gt %>% str_extract(".*(?=..$)")
+      # print(paste0(gt,  ": ", which_samp, " ::: ", which_hap))
+      rval <- unlist(str_split(variantToSamples$get(df01$locus[x])$get(which_samp), "\\|"))[which_hap]
+    }
+    return(rval)
+  }) %>% unlist %>% paste0(collapse = "|")
+  
+  return(rvals)
+}) %>% unlist
+
+df01$ref_gt[df01$ref_gt=="0|1"] <- "1|0"
+df01$ltgt_to_gt[df01$ltgt_to_gt=="0|1"] <- "1|0"
+
+df01$match <- paste0(df01$ltgt_to_gt == df01$ref_gt)
+
+g1 <- ggplot(df01) + 
+  geom_point(data=df01, aes(x = quality, y=total_reads, color=match), alpha=0.7) + 
+  ggtitle("locityper accuracy by call quality vs total_reads, ") + 
+  labs(color="correct call") ; plot(g1)
+
+ggplot(df01) + 
+  geom_point(data=df01, aes(x=unexpl_reads, y=weight_dist, color=match), alpha=0.7)
+
+ggplot(df01, aes(x=weight_dist, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
+
+ggplot(df01, aes(x=unexpl_reads, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
+
+df01$log_unexplained_reads <- log(1 + df01$unexpl_reads)
+df01$log_weight_dist <- log(1 + df01$weight_dist)
+ggplot(df01) + 
+  geom_point(data=df01, aes(x=log_unexplained_reads, y=log_weight_dist, color=match), alpha=0.7)
+g2 <- ggplot(df01, aes(x=log_weight_dist, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..)) +
+  ggtitle("locityper accuracy by log(weight distribution) split by correct/not correct") + 
+  labs(fill="correct gt call") ; plot(g2)
+ggplot(df01, aes(x=log_unexplained_reads, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
+
+
+ggsave("C:/docs/aou/locityper/220/benchmark_1kg_plot_03.png", plot=g1, width=3200, height=2000, units="px")
+ggsave("C:/docs/aou/locityper/220/benchmark_1kg_plot_04.png", plot=g2, width=3200, height=2000, units="px")
+
+df01$class <- lapply(seq_down(df01), function(x){
+  if(df01$ltgt_to_gt[x] == "0|0"){
+    if(df01$ref_gt[x]=="0|0"){
+      return("TRUE_NEGATIVE")
+    } else {
+      return("FALSE_NEGATIVE")
+    }
+  } else {
+    if(df01$ref_gt[x]=="0|0"){
+      return("FALSE_POSITIVE")
+    } else {
+      return("TRUE_POSITIVE")
+    }
+  }
+  return("NA")
+}) %>% unlist()
+
+MY_SENS <- sum(df01$class=="TRUE_POSITIVE")/sum(df01$class=="TRUE_POSITIVE" | df01$class=="FALSE_NEGATIVE")
+MY_SPEC <- sum(df01$class=="TRUE_NEGATIVE")/sum(df01$class=="TRUE_NEGATIVE" | df01$class=="FALSE_POSITIVE")
+MY_RECALL <- MY_SENS
+MY_PRECISION <- sum(df01$class=="TRUE_POSITIVE")/sum(df01$class=="TRUE_POSITIVE" | df01$class=="FALSE_POSITIVE")
+MY_F1 <- 2*(MY_PRECISION * MY_RECALL)/(MY_PRECISION + MY_RECALL)
+
+list_by_variant <- lapply(df01$locus %>% u, function(x){
+  df01[df01$locus==x, ]
+})
+names(list_by_variant) <- df01$locus %>% u
+
+df_rval <- lapply(list_by_variant, function(x){
+  print(x$locus[1])
+  rval <- data.frame(name = x$locus[1], 
+             accuracy = sum(x$match %>% as.logical) / nrow(x),
+             sensitivity=sum(x$class=="TRUE_POSITIVE")/sum(x$class=="TRUE_POSITIVE" | x$class=="FALSE_NEGATIVE"),
+             specificity=sum(x$class=="TRUE_NEGATIVE")/sum(x$class=="TRUE_NEGATIVE" | x$class=="FALSE_POSITIVE"),
+             precision=sum(x$class=="TRUE_POSITIVE")/sum(x$class=="TRUE_POSITIVE" | x$class=="FALSE_POSITIVE"),
+             n_samples = nrow(x),
+             stringsAsFactors = FALSE)
+  rval$F1 <- 2 * (rval$precision[1] * rval$sensitivity[1]) / (rval$precision[1] + rval$sensitivity[1])
+  return(rval)
+}) %>% do.call(rbind, .)
+df_rval <- df_rval[order(df_rval$accuracy, decreasing = TRUE), ]
+rownames(df_rval) <- seq_down(df_rval)
+for(row in 1:nrow(df_rval)){
+  for(col in 2:ncol(df_rval)){
+    df_rval[row, col] <- round(df_rval[row, col], 3)
+  }
+}
+
+
+df_panel <- fread("C:/docs/aou/locityper/220/Locityper_SV_Panel - 1KGSV_YangAnnot.tsv") %>% as.data.frame()
+
+df_rval$GENE <- lapply(df_rval$name, function(x){
+  df_panel$gene[df_panel$ID==x]
+}) %>% unlist
+
+
+df_rval$notes <- lapply(seq_down(df_rval), function(x){
+  if(df_rval$sensitivity[x] %>% is.nan){
+    if(lu(list_by_variant[[df_rval$name[x]]]$ref_gt)==1 & lu(list_by_variant[[df_rval$name[x]]]$ltgt_to_gt)==1 ){
+      return("only 0|0 in VCF")
+    }
+  }
+  if(df_rval$precision[x] %>% is.nan){
+    if(lu(list_by_variant[[df_rval$name[[x]]]]$ltgt_to_gt)==1 & all(list_by_variant[[df_rval$name[[x]]]]$ltgt_to_gt=="0|0")){
+      return("locityper only called 0|0")
+    }
+  }
+  return("")
+}) %>% unlist
+
+df_rval$notes <- lapply(seq_down(df_rval), function(x){
+  n_10 <- sum(df11$has_cram[df11$variant==df_rval$name[x] & df11$gt=="1|0"])
+  rval <- paste0(n_10, ", ", df_rval$notes[x])
+  return(rval)
+}) %>% unlist
+
+
+df_rval <- df_rval[order(df_rval$F1, decreasing = TRUE), ]
+
+write.table(df_rval, "C:/docs/aou/locityper/220/summary_stats_by_loci.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+write.table(df01, "C:/docs/aou/locityper/220/summary_220.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df_rval, "C:/docs/aou/locityper/220/summary_stats_by_loci_220.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
+# 227
+```{r}
+df00 <- fread("C:/docs/aou/locityper/227/table.txt", sep="\t") %>% as.data.frame()
+
+variantToSamples <- HashMap$new()
+temp1 <- lapply(seq_down(df00), function(x){
+  curr_var <- df00$ID[x]
+  variantToSamples$put(curr_var, HashMap$new())
+  temp2 <- lapply(4:ncol(df00), function(y){
+    curr_sample <- colnames(df00)[y]
+    curr_genotype <- df00[x,y]
+    variantToSamples$get(curr_var)$put(curr_sample, curr_genotype)
+  })
+})
+
+df10 <- lapply(variantToSamples$keySet(), function(var){
+  temp1 <- lapply(variantToSamples$get(var)$keySet(), function(samp){
+    data.frame(variant=var, 
+               sample=samp, 
+               gt=variantToSamples$get(var)$get(samp))
+  }) %>% do.call(rbind, .) %>% as.data.frame()
+  return(temp1)
+}) %>% do.call(rbind, .)
+write.table(df10, "C:/docs/aou/locityper/227/variantToSampleToGT.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+df11 <- df10[df10$gt=="1|0", ]
+df20 <- fread("C:/docs/aou/locityper/227/manifest.tsv") %>% as.data.frame()
+df11$has_cram <- df11$sample %in% df20$SAMPLE
+
+
+
+files <- list.files("C:/docs/aou/locityper/227/results_table/", full.names = TRUE, recursive = TRUE, pattern = ".csv")
+df01 <- lapply(files, function(x){
+  curr_sample <- x %>% str_extract("(?<=results_table/gts.).*(?=.csv)")
+  df_temp <- fread(x) %>% as.data.frame()
+  df_temp$sample <- curr_sample
+  return(df_temp)
+}) %>% do.call(rbind, .)
+
+df01$ref_gt <- lapply(seq_down(df01), function(x){
+  curr_var <- df01$locus[x]
+  curr_sample <- df01$sample[x]
+  if(!variantToSamples$containsKey(curr_var)){return("NA")}
+  if(variantToSamples$get(curr_var)$containsKey(curr_sample)){
+    return(variantToSamples$get(curr_var)$get(curr_sample))
+  } else {
+    return("NA")
+  }
+}) %>% unlist
+
+df01 <- df01[df01$ref_gt != "NA", ]
+df01 <- df01[!grepl("\\.", df01$ref_gt), ]
+
+df01$ltgt_to_gt <- lapply(seq_down(df01), function(x){
+  rvals <- lapply(unlist(df01$genotype[x] %>% str_split(",")), function(gt){
+    rval <- "ooblets"
+    if(gt=="GRCh38"){
+      rval <- "0"
+    } else {
+      which_hap  <- gt %>% str_extract("(?<=\\.).$") %>% as.numeric()
+      which_samp <- gt %>% str_extract(".*(?=..$)")
+      # print(paste0(gt,  ": ", which_samp, " ::: ", which_hap))
+      rval <- unlist(str_split(variantToSamples$get(df01$locus[x])$get(which_samp), "\\|"))[which_hap]
+    }
+    return(rval)
+  }) %>% unlist %>% paste0(collapse = "|")
+  
+  return(rvals)
+}) %>% unlist
+
+df01$ref_gt[df01$ref_gt=="0|1"] <- "1|0"
+df01$ltgt_to_gt[df01$ltgt_to_gt=="0|1"] <- "1|0"
+
+df01$match <- paste0(df01$ltgt_to_gt == df01$ref_gt)
+
+g1 <- ggplot(df01) + 
+  geom_point(data=df01, aes(x = quality, y=total_reads, color=match), alpha=0.7) + 
+  ggtitle("locityper accuracy by call quality vs total_reads, ") + 
+  labs(color="correct call") ; plot(g1)
+
+ggplot(df01) + 
+  geom_point(data=df01, aes(x=unexpl_reads, y=weight_dist, color=match), alpha=0.7)
+
+ggplot(df01, aes(x=weight_dist, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
+
+ggplot(df01, aes(x=unexpl_reads, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
+
+df01$log_unexplained_reads <- log(1 + df01$unexpl_reads)
+df01$log_weight_dist <- log(1 + df01$weight_dist)
+ggplot(df01) + 
+  geom_point(data=df01, aes(x=log_unexplained_reads, y=log_weight_dist, color=match), alpha=0.7)
+g2 <- ggplot(df01, aes(x=log_weight_dist, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..)) +
+  ggtitle("locityper accuracy by log(weight distribution) split by correct/not correct") + 
+  labs(fill="correct gt call") ; plot(g2)
+ggplot(df01, aes(x=log_unexplained_reads, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
+
+
+ggsave("C:/docs/aou/locityper/227/benchmark_1kg_plot_03.png", plot=g1, width=3200, height=2000, units="px")
+ggsave("C:/docs/aou/locityper/227/benchmark_1kg_plot_04.png", plot=g2, width=3200, height=2000, units="px")
+
+df01$class <- lapply(seq_down(df01), function(x){
+  if(df01$ltgt_to_gt[x] == "0|0"){
+    if(df01$ref_gt[x]=="0|0"){
+      return("TRUE_NEGATIVE")
+    } else {
+      return("FALSE_NEGATIVE")
+    }
+  } else {
+    if(df01$ref_gt[x]=="0|0"){
+      return("FALSE_POSITIVE")
+    } else {
+      return("TRUE_POSITIVE")
+    }
+  }
+  return("NA")
+}) %>% unlist()
+
+MY_SENS <- sum(df01$class=="TRUE_POSITIVE")/sum(df01$class=="TRUE_POSITIVE" | df01$class=="FALSE_NEGATIVE")
+MY_SPEC <- sum(df01$class=="TRUE_NEGATIVE")/sum(df01$class=="TRUE_NEGATIVE" | df01$class=="FALSE_POSITIVE")
+MY_RECALL <- MY_SENS
+MY_PRECISION <- sum(df01$class=="TRUE_POSITIVE")/sum(df01$class=="TRUE_POSITIVE" | df01$class=="FALSE_POSITIVE")
+MY_F1 <- 2*(MY_PRECISION * MY_RECALL)/(MY_PRECISION + MY_RECALL)
+
+list_by_variant <- lapply(df01$locus %>% u, function(x){
+  df01[df01$locus==x, ]
+})
+names(list_by_variant) <- df01$locus %>% u
+
+df_rval <- lapply(list_by_variant, function(x){
+  print(x$locus[1])
+  rval <- data.frame(name = x$locus[1], 
+             accuracy = sum(x$match %>% as.logical) / nrow(x),
+             sensitivity=sum(x$class=="TRUE_POSITIVE")/sum(x$class=="TRUE_POSITIVE" | x$class=="FALSE_NEGATIVE"),
+             specificity=sum(x$class=="TRUE_NEGATIVE")/sum(x$class=="TRUE_NEGATIVE" | x$class=="FALSE_POSITIVE"),
+             precision=sum(x$class=="TRUE_POSITIVE")/sum(x$class=="TRUE_POSITIVE" | x$class=="FALSE_POSITIVE"),
+             n_samples = nrow(x),
+             stringsAsFactors = FALSE)
+  rval$F1 <- 2 * (rval$precision[1] * rval$sensitivity[1]) / (rval$precision[1] + rval$sensitivity[1])
+  return(rval)
+}) %>% do.call(rbind, .)
+df_rval <- df_rval[order(df_rval$accuracy, decreasing = TRUE), ]
+rownames(df_rval) <- seq_down(df_rval)
+for(row in 1:nrow(df_rval)){
+  for(col in 2:ncol(df_rval)){
+    df_rval[row, col] <- round(df_rval[row, col], 3)
+  }
+}
+
+
+df_panel <- fread("C:/docs/aou/locityper/220/Locityper_SV_Panel - 1KGSV_YangAnnot.tsv") %>% as.data.frame()
+
+df_rval$GENE <- lapply(df_rval$name, function(x){
+  temp1 <- df_panel$gene[df_panel$ID==x]
+  if(length(temp1)==0){
+    return("")
+  }
+  else{
+    return(temp1)
+  }
+}) %>% unlist
+
+
+df_rval$notes <- lapply(seq_down(df_rval), function(x){
+  if(df_rval$sensitivity[x] %>% is.nan){
+    if(lu(list_by_variant[[df_rval$name[x]]]$ref_gt)==1 & lu(list_by_variant[[df_rval$name[x]]]$ltgt_to_gt)==1 ){
+      return("only 0|0 in VCF")
+    }
+  }
+  if(df_rval$precision[x] %>% is.nan){
+    if(lu(list_by_variant[[df_rval$name[[x]]]]$ltgt_to_gt)==1 & all(list_by_variant[[df_rval$name[[x]]]]$ltgt_to_gt=="0|0")){
+      return("locityper only called 0|0")
+    }
+  }
+  return("")
+}) %>% unlist
+
+df_rval$notes <- lapply(seq_down(df_rval), function(x){
+  n_10 <- sum(df11$has_cram[df11$variant==df_rval$name[x] & df11$gt=="1|0"])
+  rval <- paste0(n_10, ", ", df_rval$notes[x])
+  return(rval)
+}) %>% unlist
+
+
+df_rval <- df_rval[order(df_rval$F1, decreasing = TRUE), ]
+
+write.table(df_rval, "C:/docs/aou/locityper/227/summary_stats_by_loci.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+write.table(df01, "C:/docs/aou/locityper/227/summary_227.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df_rval, "C:/docs/aou/locityper/227/summary_stats_by_loci_227.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
+
+
+```{r}
+library(plyr)
+my_files_01 <- c("C:/docs/aou/locityper/1kg_benchmark/summary_129.tsv", "C:/docs/aou/locityper/220/summary_220.tsv", "C:/docs/aou/locityper/227/summary_227.tsv")
+my_files_02 <- c("C:/docs/aou/locityper/1kg_benchmark/summary_stats_by_loci_129.tsv", "C:/docs/aou/locityper/220/summary_stats_by_loci_220.tsv", "C:/docs/aou/locityper/227/summary_stats_by_loci_227.tsv")
+
+df01 <- lapply(my_files_01, function(x){
+  fread(x) %>% as.data.frame()
+}) %>% do.call(rbind.fill, .)
+
+df_rval <- lapply(my_files_02, function(x){
+  fread(x) %>% as.data.frame()
+}) %>% do.call(rbind.fill, .)
+df_rval$notes[is.na(df_rval$notes)] <- ""
+df_rval$F1_drop <- df_rval$F1
+
+
+
+g1 <- ggplot(df01) + 
+  geom_point(data=df01[sample(seq_down(df01)),], aes(x = quality, y=total_reads, color=match), alpha=0.2) + 
+  ggtitle("locityper accuracy by call quality vs total_reads, ") + 
+  labs(color="correct call") ; plot(g1)
+
+df01$log_unexplained_reads <- log(1 + df01$unexpl_reads)
+df01$log_weight_dist <- log(1 + df01$weight_dist)
+g2 <- ggplot(df01, aes(x=log_weight_dist, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..)) +
+  ggtitle("locityper accuracy by log(weight distribution) split by correct/not correct") + 
+  labs(fill="correct gt call") ; plot(g2)
+
+
+
+ggsave("C:/docs/aou/locityper/benchmark_1kg_plot_003.png", plot=g1, width=3200, height=2000, units="px")
+ggsave("C:/docs/aou/locityper/benchmark_1kg_plot_004.png", plot=g2, width=3200, height=2000, units="px")
+
+df_rval <- df_rval[order(df_rval$F1, decreasing = TRUE), ]
+df_rval2 <- df_rval[is.na(df_rval$F1)==FALSE, ]
+
+df_curve <- data.frame(F1 = seq(0,1,length.out=35))
+df_curve$count <- lapply(df_curve$F1, function(x){
+  sum(df_rval2$F1 >= x) / nrow(df_rval2)
+}) %>% unlist
+
+g3 <- ggplot(df_curve, aes(x=F1, y=count)) + 
+  geom_line() +
+  ylab("fraction of variants") +
+  coord_cartesian(xlim=c(0,1), ylim=c(0,1)) +
+  scale_x_continuous(breaks = seq(0,1,0.1)) +
+  scale_y_continuous(breaks = seq(0,1,0.1)) +
+  ggtitle("F1 score distirbution. percent of variants equal to or higher than F1 threshold"); plot(g3)
+
+THRESHOLD <- 0.8
+good_vars <- df_rval2$name[df_rval2$F1 >= THRESHOLD]
+df02 <- df01[df01$locus %in% good_vars, ]
+
+g4 <- ggplot(df02) + 
+  geom_point(data=df02[sample(seq_down(df02)),], aes(x = quality, y=total_reads, color=match), alpha=0.2) + 
+  ggtitle("locityper accuracy by call quality vs total_reads, for variants w/ F1 >= 0.8") + 
+  labs(color="correct call") ; plot(g4)
+g5 <- ggplot(df02, aes(x=log_weight_dist, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..)) +
+  ggtitle("locityper accuracy, for variants w/ F1 >= 0.8") + 
+  labs(fill="correct gt call") ; plot(g5)
+
+ggsave("C:/docs/aou/locityper/f1_vs_fract.png", plot=g3, width=3200, height=2000, units="px")
+ggsave("C:/docs/aou/locityper/benchmark_1kg_plot_filt1.png", plot=g4, width=3200, height=2000, units="px")
+ggsave("C:/docs/aou/locityper/benchmark_1kg_plot_filt2.png", plot=g5, width=3200, height=2000, units="px")
+
+
+df_temp <- df_rval2[, c("name", "GENE", "F1")]
+write.table(df_temp, "C:/docs/aou/locityper/1kg_benchmark/benchmark_genes_f1.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+
+
+
+ggsave("C:/docs/aou/locityper/benchmark_1kg_plot_filt1.png", plot=g1, width=3200, height=2000, units="px")
 ```
 
