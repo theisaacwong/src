@@ -274,3 +274,25 @@ temp2[grepl("coffee", temp2)] <- "coffee"
 temp1 <- temp2 %>% srt
 ```
 
+
+
+```{r}
+df01 <- df0
+df01$key <- paste0(df01$year, "_", df01$month, "_", df01$day)
+lists <- lapply(u(df01$key), function(key){
+  coffee_count <- sum(grepl("coffee", df01$tea[df01$key==key]))
+  lipton_count <- sum(grepl("lipton", df01$tea[df01$key==key]))
+  tea_count <- length(df01$tea[df01$key==key]) - coffee_count - lipton_count
+  paste0("tea: ", tea_count, ". coffee: ", coffee_count, ". liptons: ", lipton_count)
+}) %>% unlist
+temp1 <- lists %>% srt %>% as.data.frame()
+
+df02 <- lapply(seq_down(temp1), function(x){
+  data.frame(tea = temp1$x[x] %>% str_extract("(?<=tea: ).") %>% unlist,
+             coffee = temp1$x[x] %>% str_extract("(?<=coffee: ).") %>% unlist,
+             liptons = temp1$x[x] %>% str_extract("(?<=liptons: ).") %>% unlist,
+             count = temp1$Freq[x]
+  )
+}) %>% do.call(rbind, .)
+```
+

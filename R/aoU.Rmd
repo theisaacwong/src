@@ -1353,3 +1353,29 @@ write.table(df_temp, "C:/docs/aou/locityper/1kg_benchmark/benchmark_genes_f1.tsv
 ggsave("C:/docs/aou/locityper/benchmark_1kg_plot_filt1.png", plot=g1, width=3200, height=2000, units="px")
 ```
 
+```{r}
+df0 <- fread("C:/docs/aou/locityper/1kg_benchmark/1kg.crams.man.tsv") %>% as.data.frame()
+df1 <- fread("C:/docs/aou/locityper/1kg_benchmark/maps.tsv", header=FALSE) %>% as.data.frame()
+
+df00 <- lapply(df0$SAMPLE, function(x){
+  temp1 <- df0[df0$SAMPLE==x, ]
+  if(x %in% df1$V1){
+    temp2 <- data.frame(SAMPLE=df1$V2[df1$V1==x],
+                        cram=df0$cram[df0$SAMPLE==x],
+                        crai=df0$crai[df0$SAMPLE==x], 
+                        stringsAsFactors = FALSE)
+    temp1 <- rbind(temp1, temp2)
+  }
+  if(x %in% df1$V2){
+    temp2 <- data.frame(SAMPLE=df1$V1[df1$V2==x],
+                        cram=df0$cram[df0$SAMPLE==x],
+                        crai=df0$crai[df0$SAMPLE==x], 
+                        stringsAsFactors = FALSE)
+    temp1 <- rbind(temp1, temp2)
+  }
+  return(temp1)
+}) %>% do.call(rbind, .)
+
+write.table(df00, "C:/docs/aou/locityper/1kg_benchmark/1kg.crams.man.linked.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
