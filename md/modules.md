@@ -124,3 +124,9 @@ prepend-path    PATH    $MOD_DIR/bin/
 
 setenv   MOD_MINICONDA_BASE $MOD_DIR
 ```
+
+module load smaht-submitr/1.12.0
+
+submit-metadata-bundle SMHT024_Metadata_PacBio_HiFi_fibro.xlsx --directory $PWD --submit   --verbose --output SMHT024_Metadata_PacBio_HiFi_fibroblast.submit.log
+
+submit-metadata-bundle SMHT024_Metadata_PacBio_HiFi_fibro.xlsx --directory $PWD --validate --verbose --output SMHT024_Metadata_PacBio_HiFi_fibroblast.validate.log
