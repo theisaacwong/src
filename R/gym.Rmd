@@ -1,0 +1,29 @@
+---
+title: "gym"
+output: html_document
+date: "2026-03-24"
+---
+
+```{r}
+library(wesanderson)
+df0 <- read_sheet("https://docs.google.com/spreadsheets/d/1X5fOpv3X5z6lQWCIW4AoSDacmQAzZ2_kX-flZb7BGBQ/edit?gid=0#gid=0") %>% as.data.frame()
+df0[is.na(df0)] <- ""
+
+df1 <- df0$Archetype %>% srt %>% as.data.frame()
+colnames(df1) <- c("archetype", "count")
+
+data <- data.frame(
+  group=LETTERS[1:5],
+  value=c(13,7,9,21,2)
+)
+
+# Basic piechart
+ggplot(df1, aes(x="", y=count, fill=archetype)) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+  theme_void() + 
+  geom_text(aes(label = archetype), position = position_stack(vjust = 0.5)) +
+  scale_fill_brewer(palette="Set1")
+
+```
+
