@@ -182,7 +182,210 @@ for(sample in SAMPLES){
     df02$total[df02$Var1==sample & df02$Var2==hap] <- df01$length[df01$SAMPLE==sample & df01$HAP==hap] %>% sum  
   }
 }
+```
 
 
+```{r}
+library(ggrepel)
+df0 <- fread("C:/docs/smaht/dsa_metrics.tsv") %>% as.data.frame()
+df0$sample <- df0$submitted_id %>% str_extract("SMHT[0-9]{3}") %>% paste0(., "-", df0$submitted_id %>% str_extract("HAP."))
+df1 <- df0[!grepl("NA", df0$sample), ]
+df1$status <- ifelse(str_detect(df1$sample, "018|040|043"), "in progress", "submitted" )
+df1$main <- df1$sample %>% str_remove("-HAP.$") %>% unlist
+
+df_hap1 <- df1[grepl("HAP1", df1$sample), ]
+df_hap2 <- df1[grepl("HAP2", df1$sample), ]
+colnames(df_hap1) <- paste0(colnames(df_hap1), "_HAP1")
+colnames(df_hap2) <- paste0(colnames(df_hap2), "_HAP2")
+colnames(df_hap1)[grep("main_", colnames(df_hap1))] <- "main"
+colnames(df_hap2)[grep("main_", colnames(df_hap2))] <- "main"
+df_merge <- merge(df_hap1, df_hap2, by="main")
+```
+
+# Contig N50
+```{r}
+MY_START <- 100000000
+MY_END <- 255000000
+my_range <- c(MY_START, MY_END)
+my_breaks <- seq(MY_START, MY_END, by=5000000)
+my_labels <- paste0(my_breaks/1000000, "MB")
+g1 <- ggplot(df_merge, aes(x=contig_n50_HAP1,y=contig_n50_HAP2,shape=status_HAP1,color=status_HAP1)) +
+  geom_point(size=3) +
+  xlab("Contig N50 Hap1") +
+  ylab("Contig N50 Hap2") +
+  ggtitle("DSA Contig N50 Hap1/Hap2") +
+  scale_x_continuous(breaks=my_breaks, labels=my_labels) +
+  scale_y_continuous(breaks=my_breaks, labels=my_labels) +
+  coord_cartesian(xlim = c(130000000, 150000000), ylim = c(105000000, 155000000)) +
+  labs(shape="Status") +
+  guides(color = "none") +
+  geom_label_repel(aes(label = main),
+                  box.padding   = 0.5,
+                  point.padding = 0.7,
+                  segment.color = 'grey50',
+                  min.segment.length = 0.1,
+                  force = 75); plot(g1)
+```
+
+# Scaffold N50
+```{r}
+MY_START <- 100000000
+MY_END <- 355000000
+my_range <- c(MY_START, MY_END)
+my_breaks <- seq(MY_START, MY_END, by=5000000)
+my_labels <- paste0(my_breaks/1000000, "MB")
+g2 <- ggplot(df_merge, aes(x=scaffold_n50_HAP1,y=scaffold_n50_HAP2,shape=status_HAP1,color=status_HAP1)) +
+  geom_point(size=3) +
+  xlab("Scaffold N50 Hap1") +
+  ylab("Scaffold N50 Hap2") +
+  ggtitle("DSA Scaffold N50 Hap1/Hap2") +
+  scale_x_continuous(breaks=my_breaks, labels=my_labels) +
+  scale_y_continuous(breaks=my_breaks, labels=my_labels) +
+  coord_cartesian(xlim = c(143000000, 160000000), ylim = c(143000000, 160000000)) +
+  labs(shape="Status") +
+  guides(color = "none") +
+  geom_label_repel(aes(label = main),
+                  box.padding   = 0.5,
+                  point.padding = 0.7,
+                  segment.color = 'grey50',
+                  min.segment.length = 0.1,
+                  force = 75); plot(g2)
+```
+
+# quality_value
+```{r}
+MY_START <- 50
+MY_END <- 70
+my_range <- c(MY_START, MY_END)
+my_breaks <- seq(MY_START, MY_END, by=2)
+my_labels <- paste0(my_breaks, " ")
+g3 <- ggplot(df_merge, aes(x=quality_value_HAP1,y=quality_value_HAP2,shape=status_HAP1,color=status_HAP1)) +
+  geom_point(size=3) +
+  xlab("QV Hap1") +
+  ylab("QV Hap2") +
+  ggtitle("DSA Quality Value Hap1/Hap2") +
+  scale_x_continuous(breaks=my_breaks, labels=my_labels) +
+  scale_y_continuous(breaks=my_breaks, labels=my_labels) +
+  coord_cartesian(xlim = c(56, 62), ylim = c(54, 62)) +
+  labs(shape="Status") +
+  guides(color = "none") +
+  geom_label_repel(aes(label = main),
+                  box.padding   = 0.5,
+                  point.padding = 0.7,
+                  segment.color = 'grey50',
+                  min.segment.length = 0.1,
+                  force = 75); plot(g3)
+```
+
+# Total Ungapped Length
+```{r}
+MY_START <- 1880000000
+MY_END <- 4880000000
+my_range <- c(MY_START, MY_END)
+my_breaks_x <- seq(MY_START, MY_END, by=20000000)
+my_breaks_y <- seq(MY_START, MY_END, by=10000000)
+my_labels_x <- paste0(my_breaks_x/1000000, "MB")
+my_labels_y <- paste0(my_breaks_y/1000000, "MB")
+g4 <- ggplot(df_merge, aes(x=total_ungapped_length_HAP1,y=total_ungapped_length_HAP2,shape=status_HAP1,color=status_HAP1)) +
+  geom_point(size=3) +
+  xlab("total ungapped length Hap1") +
+  ylab("total ungapped length Hap2") +
+  ggtitle("DSA total ungapped length Hap1/Hap2") +
+  scale_x_continuous(breaks=my_breaks_x, labels=my_labels_x) +
+  scale_y_continuous(breaks=my_breaks_y, labels=my_labels_y) +
+  coord_cartesian(xlim = c(2880000000 , 3040000000), ylim = c(3010000000, 3050000000)) +
+  labs(shape="Status") +
+  guides(color = "none") +
+  geom_label_repel(aes(label = main),
+                  box.padding   = 0.5,
+                  point.padding = 0.7,
+                  segment.color = 'grey50',
+                  min.segment.length = 0.1,
+                  force = 75); plot(g4)
+```
+
+
+
+```{r}
+df00 <- fread("C:/docs/smaht/dsa-counts.tsv") %>% as.data.frame()
+
+df01 <- matrix(nrow=nrow(df00), ncol=25) %>% as.data.frame()
+df01$V1 <- df00$sample
+colnames(df01)[1] <- "sample"
+colnames(df01)[2:25] <- paste0("chr", 1:24)
+colnames(df01)[24:25] <- c("chrX", "chrY")
+
+for(row in seq_down(df00)){
+  curr_contigs <- df00$contigs[row] %>% str_split(",") %>% unlist %>% as.character()
+  curr_scaffolds <- df00$scaffolds[row] %>% str_split(",") %>% unlist %>% as.character()
+  for(i in 1:24){
+    chr <- as.character(i)
+    if(i==23){chr <- "X"}
+    if(i==24){chr <- "Y"}
+    if(chr %in% curr_contigs){
+      df01[row, i+1] <- "CONTIG"
+    } else if(chr %in% curr_scaffolds){
+      df01[row, i+1] <- "SCAFFOLD"
+    } else {
+      df01[row, i+1] <- "NA"
+    }
+  }
+}
+write.table(df01, "C:/docs/smaht/dsa-contigs-and-scaffolds.tsv2", col.names = TRUE, row.names = FALSE, quote = FALSE, sep="\t")
+rownames(df01) <- df01$sample
+df01$sample <- NULL
+```
+
+scale_color_manual(labels = c("T999", "T888"), values = c("blue", "red")) +
+
+```{r}
+library(reshape2)
+library(wesanderson)
+
+colors <- c(wes_palette("Moonrise1")[1], wes_palette("Moonrise1")[3], wes_palette("Moonrise1")[2])
+
+df02 <- lapply(seq_down(df01), function(row){
+  temp1 <- lapply(1:24, function(col){
+    data.frame(sample=rownames(df01)[row], 
+               variable=colnames(df01)[col],
+               value=df01[row,col])
+  }) %>% do.call(rbind, .)
+}) %>% do.call(rbind, .)
+
+g5 <- ggplot(df02, aes(x = variable, y = sample, fill = factor(value))) + 
+  geom_tile() + 
+  scale_fill_manual(values=colors) +
+  ylab("") + 
+  xlab("") + 
+  ggtitle("DSA T2T Contigs and Scaffolds Hap1/Hap2") +
+  guides(fill=guide_legend(title="Key")) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  scale_fill_manual(labels = c("T2T Contig", "not T2T", "T2T Scaffold"), values = colors) ; plot(g5)
+```
+
+
+```{r}
+df_contig_hap1 <- fread("C:/docs/smaht/testing/SMHT018/hap1.contig.stats") %>% as.data.frame()
+df_contig_hap2 <- fread("C:/docs/smaht/testing/SMHT018/hap2.contig.stats") %>% as.data.frame()
+df_contig_hapu <- fread("C:/docs/smaht/testing/SMHT018/un.contig.stats") %>% as.data.frame()
+df_contig_full <- fread("C:/docs/smaht/testing/SMHT018/full_genome.contig.stats")
+
+df_scaffold_hap1 <- fread("C:/docs/smaht/testing/SMHT018/hap1.scaffold.stats") %>% as.data.frame()
+df_scaffold_hap2 <- fread("C:/docs/smaht/testing/SMHT018/hap2.scaffold.stats") %>% as.data.frame()
+df_scaffold_hapu <- fread("C:/docs/smaht/testing/SMHT018/un.scaffold.stats") %>% as.data.frame()
+df_scaffold_full <- fread("C:/docs/smaht/testing/SMHT018/full_genome.stats")
+
+df_contig_hap1$src <- "hap1"
+df_contig_hap2$src <- "hap2"
+df_contig_hapu$src <- "hapu"
+df_contig_full$src <- "FULL"
+df_contig_all <- rbind(df_contig_hap1, df_contig_hap2, df_contig_hapu)
+df_temp <- df_contig_hap1
+df_temp$haplotype <- "sum"
+df_temp$src <- "sum"
+for(col in 4:13){
+  df_temp[1, col] <- sum(df_contig_all[, col])
+}
+df_contig_all_sum <- rbind(df_contig_all, df_temp, df_contig_full)
 ```
 

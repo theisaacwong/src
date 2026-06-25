@@ -1,0 +1,136 @@
+---
+title: "Untitled"
+output: html_document
+date: "2026-03-15"
+---
+
+```{r}
+library(ggrepel)
+df0 <- fread("C:/docs/smht/dsa_metrics.tsv") %>% as.data.frame()
+df0$sample <- df0$submitted_id %>% str_extract("SMHT[0-9]{3}") %>% paste0(., "-", df0$submitted_id %>% str_extract("HAP."))
+df1 <- df0[!grepl("NA", df0$sample), ]
+df1$status <- ifelse(str_detect(df1$sample, "018|040|043"), "in progress", "submitted" )
+df1$main <- df1$sample %>% str_remove("-HAP.$") %>% unlist
+
+df_hap1 <- df1[grepl("HAP1", df1$sample), ]
+df_hap2 <- df1[grepl("HAP2", df1$sample), ]
+colnames(df_hap1) <- paste0(colnames(df_hap1), "_HAP1")
+colnames(df_hap2) <- paste0(colnames(df_hap2), "_HAP2")
+colnames(df_hap1)[grep("main_", colnames(df_hap1))] <- "main"
+colnames(df_hap2)[grep("main_", colnames(df_hap2))] <- "main"
+df_merge <- merge(df_hap1, df_hap2, by="main")
+```
+
+# Contig N50
+```{r}
+MY_START <- 100000000
+MY_END <- 255000000
+my_range <- c(MY_START, MY_END)
+my_breaks <- seq(MY_START, MY_END, by=5000000)
+my_labels <- paste0(my_breaks/1000000, "MB")
+g1 <- ggplot(df_merge, aes(x=contig_n50_HAP1,y=contig_n50_HAP2,shape=status_HAP1,color=status_HAP1)) + 
+  geom_point(size=3) + 
+  xlab("Contig N50 Hap1") + 
+  ylab("Contig N50 Hap2") + 
+  ggtitle("DSA Contig N50 Hap1/Hap2") + 
+  scale_x_continuous(breaks=my_breaks, labels=my_labels) + 
+  scale_y_continuous(breaks=my_breaks, labels=my_labels) + 
+  coord_cartesian(xlim = c(130000000, 150000000), ylim = c(105000000, 155000000)) +
+  labs(shape="Status") +
+  guides(color = "none") +
+  geom_label_repel(aes(label = main),
+                  box.padding   = 0.35, 
+                  point.padding = 0.5,
+                  segment.color = 'grey50',
+                  force = 75); plot(g1)
+```
+
+# Scaffold N50
+```{r}
+MY_START <- 100000000
+MY_END <- 355000000
+my_range <- c(MY_START, MY_END)
+my_breaks <- seq(MY_START, MY_END, by=5000000)
+my_labels <- paste0(my_breaks/1000000, "MB")
+g2 <- ggplot(df_merge, aes(x=scaffold_n50_HAP1,y=scaffold_n50_HAP2,shape=status_HAP1,color=status_HAP1)) + 
+  geom_point(size=3) + 
+  xlab("Scaffold N50 Hap1") + 
+  ylab("Scaffold N50 Hap2") + 
+  ggtitle("DSA Scaffold N50 Hap1/Hap2") + 
+  scale_x_continuous(breaks=my_breaks, labels=my_labels) + 
+  scale_y_continuous(breaks=my_breaks, labels=my_labels) + 
+  coord_cartesian(xlim = c(140000000, 160000000), ylim = c(140000000, 160000000)) +
+  labs(shape="Status") +
+  guides(color = "none") +
+  geom_label_repel(aes(label = main),
+                  box.padding   = 0.35, 
+                  point.padding = 0.5,
+                  segment.color = 'grey50', 
+                  force = 75); plot(g2)
+```
+
+
+# quality_value
+```{r}
+MY_START <- 50
+MY_END <- 70
+my_range <- c(MY_START, MY_END)
+my_breaks <- seq(MY_START, MY_END, by=2)
+my_labels <- paste0(my_breaks, " ")
+g3 <- ggplot(df_merge, aes(x=quality_value_HAP1,y=quality_value_HAP2,shape=status_HAP1,color=status_HAP1)) + 
+  geom_point(size=3) + 
+  xlab("QV Hap1") + 
+  ylab("QV Hap2") + 
+  ggtitle("DSA Quality Value Hap1/Hap2") + 
+  scale_x_continuous(breaks=my_breaks, labels=my_labels) + 
+  scale_y_continuous(breaks=my_breaks, labels=my_labels) + 
+  coord_cartesian(xlim = c(56, 62), ylim = c(54, 62)) +
+  labs(shape="Status") +
+  guides(color = "none") +
+  geom_label_repel(aes(label = main),
+                  box.padding   = 0.35, 
+                  point.padding = 0.5,
+                  segment.color = 'grey50', 
+                  force = 75); plot(g3)
+```
+
+
+```{r}
+df00 <- fread("C:/docs/smht/dsa-counts.tsv") %>% as.data.frame()
+
+df01 <- matrix(nrow=nrow(df00), ncol=25) %>% as.data.frame()
+df01$V1 <- df00$sample
+colnames(df01)[1] <- "sample"
+colnames(df01)[2:25] <- paste0("chr", 1:24)
+colnames(df01)[24:25] <- c("chrX", "chrY")
+
+for(row in seq_down(df00)){
+  curr_contigs <- df00$contigs[row] %>% str_split(",") %>% unlist %>% as.character()
+  curr_scaffolds <- df00$scaffolds[row] %>% str_split(",") %>% unlist %>% as.character()
+  for(i in 1:24){
+    chr <- as.character(i)
+    if(i==23){chr <- "X"}
+    if(i==24){chr <- "Y"}
+    if(chr %in% curr_contigs){
+      df01[row, i+1] <- "CONTIG"
+    } else if(chr %in% curr_scaffolds){
+      df01[row, i+1] <- "SCAFFOLD"
+    } else {
+      df01[row, i+1] <- ""
+    }
+  }
+}
+write.table(df01, "C:/docs/smht/dsa-contigs-and-scaffolds.tsv", col.names = TRUE, row.names = FALSE, quote = FALSE, sep="\t")
+```
+
+
+
+
+
+
+
+
+
+
+
+

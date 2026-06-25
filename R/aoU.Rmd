@@ -2269,5 +2269,572 @@ colnames(df50)[1] <- "SAMPLE"
 df00 <- rbind.fill(df10, df20, df30, df40, df50)
 df00 <- df00[df00$summary_csv_batch2!="", ]
 write.table(df00, "C:/docs/aou/locityper/batch2/batch_2_outputs.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+df01 <- rbind.fill(df10, df20, df30, df40, df50)
+redone_samples <- df01$SAMPLE[df01$summary_csv_batch2==""]
+write.table(redone_samples, "C:/docs/aou/locityper/batch2/redone_samples.tsv", sep="\t", col.names = FALSE, row.names = FALSE, quote=FALSE)
+
+df1 <- fread("C:/docs/aou/locityper/batch2/redo/ehr_sb1.tsv") %>% as.data.frame()
+df2 <- fread("C:/docs/aou/locityper/batch2/redo/ehr_sb2.tsv") %>% as.data.frame()
+df3 <- fread("C:/docs/aou/locityper/batch2/redo/ehr_sb3.tsv") %>% as.data.frame()
+df4 <- fread("C:/docs/aou/locityper/batch2/redo/ehr_sb4.tsv") %>% as.data.frame()
+df5 <- fread("C:/docs/aou/locityper/batch2/redo/ehr_sb5.tsv") %>% as.data.frame()
+df10 <- df1[, c("entity:ehr_sb1_id", "summary_csv_batch2")]
+df20 <- df2[, c("entity:ehr_sb2_id", "summary_csv_batch2")]
+df30 <- df3[, c("entity:ehr_sb3_id", "summary_csv_batch2")]
+df40 <- df4[, c("entity:ehr_sb4_id", "summary_csv_batch2")]
+df50 <- df5[, c("entity:ehr_sb5_id", "summary_csv_batch2")]
+colnames(df10)[1] <- "SAMPLE"
+colnames(df20)[1] <- "SAMPLE"
+colnames(df30)[1] <- "SAMPLE"
+colnames(df40)[1] <- "SAMPLE"
+colnames(df50)[1] <- "SAMPLE"
+df00 <- rbind.fill(df10, df20, df30, df40, df50)
+df00 <- df00[df00$SAMPLE %in% redone_samples, ]
+df00 <- df00[df00$summary_csv_batch2!="", ]
+write.table(df00, "C:/docs/aou/locityper/batch2/redo/redone_samples_to_dl.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
 
+# Batch 4
+```{r}
+df0 <- fread("C:/docs/aou/locityper/batch4/combine_anno_all_re_anno_nofiltTRDEL.txt") %>% as.data.frame()
+df1 <- df0[df0$loc=="CDS" & df0$AC>1, ]
+```
+
+
+```{r}
+df1 <- fread("C:/docs/aou/locityper/batch3/final_outputs/ehr_sb1.tsv") %>% as.data.frame()
+df2 <- fread("C:/docs/aou/locityper/batch3/final_outputs/ehr_sb2.tsv") %>% as.data.frame()
+df3 <- fread("C:/docs/aou/locityper/batch3/final_outputs/ehr_sb3.tsv") %>% as.data.frame()
+df4 <- fread("C:/docs/aou/locityper/batch3/final_outputs/ehr_sb4.tsv") %>% as.data.frame()
+df5 <- fread("C:/docs/aou/locityper/batch3/final_outputs/ehr_sb5.tsv") %>% as.data.frame()
+
+df10 <- df1[, c("entity:ehr_sb1_id", "summary_csv_batch3")]
+df20 <- df2[, c("entity:ehr_sb2_id", "summary_csv_batch3")]
+df30 <- df3[, c("entity:ehr_sb3_id", "summary_csv_batch3")]
+df40 <- df4[, c("entity:ehr_sb4_id", "summary_csv_batch3")]
+df50 <- df5[, c("entity:ehr_sb5_id", "summary_csv_batch3")]
+
+
+
+df11 <- data.frame(`membership:ehr_sb1_set_id` = "ehr_sb1_r3",
+                   ehr_sb1 = df10$`entity:ehr_sb1_id`[df10$summary_csv_batch3==""], 
+                   check.names = FALSE)
+df21 <- data.frame(`membership:ehr_sb2_set_id` = "ehr_sb2_r3",
+                   ehr_sb2 = df20$`entity:ehr_sb2_id`[df20$summary_csv_batch3==""], 
+                   check.names = FALSE)
+df31 <- data.frame(`membership:ehr_sb3_set_id` = "ehr_sb3_r3",
+                   ehr_sb3 = df30$`entity:ehr_sb3_id`[df30$summary_csv_batch3==""], 
+                   check.names = FALSE)
+df41 <- data.frame(`membership:ehr_sb4_set_id` = "ehr_sb4_r3",
+                   ehr_sb4 = df40$`entity:ehr_sb4_id`[df40$summary_csv_batch3==""], 
+                   check.names = FALSE)
+df51 <- data.frame(`membership:ehr_sb5_set_id` = "ehr_sb5_r3",
+                   ehr_sb5 = df50$`entity:ehr_sb5_id`[df50$summary_csv_batch3==""], 
+                   check.names = FALSE)
+
+# write.table(df11, "C:/docs/aou/locityper/batch3/resubmits/memb_ehr_sb1_remainder.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+# write.table(df21, "C:/docs/aou/locityper/batch3/resubmits/memb_ehr_sb2_remainder.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+# write.table(df31, "C:/docs/aou/locityper/batch3/resubmits/memb_ehr_sb3_remainder.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+# write.table(df41, "C:/docs/aou/locityper/batch3/resubmits/memb_ehr_sb4_remainder.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+# write.table(df51, "C:/docs/aou/locityper/batch3/resubmits/memb_ehr_sb5_remainder.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+colnames(df10) <- c("SAMPLE", "summary_csv_batch3")
+colnames(df20) <- c("SAMPLE", "summary_csv_batch3")
+colnames(df30) <- c("SAMPLE", "summary_csv_batch3")
+colnames(df40) <- c("SAMPLE", "summary_csv_batch3")
+colnames(df50) <- c("SAMPLE", "summary_csv_batch3")
+df000 <- rbind(df10, df20, df30, df40, df50)
+df000 <- df000[df000$summary_csv_batch3 != "", ]
+write.table(df000, "C:/docs/aou/locityper/batch3/final_outputs/to_download_second_pass.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+df42 <- df41
+df42$`membership:ehr_sb4_set_id` <- paste0(df42$`membership:ehr_sb4_set_id`, letters[1:4])
+write.table(df42, "C:/docs/aou/locityper/batch3/resubmits/memb_ehr_sb4_remainderabcd.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+df52 <- df51
+df52$`membership:ehr_sb5_set_id` <- paste0(df52$`membership:ehr_sb5_set_id`, letters[1:2])
+write.table(df52, "C:/docs/aou/locityper/batch3/resubmits/memb_ehr_sb5_remainderab.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+
+```
+
+
+
+
+```{r}
+df1 <- fread("C:/docs/aou/locityper/batch4/final_outputs/ehr_sb1.tsv") %>% as.data.frame()
+df2 <- fread("C:/docs/aou/locityper/batch4/final_outputs/ehr_sb2.tsv") %>% as.data.frame()
+df3 <- fread("C:/docs/aou/locityper/batch4/final_outputs/ehr_sb3.tsv") %>% as.data.frame()
+df4 <- fread("C:/docs/aou/locityper/batch4/final_outputs/ehr_sb4.tsv") %>% as.data.frame()
+df5 <- fread("C:/docs/aou/locityper/batch4/final_outputs/ehr_sb5.tsv") %>% as.data.frame()
+
+df10 <- df1[, c("entity:ehr_sb1_id", "summary_csv_batch4")]
+df20 <- df2[, c("entity:ehr_sb2_id", "summary_csv_batch4")]
+df30 <- df3[, c("entity:ehr_sb3_id", "summary_csv_batch4")]
+df40 <- df4[, c("entity:ehr_sb4_id", "summary_csv_batch4")]
+df50 <- df5[, c("entity:ehr_sb5_id", "summary_csv_batch4")]
+
+colnames(df10) <- c("SAMPLE", "summary_csv_batch4")
+colnames(df20) <- c("SAMPLE", "summary_csv_batch4")
+colnames(df30) <- c("SAMPLE", "summary_csv_batch4")
+colnames(df40) <- c("SAMPLE", "summary_csv_batch4")
+colnames(df50) <- c("SAMPLE", "summary_csv_batch4")
+df000 <- rbind(df10, df20, df30, df40, df50)
+df000 <- df000[df000$summary_csv_batch4 != "", ]
+write.table(df000, "C:/docs/aou/locityper/batch4/final_outputs/to_download_final_pass.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
+
+```{r}
+#!/usr/bin/env Rscript
+
+source("/net/eichler/vol28/home/iwong1/nobackups/src/R/my_libraries.R")
+
+library(parallel)
+
+MY_CORES <- 120
+
+print(Sys.time())
+print("reading in GTs")
+
+df00 <- fread("/net/eichler/vol28/home/iwong1/nobackups/aou/batch3/biallelic/table.txt", sep="\t") %>% as.data.frame()
+df00$ID <- lapply(df00$ID, function(x){
+  unlist(str_split(x, ";"))[1]
+}) %>% unlist
+variantToSamples <- HashMap$new()
+temp1 <- lapply(seq_down(df00), function(x){
+  curr_var <- df00$ID[x]
+  variantToSamples$put(curr_var, HashMap$new())
+  temp2 <- lapply(4:ncol(df00), function(y){
+    curr_sample <- colnames(df00)[y]
+    curr_genotype <- df00[x,y]
+    variantToSamples$get(curr_var)$put(curr_sample, curr_genotype)
+  })
+})
+
+print(Sys.time())
+print("reading in files")
+#files <- list.files("/net/eichler/vol28/home/iwong1/nobackups/aou/batch3/terra_outputs/csv_outputs", full.names = TRUE, recursive = TRUE, pattern = "gts.filtered.csv")
+#df01 <- mclapply(files, function(x){
+#  df_temp <- fread(x, fill=TRUE) %>% as.data.frame()
+#  df_temp <- df_temp[df_temp$genotype!="*", ]
+#  return(df_temp)
+#}, mc.cores=MY_CORES)
+#save(df01, file="/net/eichler/vol28/home/iwong1/nobackups/aou/batch3/terra_outputs/df01_premerge.rda")
+#load("/net/eichler/vol28/home/iwong1/nobackups/aou/batch3/terra_outputs/df01_premerge.rda")
+#to_keep <- lapply(df01, ncol) %>% unlist
+#df01 <- df01[to_keep==8] %>% do.call(rbind, .)
+#save(df01, file="df01_postmerge.rda")
+# load("df01_postmerge.rda")
+
+fread("df01_batch3.tsv")
+
+print(Sys.time())
+print("converting GTs")
+
+multiallelics <- c("MUC1", "MUC2", "MUC3A", "MUC4", "MUC5AC", "MUC5B", "MUC6", "MUC7", "MUC12", "MUC17", "MUC20", "MUC21", "MUC22", "DMBT1", "FCGR", "LPA", "HPR", "TPSAB1")
+
+df01$ltgt_to_gt <- mclapply(seq_down(df01), function(x){
+  if(df01$locus[x] %in% multiallelics){ return(df01$genotype[x]) }
+  rvals <- lapply(unlist(df01$genotype[x] %>% str_split(",")), function(gt){
+    rval <- gt
+    if(gt=="GRCh38"){
+      rval <- "0"
+    } else {
+      which_hap  <- gt %>% str_extract("(?<=\\.).$") %>% as.numeric()
+      which_samp <- gt %>% str_extract(".*(?=..$)")
+      # print(paste0(gt,  ": ", which_samp, " ::: ", which_hap))
+      if(variantToSamples$containsKey(df01$locus[x])){
+        if(variantToSamples$get(df01$locus[x])$containsKey(which_samp))
+        {
+          rval <- unlist(str_split(variantToSamples$get(df01$locus[x])$get(which_samp), "\\|"))[which_hap]
+        }
+      }
+    }
+    return(rval)
+  }) %>% unlist %>% paste0(collapse = "|")
+
+  return(rvals)
+}, mc.cores=MY_CORES) %>% unlist
+
+df01$ltgt_to_gt[df01$ltgt_to_gt=="0|1"] <- "1|0"
+
+print(Sys.time())
+print("saving")
+
+save(df01, file="df01.rda")
+
+print(Sys.time())
+print("writing file")
+
+write.table(df01, "locityper_summary_20260604.tsv", sep="\t", col.names=TRUE, row.names=FALSE, quote=FALSE)
+```
+
+
+
+
+# svs_sr
+```{r}
+df00 <- fread("C:/docs/aou/locityper/svs_sr/table.txt", sep="\t") %>% as.data.frame()
+
+variantToSamples <- HashMap$new()
+temp1 <- lapply(seq_down(df00), function(x){
+  curr_var <- df00$ID[x]
+  variantToSamples$put(curr_var, HashMap$new())
+  temp2 <- lapply(4:ncol(df00), function(y){
+    curr_sample <- colnames(df00)[y]
+    curr_genotype <- df00[x,y]
+    variantToSamples$get(curr_var)$put(curr_sample, curr_genotype)
+  })
+})
+
+df10 <- lapply(variantToSamples$keySet(), function(var){
+  temp1 <- lapply(variantToSamples$get(var)$keySet(), function(samp){
+    data.frame(variant=var, 
+               sample=samp, 
+               gt=variantToSamples$get(var)$get(samp))
+  }) %>% do.call(rbind, .) %>% as.data.frame()
+  return(temp1)
+}) %>% do.call(rbind, .)
+write.table(df10, "C:/docs/aou/locityper/svs_sr/variantToSampleToGT.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+df11 <- df10[df10$gt=="1|0", ]
+df20 <- fread("C:/docs/aou/locityper/re-bench/final_batch/manifest.tsv") %>% as.data.frame()
+df11$has_cram <- df11$sample %in% df20$SAMPLE
+
+# files <- list.files("C:/docs/aou/locityper/re-bench/final_batch/csvs/", full.names = TRUE, recursive = TRUE, pattern = ".csv")
+# df01 <- lapply(files, function(x){
+#   curr_sample <- x %>% str_extract("(?<=gts.).*(?=.csv)")
+#   df_temp <- fread(x) %>% as.data.frame()
+#   df_temp$sample <- curr_sample
+#   return(df_temp)
+# }) %>% do.call(rbind, .)
+
+df01 <- fread("C:/docs/aou/locityper/svs_sr/locityper_summary_20260612.tsv") %>% as.data.frame()
+
+
+df01$ref_gt <- lapply(seq_down(df01), function(x){
+  curr_var <- df01$locus[x]
+  curr_sample <- df01$sample[x]
+  if(!variantToSamples$containsKey(curr_var)){return("NA")}
+  if(variantToSamples$get(curr_var)$containsKey(curr_sample)){
+    return(variantToSamples$get(curr_var)$get(curr_sample))
+  } else {
+    return("NA")
+  }
+}) %>% unlist
+
+df01 <- df01[df01$ref_gt != "NA", ]
+df01 <- df01[!grepl("\\.", df01$ref_gt), ]
+
+df01$ltgt_to_gt <- lapply(seq_down(df01), function(x){
+  rvals <- lapply(unlist(df01$genotype[x] %>% str_split(",")), function(gt){
+    rval <- "ooblets"
+    if(gt=="GRCh38"){
+      rval <- "0"
+    } else {
+      which_hap  <- gt %>% str_extract("(?<=\\.).$") %>% as.numeric()
+      which_samp <- gt %>% str_extract(".*(?=..$)")
+      # print(paste0(gt,  ": ", which_samp, " ::: ", which_hap))
+      rval <- unlist(str_split(variantToSamples$get(df01$locus[x])$get(which_samp), "\\|"))[which_hap]
+    }
+    return(rval)
+  }) %>% unlist %>% paste0(collapse = "|")
+  
+  return(rvals)
+}) %>% unlist
+
+
+df01$ref_gt[df01$ref_gt=="0|1"] <- "1|0"
+df01$ltgt_to_gt[df01$ltgt_to_gt=="0|1"] <- "1|0"
+
+df01$match <- paste0(df01$ltgt_to_gt == df01$ref_gt)
+
+g1 <- ggplot(df01) + 
+  geom_point(data=df01, aes(x = quality, y=total_reads, color=match), alpha=0.7) + 
+  ggtitle("locityper accuracy by call quality vs total_reads, ") + 
+  labs(color="correct call") ; # plot(g1)
+
+ggplot(df01) + 
+  geom_point(data=df01, aes(x=unexpl_reads, y=weight_dist, color=match), alpha=0.7)
+
+ggplot(df01, aes(x=weight_dist, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
+
+ggplot(df01, aes(x=unexpl_reads, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
+
+df01$log_unexplained_reads <- log(1 + df01$unexpl_reads)
+df01$log_weight_dist <- log(1 + df01$weight_dist)
+ggplot(df01) + 
+  geom_point(data=df01, aes(x=log_unexplained_reads, y=log_weight_dist, color=match), alpha=0.7)
+g2 <- ggplot(df01, aes(x=log_weight_dist, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..)) +
+  ggtitle("locityper accuracy by log(weight distribution) split by correct/not correct") + 
+  labs(fill="correct gt call") ; # plot(g2)
+ggplot(df01, aes(x=log_unexplained_reads, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
+
+
+ggsave("C:/docs/aou/locityper/svs_sr/benchmark_1kg_plot_03.png", plot=g1, width=3200, height=2000, units="px")
+ggsave("C:/docs/aou/locityper/svs_sr/benchmark_1kg_plot_04.png", plot=g2, width=3200, height=2000, units="px")
+
+df01$class <- lapply(seq_down(df01), function(x){
+  if(df01$ltgt_to_gt[x] == "0|0"){
+    if(df01$ref_gt[x]=="0|0"){
+      return("TRUE_NEGATIVE")
+    } else {
+      return("FALSE_NEGATIVE")
+    }
+  } else {
+    if(df01$ref_gt[x]=="0|0"){
+      return("FALSE_POSITIVE")
+    } else {
+      return("TRUE_POSITIVE")
+    }
+  }
+  return("NA")
+}) %>% unlist()
+
+MY_SENS <- sum(df01$class=="TRUE_POSITIVE")/sum(df01$class=="TRUE_POSITIVE" | df01$class=="FALSE_NEGATIVE")
+MY_SPEC <- sum(df01$class=="TRUE_NEGATIVE")/sum(df01$class=="TRUE_NEGATIVE" | df01$class=="FALSE_POSITIVE")
+MY_RECALL <- MY_SENS
+MY_PRECISION <- sum(df01$class=="TRUE_POSITIVE")/sum(df01$class=="TRUE_POSITIVE" | df01$class=="FALSE_POSITIVE")
+MY_F1 <- 2*(MY_PRECISION * MY_RECALL)/(MY_PRECISION + MY_RECALL)
+
+list_by_variant <- lapply(df01$locus %>% u, function(x){
+  df01[df01$locus==x, ]
+})
+names(list_by_variant) <- df01$locus %>% u
+
+df_rval <- lapply(list_by_variant, function(x){
+  print(x$locus[1])
+  rval <- data.frame(name = x$locus[1], 
+             accuracy = sum(x$match %>% as.logical) / nrow(x),
+             sensitivity=sum(x$class=="TRUE_POSITIVE")/sum(x$class=="TRUE_POSITIVE" | x$class=="FALSE_NEGATIVE"),
+             specificity=sum(x$class=="TRUE_NEGATIVE")/sum(x$class=="TRUE_NEGATIVE" | x$class=="FALSE_POSITIVE"),
+             precision=sum(x$class=="TRUE_POSITIVE")/sum(x$class=="TRUE_POSITIVE" | x$class=="FALSE_POSITIVE"),
+             n_samples = nrow(x),
+             stringsAsFactors = FALSE)
+  rval$F1 <- 2 * (rval$precision[1] * rval$sensitivity[1]) / (rval$precision[1] + rval$sensitivity[1])
+  return(rval)
+}) %>% do.call(rbind, .)
+df_rval <- df_rval[order(df_rval$accuracy, decreasing = TRUE), ]
+rownames(df_rval) <- seq_down(df_rval)
+for(row in 1:nrow(df_rval)){
+  for(col in 2:ncol(df_rval)){
+    df_rval[row, col] <- round(df_rval[row, col], 3)
+  }
+}
+
+df_rval$notes <- lapply(seq_down(df_rval), function(x){
+  if(df_rval$sensitivity[x] %>% is.nan){
+    if(lu(list_by_variant[[df_rval$name[x]]]$ref_gt)==1 & lu(list_by_variant[[df_rval$name[x]]]$ltgt_to_gt)==1 ){
+      return("only 0|0 in VCF")
+    }
+  }
+  if(df_rval$precision[x] %>% is.nan){
+    if(lu(list_by_variant[[df_rval$name[[x]]]]$ltgt_to_gt)==1 & all(list_by_variant[[df_rval$name[[x]]]]$ltgt_to_gt=="0|0")){
+      return("locityper only called 0|0")
+    }
+  }
+  return("")
+}) %>% unlist
+
+df_rval$notes <- lapply(seq_down(df_rval), function(x){
+  n_10 <- sum(df11$has_cram[df11$variant==df_rval$name[x] & df11$gt=="1|0"])
+  rval <- paste0(n_10, ", ", df_rval$notes[x])
+  return(rval)
+}) %>% unlist
+
+
+df_rval <- df_rval[order(df_rval$F1, decreasing = TRUE), ]
+
+
+write.table(df01, "C:/docs/aou/locityper/svs_sr/summary_final_batch.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df_rval, "C:/docs/aou/locityper/svs_sr/summary_stats_by_loci_final_batch.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
+
+
+
+# 608
+```{r}
+df00 <- fread("C:/docs/aou/locityper/608/table.txt", sep="\t") %>% as.data.frame()
+
+variantToSamples <- HashMap$new()
+temp1 <- lapply(seq_down(df00), function(x){
+  curr_var <- df00$ID[x]
+  variantToSamples$put(curr_var, HashMap$new())
+  temp2 <- lapply(4:ncol(df00), function(y){
+    curr_sample <- colnames(df00)[y]
+    curr_genotype <- df00[x,y]
+    variantToSamples$get(curr_var)$put(curr_sample, curr_genotype)
+  })
+})
+
+df10 <- lapply(variantToSamples$keySet(), function(var){
+  temp1 <- lapply(variantToSamples$get(var)$keySet(), function(samp){
+    data.frame(variant=var, 
+               sample=samp, 
+               gt=variantToSamples$get(var)$get(samp))
+  }) %>% do.call(rbind, .) %>% as.data.frame()
+  return(temp1)
+}) %>% do.call(rbind, .)
+write.table(df10, "C:/docs/aou/locityper/608/variantToSampleToGT.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+df11 <- df10[df10$gt=="1|0", ]
+df20 <- fread("C:/docs/aou/locityper/608/manifest.tsv") %>% as.data.frame()
+df11$has_cram <- df11$sample %in% df20$SAMPLE
+
+# files <- list.files("C:/docs/aou/locityper/re-bench/final_batch/csvs/", full.names = TRUE, recursive = TRUE, pattern = ".csv")
+# df01 <- lapply(files, function(x){
+#   curr_sample <- x %>% str_extract("(?<=gts.).*(?=.csv)")
+#   df_temp <- fread(x) %>% as.data.frame()
+#   df_temp$sample <- curr_sample
+#   return(df_temp)
+# }) %>% do.call(rbind, .)
+
+df01 <- fread("C:/docs/aou/locityper/608/locityper_summary_608_20260619.tsv") %>% as.data.frame()
+
+
+df01$ref_gt <- lapply(seq_down(df01), function(x){
+  curr_var <- df01$locus[x]
+  curr_sample <- df01$sample[x]
+  if(!variantToSamples$containsKey(curr_var)){return("NA")}
+  if(variantToSamples$get(curr_var)$containsKey(curr_sample)){
+    return(variantToSamples$get(curr_var)$get(curr_sample))
+  } else {
+    return("NA")
+  }
+}) %>% unlist
+
+df01 <- df01[df01$ref_gt != "NA", ]
+df01 <- df01[!grepl("\\.", df01$ref_gt), ]
+
+df01$ltgt_to_gt <- lapply(seq_down(df01), function(x){
+  rvals <- lapply(unlist(df01$genotype[x] %>% str_split(",")), function(gt){
+    rval <- "ooblets"
+    if(gt=="GRCh38"){
+      rval <- "0"
+    } else {
+      which_hap  <- gt %>% str_extract("(?<=\\.).$") %>% as.numeric()
+      which_samp <- gt %>% str_extract(".*(?=..$)")
+      # print(paste0(gt,  ": ", which_samp, " ::: ", which_hap))
+      rval <- unlist(str_split(variantToSamples$get(df01$locus[x])$get(which_samp), "\\|"))[which_hap]
+    }
+    return(rval)
+  }) %>% unlist %>% paste0(collapse = "|")
+  
+  return(rvals)
+}) %>% unlist
+
+
+df01$ref_gt[df01$ref_gt=="0|1"] <- "1|0"
+df01$ltgt_to_gt[df01$ltgt_to_gt=="0|1"] <- "1|0"
+
+df01$match <- paste0(df01$ltgt_to_gt == df01$ref_gt)
+
+g1 <- ggplot(df01) + 
+  geom_point(data=df01, aes(x = quality, y=total_reads, color=match), alpha=0.7) + 
+  ggtitle("locityper accuracy by call quality vs total_reads, ") + 
+  labs(color="correct call") ; # plot(g1)
+
+ggplot(df01) + 
+  geom_point(data=df01, aes(x=unexpl_reads, y=weight_dist, color=match), alpha=0.7)
+
+ggplot(df01, aes(x=weight_dist, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
+
+ggplot(df01, aes(x=unexpl_reads, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
+
+df01$log_unexplained_reads <- log(1 + df01$unexpl_reads)
+df01$log_weight_dist <- log(1 + df01$weight_dist)
+ggplot(df01) + 
+  geom_point(data=df01, aes(x=log_unexplained_reads, y=log_weight_dist, color=match), alpha=0.7)
+g2 <- ggplot(df01, aes(x=log_weight_dist, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..)) +
+  ggtitle("locityper accuracy by log(weight distribution) split by correct/not correct") + 
+  labs(fill="correct gt call") ; # plot(g2)
+ggplot(df01, aes(x=log_unexplained_reads, fill=match)) + 
+  geom_histogram(alpha=0.7, position = "identity", aes(y = ..density..))
+
+
+ggsave("C:/docs/aou/locityper/608/benchmark_1kg_plot_03.png", plot=g1, width=3200, height=2000, units="px")
+ggsave("C:/docs/aou/locityper/608/benchmark_1kg_plot_04.png", plot=g2, width=3200, height=2000, units="px")
+
+df01$class <- lapply(seq_down(df01), function(x){
+  if(df01$ltgt_to_gt[x] == "0|0"){
+    if(df01$ref_gt[x]=="0|0"){
+      return("TRUE_NEGATIVE")
+    } else {
+      return("FALSE_NEGATIVE")
+    }
+  } else {
+    if(df01$ref_gt[x]=="0|0"){
+      return("FALSE_POSITIVE")
+    } else {
+      return("TRUE_POSITIVE")
+    }
+  }
+  return("NA")
+}) %>% unlist()
+
+MY_SENS <- sum(df01$class=="TRUE_POSITIVE")/sum(df01$class=="TRUE_POSITIVE" | df01$class=="FALSE_NEGATIVE")
+MY_SPEC <- sum(df01$class=="TRUE_NEGATIVE")/sum(df01$class=="TRUE_NEGATIVE" | df01$class=="FALSE_POSITIVE")
+MY_RECALL <- MY_SENS
+MY_PRECISION <- sum(df01$class=="TRUE_POSITIVE")/sum(df01$class=="TRUE_POSITIVE" | df01$class=="FALSE_POSITIVE")
+MY_F1 <- 2*(MY_PRECISION * MY_RECALL)/(MY_PRECISION + MY_RECALL)
+
+list_by_variant <- lapply(df01$locus %>% u, function(x){
+  df01[df01$locus==x, ]
+})
+names(list_by_variant) <- df01$locus %>% u
+
+df_rval <- lapply(list_by_variant, function(x){
+  print(x$locus[1])
+  rval <- data.frame(name = x$locus[1], 
+             accuracy = sum(x$match %>% as.logical) / nrow(x),
+             sensitivity=sum(x$class=="TRUE_POSITIVE")/sum(x$class=="TRUE_POSITIVE" | x$class=="FALSE_NEGATIVE"),
+             specificity=sum(x$class=="TRUE_NEGATIVE")/sum(x$class=="TRUE_NEGATIVE" | x$class=="FALSE_POSITIVE"),
+             precision=sum(x$class=="TRUE_POSITIVE")/sum(x$class=="TRUE_POSITIVE" | x$class=="FALSE_POSITIVE"),
+             n_samples = nrow(x),
+             stringsAsFactors = FALSE)
+  rval$F1 <- 2 * (rval$precision[1] * rval$sensitivity[1]) / (rval$precision[1] + rval$sensitivity[1])
+  return(rval)
+}) %>% do.call(rbind, .)
+df_rval <- df_rval[order(df_rval$accuracy, decreasing = TRUE), ]
+rownames(df_rval) <- seq_down(df_rval)
+for(row in 1:nrow(df_rval)){
+  for(col in 2:ncol(df_rval)){
+    df_rval[row, col] <- round(df_rval[row, col], 3)
+  }
+}
+
+df_rval$notes <- lapply(seq_down(df_rval), function(x){
+  if(df_rval$sensitivity[x] %>% is.nan){
+    if(lu(list_by_variant[[df_rval$name[x]]]$ref_gt)==1 & lu(list_by_variant[[df_rval$name[x]]]$ltgt_to_gt)==1 ){
+      return("only 0|0 in VCF")
+    }
+  }
+  if(df_rval$precision[x] %>% is.nan){
+    if(lu(list_by_variant[[df_rval$name[[x]]]]$ltgt_to_gt)==1 & all(list_by_variant[[df_rval$name[[x]]]]$ltgt_to_gt=="0|0")){
+      return("locityper only called 0|0")
+    }
+  }
+  return("")
+}) %>% unlist
+
+df_rval$notes <- lapply(seq_down(df_rval), function(x){
+  n_10 <- sum(df11$has_cram[df11$variant==df_rval$name[x] & df11$gt=="1|0"])
+  rval <- paste0(n_10, ", ", df_rval$notes[x])
+  return(rval)
+}) %>% unlist
+
+
+df_rval <- df_rval[order(df_rval$F1, decreasing = TRUE), ]
+
+
+write.table(df01, "C:/docs/aou/locityper/608/summary_final_batch.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df_rval, "C:/docs/aou/locityper/608/summary_stats_by_loci_final_batch.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
