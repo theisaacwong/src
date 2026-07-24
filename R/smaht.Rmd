@@ -389,3 +389,55 @@ for(col in 4:13){
 df_contig_all_sum <- rbind(df_contig_all, df_temp, df_contig_full)
 ```
 
+
+# grep -P "/SMHT018_2_haplotype2-[^SMHT]+qv$" files.txt >
+```{r}
+#files <- readLines("qv_files_read.txt")
+#df0 <- lapply(files, function(x){read.table(x, header=FALSE, sep="\t")}) %>% do.call(rbind, .)
+
+df_hap1 <- fread("C:/docs/smaht/SMHT018/SMHT018.hap1.qv.tsv") %>% as.data.frame()
+df_hap2 <- fread("C:/docs/smaht/SMHT018/SMHT018.hap2.qv.tsv") %>% as.data.frame()
+df_hap1$HAP <- "hap1"
+df_hap2$HAP <- "hap2"
+df00 <- rbind(df_hap1, df_hap2)
+colnames(df00)[4] <- "qv"
+df00$qv[df00$qv=="Inf"] <- 80
+
+df00$sample <- "SMHT018"
+df00$contig <- lapply(df00$V1, function(x){
+  temp1 <- unlist(str_split(x, "-"))[1] %>% str_replace_all("_", "#")
+  temp2 <- unlist(unlist(str_split(x, "-"))[2] %>% str_split("_"))[1]
+  paste0(temp1, "-", temp2)
+}) %>% unlist
+
+df00$start <- lapply(df00$V1, function(x){
+  unlist(unlist(str_split(x, "-"))[2] %>% str_split("_"))[2]
+}) %>% unlist %>% as.numeric() %>% as.integer()
+
+df00$end <- lapply(df00$V1, function(x){
+  unlist(unlist(str_split(x, "-"))[2] %>% str_split("_"))[3]
+}) %>% unlist %>% as.numeric() %>% as.integer()
+
+df00 <- df00[order(df00$contig, df00$start, df00$end, decreasing = FALSE),]
+
+df_paf1 <- fread("C:/docs/smaht/SMHT018/hap1.minimap2.trimmed.paf") %>% as.data.frame()
+df_paf2 <- fread("C:/docs/smaht/SMHT018/hap2.minimap2.trimmed.paf") %>% as.data.frame()
+df_paf <- rbind(df_paf1, df_paf2)
+colnames(df_paf) <- c("contig", "contig_len", "contig_start", "contig_end", "V5", "chr", "chr_len", "start", "end")
+
+
+df_paf$matching_frags <- lapply(seq_down(df_paf), function(x){
+  curr_contig <- df_paf$contig[x]
+  curr_start  <- df_paf$contig_start[x]
+  curr_end    <- df_paf$contig_end[x]
+  
+  bool_contig <- curr_contig == df00$contig
+  bool_start  <- curr_start  <= df00$end
+  bool_end    <- curr_end    >= df00$start
+  
+  df00$V1[bool_contig & bool_start & bool_end]
+}) # no unlist
+
+
+```
+

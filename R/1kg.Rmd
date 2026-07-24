@@ -1,0 +1,47 @@
+---
+title: "Untitled"
+output: html_document
+date: "2026-07-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+df0 <- fread("C:/docs/1kg/aws_upload/curr_files_20260727.txt22", fill=TRUE) %>% as.data.frame()
+df1 <- fread("C:/docs/1kg/aws_upload/unuploaded_bams.txt22") %>% as.data.frame()
+
+df0$V5 <- NULL
+
+df1$SAMPLE <- df1$FILE %>% str_remove("-.-..bam$") %>% unlist
+
+df0$PASS <- df0$DATE =="2026-07-21"
+df1$IS_UPLOADED <- df1$SAMPLE %in% df0$SAMPLE[df0$PASS]
+df1$IS_BIGGER_LOCAL <- lapply(seq_down(df1), function(x){ 
+  if(df1$SAMPLE[x] %in% df0$SAMPLE){
+    curr_samp <- df1$SAMPLE[x] ; 
+    df1$SIZE[x] > (3000 + max(df0$SIZE[df0$SAMPLE==curr_samp])[1])     
+  } else {
+    return(TRUE)
+  }
+}) %>% unlist
+df1$SRC <- paste0("/net/eichler/vol28/projects/long_read_archive/nobackups/sharing/incoming/1KG_Kinnex/SCRI_mergedBams/", df1$FILE)
+df1$DEST <- paste0("s3://1000g-ont/Kinnex/kinnex_1KGP/data/raw/", df1$SAMPLE, "/", df1$FILE) %>% str_replace(".bam$", ".flnc.bam") %>% unlist
+
+df1$TO_UPLOAD <- (df1$IS_UPLOADED == FALSE & df1$IS_BIGGER_LOCAL == TRUE) 
+
+write.table(df1, "C:/docs/1kg/aws_upload/pre_upload_check.man.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+write.table(df1[df1$TO_UPLOAD, ], "C:/docs/1kg/aws_upload/to_upload.man.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+
+
+
+
+
+
+
+```
+
