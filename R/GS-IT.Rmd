@@ -1,0 +1,51 @@
+---
+title: "GS-IT"
+output: html_document
+date: "2026-09-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+df0 <- fread("C:/docs/GSIT/lots/eichler_charges_detail_corrected.tsv") %>% as.data.frame() 
+df0$Notes <- NULL
+
+df0$date <- paste0(df0$Period, "-01") %>% as.POSIXct(format="%Y-%m-%d", tz="US/Pacific")
+
+
+list_by_date <- lapply(u(df0$date), function(x){
+  df_temp <- df0[df0$date == x, ]
+  df_labit <- df_temp[df_temp$Service == "Lab IT Services", ]
+  df_else  <- df_temp[df_temp$Service != "Lab IT Services", ]
+  
+  df_labit$Charge <- sum(df_labit$Charge)
+  
+  df_total <- df_temp[1, ]
+  df_total$Service <- "Total"
+  
+  
+  df_rval <- rbind(df_else, df_labit[1, ])
+  
+  df_total$Charge <- sum(df_rval$Charge)
+  df_rval <- rbind(df_rval, df_total)
+  
+  return(df_rval)
+}) %>% do.call(rbind, .)
+
+df01 <- list_by_date
+
+
+
+
+g1 <- ggplot(df01, aes(x=date, y=Charge, color=Service)) + 
+  geom_line(linewidth = 1.5)  + 
+  scale_x_continuous(breaks = sort(u(df01$date)),  labels = sort(u(df01$date)) %>% paste0() %>% str_remove_all("-01$") ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ggtitle("GS-IT costs"); plot(g1)
+
+ggsave(filename="C:/docs/GSIT/lots/GS-IT-costs-summary-total.png", plot=g1, width = 8, height = 5, units="in")
+
+```
+

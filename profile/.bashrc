@@ -188,3 +188,4 @@ unset __conda_setup
 
 PS1='\[\033[01;32m\]local:\[\033[01;34m\]\W\[\033[00m\]\$ '
 . "$HOME/.cargo/env"
+. "/home/iwong1/.deno/env"

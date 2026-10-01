@@ -1830,4 +1830,43 @@ find -type f | grep flac$ | sed "s/'/\\\\'/g" | sed "s/.flac$//g" | xargs -I {} 
 
 
 
+# take in flac file and convert to 320k, 192k, 128k, 96k, 32k
+```{bash}
+find -type f | grep flac$ | sed "s/'/\\\\'/g" | sed "s/.flac$//g" | xargs -I {} /bin/bash -c 'ls -lh "{}.flac"; ffmpeg -i "{}.flac"  -ab 320k -map_metadata 0 -id3v2_version 3  -write_id3v1  1  "{}_1_320kbps.mp3" ; ffmpeg -i "{}.flac"  -ab 192k -map_metadata 0 -id3v2_version 3  -write_id3v1  1  "{}_2_192kbps.mp3" ; ffmpeg -i "{}.flac"  -ab 128k -map_metadata 0 -id3v2_version 3  -write_id3v1  1  "{}_3_128kbps.mp3" ; ffmpeg -i "{}.flac"  -ab 96k -map_metadata 0 -id3v2_version 3  -write_id3v1  1  "{}_4_096kbps.mp3";  ffmpeg -i "{}.flac"  -ab 32k -map_metadata 0 -id3v2_version 3  -write_id3v1  1  "{}_5_032kbps.mp3"' 
+```
+
+
+```{r}
+bytes <- c(257739139, 2665167107)
+secs <- c(as.POSIXct("10:43:40", format = "%H:%M:%S"), 
+          as.POSIXct("15:15:13", format = "%H:%M:%S"))
+
+gb_diff <- (bytes[2] - bytes[1]) / 1000000
+times_diff <- secs[2] - secs[1]
+times_diff
+rate = gb_diff / as.numeric(times_diff)
+rate
+```
+
+6GB/minute 
+2561004163
+257739139
+
+
+```{bash}
+#!/bin/bash
+INPUT=$1
+
+declare -a myvals=("320", "192", "128", "96", "32")
+arraylength=${#myvals[@]}
+
+while read myfile ; do
+  file_basename=$(echo ${myfile} | sed "s/'/\\\\'/g" | sed "s/.flac$//g" )
+  for (( i=0; i<${arraylength}; i++ ));
+  do
+    currval="${myvals[$i]}"
+    ffmpeg -i "${file_basename}.flac"  -ab "${currval}k" -map_metadata 0 -id3v2_version 3  -write_id3v1  1  "${file_basename}_${i}_${currval}kbps.mp3" 
+  done
+done < ${INPUT}
+```
 

@@ -130,3 +130,8 @@ module load smaht-submitr/1.12.0
 submit-metadata-bundle SMHT024_Metadata_PacBio_HiFi_fibro.xlsx --directory $PWD --submit   --verbose --output SMHT024_Metadata_PacBio_HiFi_fibroblast.submit.log
 
 submit-metadata-bundle SMHT024_Metadata_PacBio_HiFi_fibro.xlsx --directory $PWD --validate --verbose --output SMHT024_Metadata_PacBio_HiFi_fibroblast.validate.log
+
+
+https://github.com/broadinstitute/str-analysis/blob/main/str_analysis/make_minicram_for_expansion_hunter.py
+
+github.com/broadinstitute/str-analysis/blob/main/str_analysis/print_reads.py

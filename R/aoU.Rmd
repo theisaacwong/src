@@ -2838,3 +2838,126 @@ df_rval <- df_rval[order(df_rval$F1, decreasing = TRUE), ]
 write.table(df01, "C:/docs/aou/locityper/608/summary_final_batch.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 write.table(df_rval, "C:/docs/aou/locityper/608/summary_stats_by_loci_final_batch.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
 ```
+
+```{r}
+df1 <- fread("C:/docs/aou/locityper/batch6/outputs/ehr_sb1.tsv") %>% as.data.frame()
+df2 <- fread("C:/docs/aou/locityper/batch6/outputs/ehr_sb2.tsv") %>% as.data.frame()
+df3 <- fread("C:/docs/aou/locityper/batch6/outputs/ehr_sb3.tsv") %>% as.data.frame()
+df4 <- fread("C:/docs/aou/locityper/batch6/outputs/ehr_sb4.tsv") %>% as.data.frame()
+df5 <- fread("C:/docs/aou/locityper/batch6/outputs/ehr_sb5.tsv") %>% as.data.frame()
+
+
+df10 <- df1[, c("entity:ehr_sb1_id", "summary_csv_batch6")]
+df20 <- df2[, c("entity:ehr_sb2_id", "summary_csv_batch6")]
+df30 <- df3[, c("entity:ehr_sb3_id", "summary_csv_batch6")]
+df40 <- df4[, c("entity:ehr_sb4_id", "summary_csv_batch6")]
+df50 <- df5[, c("entity:ehr_sb5_id", "summary_csv_batch6")]
+
+colnames(df10)[1] <- "sample"
+colnames(df20)[1] <- "sample"
+colnames(df30)[1] <- "sample"
+colnames(df40)[1] <- "sample"
+colnames(df50)[1] <- "sample"
+
+df00 <- rbind(df10, df20, df30, df40, df50)
+df00 <- df00[df00$summary_csv_batch6 != "", ]
+
+write.table(df00, "C:/docs/aou/locityper/batch6/outputs/to_download_20260729.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+
+
+df51 <- fread("C:/docs/aou/locityper/batch6/outputs/ehr_sb5_redo.tsv") %>% as.data.frame()
+df52 <- df51[df51$summary_csv_batch6=="" & df51$summary_csv_batch6_expensive!="", ]
+df52_memb <- data.frame(`membership:ehr_sb5_set_id` = "ehr_sb5_r6a", ehr_sb5=df52$`entity:ehr_sb5_id`, check.names = FALSE)
+write.table(df52_memb, "C:/docs/aou/locityper/batch6/outputs/ehr_sb5_remainders.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
+
+```{r}
+df1 <- fread("C:/docs/aou/locityper/batch6/almost_final/ehr_sb1.tsv") %>% as.data.frame()
+df2 <- fread("C:/docs/aou/locityper/batch6/almost_final/ehr_sb2.tsv") %>% as.data.frame()
+df3 <- fread("C:/docs/aou/locityper/batch6/almost_final/ehr_sb3.tsv") %>% as.data.frame()
+df4 <- fread("C:/docs/aou/locityper/batch6/almost_final/ehr_sb4.tsv") %>% as.data.frame()
+df5 <- fread("C:/docs/aou/locityper/batch6/almost_final/ehr_sb5.tsv") %>% as.data.frame()
+
+df5$summary_csv_batch6[df5$summary_csv_batch6=="" & df5$summary_csv_batch6_expensive!=""] <- df5$summary_csv_batch6_expensive[df5$summary_csv_batch6=="" & df5$summary_csv_batch6_expensive!=""]
+
+
+
+df10 <- df1[, c("entity:ehr_sb1_id", "summary_csv_batch6")]
+df20 <- df2[, c("entity:ehr_sb2_id", "summary_csv_batch6")]
+df30 <- df3[, c("entity:ehr_sb3_id", "summary_csv_batch6")]
+df40 <- df4[, c("entity:ehr_sb4_id", "summary_csv_batch6")]
+df50 <- df5[, c("entity:ehr_sb5_id", "summary_csv_batch6")]
+
+colnames(df10)[1] <- "sample"
+colnames(df20)[1] <- "sample"
+colnames(df30)[1] <- "sample"
+colnames(df40)[1] <- "sample"
+colnames(df50)[1] <- "sample"
+
+df00 <- rbind(df10, df20, df30, df40, df50)
+df00 <- df00[df00$summary_csv_batch6 != "", ]
+
+write.table(df00, "C:/docs/aou/locityper/batch6/almost_final/to_download_20260730.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
+
+
+```{r}
+df1 <- fread("C:/docs/aou/locityper/batch6/final_final/ehr_sb1.tsv") %>% as.data.frame()
+df2 <- fread("C:/docs/aou/locityper/batch6/final_final/ehr_sb2.tsv") %>% as.data.frame()
+df3 <- fread("C:/docs/aou/locityper/batch6/final_final/ehr_sb3.tsv") %>% as.data.frame()
+df4 <- fread("C:/docs/aou/locityper/batch6/final_final/ehr_sb4.tsv") %>% as.data.frame()
+df5 <- fread("C:/docs/aou/locityper/batch6/final_final/ehr_sb5.tsv") %>% as.data.frame()
+
+df5$summary_csv_batch6[df5$summary_csv_batch6=="" & df5$summary_csv_batch6_expensive!=""] <- df5$summary_csv_batch6_expensive[df5$summary_csv_batch6=="" & df5$summary_csv_batch6_expensive!=""]
+
+
+
+df10 <- df1[, c("entity:ehr_sb1_id", "summary_csv_batch6")]
+df20 <- df2[, c("entity:ehr_sb2_id", "summary_csv_batch6")]
+df30 <- df3[, c("entity:ehr_sb3_id", "summary_csv_batch6")]
+df40 <- df4[, c("entity:ehr_sb4_id", "summary_csv_batch6")]
+df50 <- df5[, c("entity:ehr_sb5_id", "summary_csv_batch6")]
+
+colnames(df10)[1] <- "sample"
+colnames(df20)[1] <- "sample"
+colnames(df30)[1] <- "sample"
+colnames(df40)[1] <- "sample"
+colnames(df50)[1] <- "sample"
+
+df01 <- rbind(df10, df20, df30, df40, df50)
+df01 <- df01[df00$summary_csv_batch6 != "", ]
+
+write.table(df01, "C:/docs/aou/locityper/batch6/final_final/to_download_20260730.tsv", sep="\t", col.names = TRUE, row.names = FALSE, quote=FALSE)
+```
+
+
+
+```{r}
+df00 <- fread("C:/docs/aou/locityper/batch6/analysis/haplotypes.size.tsv") %>% as.data.frame()
+
+g1 <- ggplot(df00, aes(x=SV_SIZE, y=HAP_SIZE)) + 
+  geom_point() + 
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed"); plot(g1)
+```
+
+```{r}
+df_memb_1 <- fread("C:/docs/aou/locityper/mans_ehr/ehr_1_memb.tsv") %>% as.data.frame()
+df_memb_2 <- fread("C:/docs/aou/locityper/mans_ehr/ehr_2_memb.tsv") %>% as.data.frame()
+df_memb_3 <- fread("C:/docs/aou/locityper/mans_ehr/ehr_3_memb.tsv") %>% as.data.frame()
+df_memb_4 <- fread("C:/docs/aou/locityper/mans_ehr/ehr_4_memb.tsv") %>% as.data.frame()
+df_memb_5 <- fread("C:/docs/aou/locityper/mans_ehr/ehr_5_memb.tsv") %>% as.data.frame()
+
+
+colnames(df_memb_1) <- c("memb", "sample")
+colnames(df_memb_2) <- c("memb", "sample")
+colnames(df_memb_3) <- c("memb", "sample")
+colnames(df_memb_4) <- c("memb", "sample")
+colnames(df_memb_5) <- c("memb", "sample")
+
+df_memb <- rbind(df_memb_1, df_memb_2, df_memb_3, df_memb_4, df_memb_5)
+
+warn_samples <- readLines("C:/docs/aou/locityper/batch6/analysis/samples_with_weird_GTs.txt")
+```
+
